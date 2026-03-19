@@ -1,51 +1,94 @@
 const { app, BrowserWindow } = require('electron');
-const path = require('node:path');
+const { spawn, execSync } = require('child_process');
+const path = require('path');
 
-// Handle creating/removing shortcuts on Windows when installing/uninstalling.
+// =========================================================
+// 1. AUTO-INSTALADOR Y MENÚ CONTEXTUAL INVISIBLE
+// =========================================================
+// Esto se ejecuta en 2º plano cuando alguien abre tu Setup.exe por primera vez
+const squirrelEvent = process.argv[1];
+if (squirrelEvent && squirrelEvent.startsWith('--squirrel')) {
+  const exePath = process.execPath; // La ruta donde se ha instalado
+  try {
+    if (squirrelEvent === '--squirrel-install' || squirrelEvent === '--squirrel-updated') {
+       // Inyecta en el menú contextual del usuario actual (¡No pide permisos de Administrador!)
+       execSync(`reg add "HKCU\\Software\\Classes\\Directory\\shell\\NexusCifrar" /v "" /t REG_SZ /d "⚡ Sellar con Nexus AES-128" /f`);
+       execSync(`reg add "HKCU\\Software\\Classes\\Directory\\shell\\NexusCifrar\\command" /v "" /t REG_SZ /d "\\"${exePath}\\" --sellar \\"%1\\"" /f`);
+       
+       execSync(`reg add "HKCU\\Software\\Classes\\.nexus" /v "" /t REG_SZ /d "Nexus.Vault" /f`);
+       execSync(`reg add "HKCU\\Software\\Classes\\Nexus.Vault\\shell\\NexusDescifrar" /v "" /t REG_SZ /d "⚡ Abrir Bóveda Nexus" /f`);
+       execSync(`reg add "HKCU\\Software\\Classes\\Nexus.Vault\\shell\\NexusDescifrar\\command" /v "" /t REG_SZ /d "\\"${exePath}\\" --abrir \\"%1\\"" /f`);
+    } else if (squirrelEvent === '--squirrel-uninstall') {
+       // Limpia el registro si se desinstala la aplicación
+       execSync(`reg delete "HKCU\\Software\\Classes\\Directory\\shell\\NexusCifrar" /f`);
+       execSync(`reg delete "HKCU\\Software\\Classes\\.nexus" /f`);
+       execSync(`reg delete "HKCU\\Software\\Classes\\Nexus.Vault" /f`);
+    }
+  } catch (e) {
+    console.error("Error en el registro silencioso:", e);
+  }
+}
+
+// Esto crea el acceso directo del escritorio y evita que se abran ventanas dobles al instalar
 if (require('electron-squirrel-startup')) {
   app.quit();
 }
 
-const createWindow = () => {
-  // Create the browser window.
-  const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
-    webPreferences: {
-      preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
-    },
+// =========================================================
+// 2. ENRUTADOR DE ÓRDENES (Clic derecho de Windows)
+// =========================================================
+const args = process.argv;
+const sellarIndex = args.indexOf('--sellar');
+const abrirIndex = args.indexOf('--abrir');
+
+function ejecutarScriptOculto(scriptName, targetPath) {
+  const scriptPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'mis_scripts', scriptName)
+    : path.join(app.getAppPath(), 'mis_scripts', scriptName);
+
+  const pythonProcess = spawn('python', [scriptPath, targetPath], {
+    detached: true,     
+    stdio: 'ignore'     
   });
 
-  // and load the index.html of the app.
-  mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
+  pythonProcess.unref(); 
+  app.quit(); // Se cierra tras lanzar Python para que no te moleste la ventana principal
+}
 
-  // Open the DevTools.
-  mainWindow.webContents.openDevTools();
-};
+// Si la orden viene de hacer clic derecho...
+if (sellarIndex !== -1 && args.length > sellarIndex + 1) {
+  ejecutarScriptOculto('Cifrador_De_Carpetas.py', args[sellarIndex + 1]);
+} else if (abrirIndex !== -1 && args.length > abrirIndex + 1) {
+  ejecutarScriptOculto('descifrador.py', args[abrirIndex + 1]);
+} else {
+  // =========================================================
+  // 3. ARRANQUE NORMAL DEL DASHBOARD (Doble clic en el icono)
+  // =========================================================
+  const createWindow = () => {
+    const mainWindow = new BrowserWindow({
+      width: 1000,
+      height: 700,
+      webPreferences: {
+        preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
+        nodeIntegration: false,
+        contextIsolation: true
+      },
+    });
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
-  createWindow();
+    mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
+  };
 
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
+  app.on('ready', createWindow);
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+      app.quit();
+    }
+  });
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
     }
   });
-});
-
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.
+}
