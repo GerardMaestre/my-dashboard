@@ -32,7 +32,7 @@ function ensureStandaloneEnvironment() {
         `;
 
         execFile('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psCommand], { windowsHide: true }, (err) => {
-            if (!err) {
+            if (!err && fs.existsSync(pythonExePath)) {
                 // Habilitamos site-packages por si acaso en el portátil
                 const pthPath = path.join(pythonEnvPath, 'python311._pth');
                 if (fs.existsSync(pthPath)) {
@@ -41,7 +41,8 @@ function ensureStandaloneEnvironment() {
                 }
                 setTimeout(() => emitOutput({ fileName: 'Sistema', type: 'system', message: 'Entorno Python instalado correctamente' }), 2000);
             } else {
-                setTimeout(() => emitOutput({ fileName: 'Sistema', type: 'error', message: 'Fallo al instalar entorno Python' }), 2000);
+                try { fs.rmSync(pythonEnvPath, { recursive: true, force: true }); } catch (e) {}
+                setTimeout(() => emitOutput({ fileName: 'Sistema', type: 'error', message: 'Fallo al instalar entorno Python (verifique su conexión)' }), 2000);
             }
         });
     } catch(e) { }

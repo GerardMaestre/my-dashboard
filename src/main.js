@@ -12,20 +12,20 @@ if (squirrelEvent && squirrelEvent.startsWith('--squirrel')) {
   try {
     if (squirrelEvent === '--squirrel-install' || squirrelEvent === '--squirrel-updated') {
        // Inyecta en el menú contextual del usuario actual (¡No pide permisos de Administrador!)
-       execSync(`reg add "HKCU\\Software\\Classes\\Directory\\shell\\NexusCifrar" /v "" /t REG_SZ /d "⚡ Sellar con Nexus AES-128" /f`);
-       execSync(`reg add "HKCU\\Software\\Classes\\Directory\\shell\\NexusCifrar\\command" /v "" /t REG_SZ /d "\\"${exePath}\\" --sellar \\"%1\\"" /f`);
+       execSync(`reg add "HKCU\\Software\\Classes\\Directory\\shell\\NexusCifrar" /v "" /t REG_SZ /d "⚡ Sellar con Nexus AES-128" /f`, { stdio: 'ignore' });
+       execSync(`reg add "HKCU\\Software\\Classes\\Directory\\shell\\NexusCifrar\\command" /v "" /t REG_SZ /d "\\"${exePath}\\" --sellar \\"%1\\"" /f`, { stdio: 'ignore' });
        
-      execSync(`reg add "HKCU\\Software\\Classes\\.nexus" /v "" /t REG_SZ /d "Nexus.Vault" /f`);
-      execSync(`reg add "HKCU\\Software\\Classes\\Nexus.Vault\\shell\\NexusDescifrar" /v "" /t REG_SZ /d "⚡ Abrir Bóveda Nexus" /f`);
-      execSync(`reg add "HKCU\\Software\\Classes\\Nexus.Vault\\shell\\NexusDescifrar\\command" /v "" /t REG_SZ /d "\\"${exePath}\\" --abrir \\"%1\\"" /f`);
-      execSync(`reg add "HKCU\\Software\\Classes\\SystemFileAssociations\\.nexus\\shell\\NexusDescifrar" /v "" /t REG_SZ /d "⚡ Abrir Bóveda Nexus" /f`);
-      execSync(`reg add "HKCU\\Software\\Classes\\SystemFileAssociations\\.nexus\\shell\\NexusDescifrar\\command" /v "" /t REG_SZ /d "\\"${exePath}\\" --abrir \\"%1\\"" /f`);
+      execSync(`reg add "HKCU\\Software\\Classes\\.nexus" /v "" /t REG_SZ /d "Nexus.Vault" /f`, { stdio: 'ignore' });
+      execSync(`reg add "HKCU\\Software\\Classes\\Nexus.Vault\\shell\\NexusDescifrar" /v "" /t REG_SZ /d "⚡ Abrir Bóveda Nexus" /f`, { stdio: 'ignore' });
+      execSync(`reg add "HKCU\\Software\\Classes\\Nexus.Vault\\shell\\NexusDescifrar\\command" /v "" /t REG_SZ /d "\\"${exePath}\\" --abrir \\"%1\\"" /f`, { stdio: 'ignore' });
+      execSync(`reg add "HKCU\\Software\\Classes\\SystemFileAssociations\\.nexus\\shell\\NexusDescifrar" /v "" /t REG_SZ /d "⚡ Abrir Bóveda Nexus" /f`, { stdio: 'ignore' });
+      execSync(`reg add "HKCU\\Software\\Classes\\SystemFileAssociations\\.nexus\\shell\\NexusDescifrar\\command" /v "" /t REG_SZ /d "\\"${exePath}\\" --abrir \\"%1\\"" /f`, { stdio: 'ignore' });
     } else if (squirrelEvent === '--squirrel-uninstall') {
        // Limpia el registro si se desinstala la aplicación
-       execSync(`reg delete "HKCU\\Software\\Classes\\Directory\\shell\\NexusCifrar" /f`);
-       execSync(`reg delete "HKCU\\Software\\Classes\\.nexus" /f`);
-      execSync(`reg delete "HKCU\\Software\\Classes\\Nexus.Vault" /f`);
-      execSync(`reg delete "HKCU\\Software\\Classes\\SystemFileAssociations\\.nexus" /f`);
+       execSync(`reg delete "HKCU\\Software\\Classes\\Directory\\shell\\NexusCifrar" /f`, { stdio: 'ignore' });
+       execSync(`reg delete "HKCU\\Software\\Classes\\.nexus" /f`, { stdio: 'ignore' });
+      execSync(`reg delete "HKCU\\Software\\Classes\\Nexus.Vault" /f`, { stdio: 'ignore' });
+      execSync(`reg delete "HKCU\\Software\\Classes\\SystemFileAssociations\\.nexus" /f`, { stdio: 'ignore' });
     }
   } catch (e) {
     console.error("Error en el registro silencioso:", e);
@@ -82,16 +82,16 @@ function ensureContextMenuEntries() {
   } catch (e) {}
 
   try {
-    execSync(`reg add "${dirKey}" /v "" /t REG_SZ /d "Sellar con Nexus AES-128" /f`);
-    execSync(`reg add "${dirCmdKey}" /v "" /t REG_SZ /d "${escapeRegValue(sellarCmd)}" /f`);
+    execSync(`reg add "${dirKey}" /v "" /t REG_SZ /d "Sellar con Nexus AES-128" /f`, { stdio: 'ignore' });
+    execSync(`reg add "${dirCmdKey}" /v "" /t REG_SZ /d "${escapeRegValue(sellarCmd)}" /f`, { stdio: 'ignore' });
 
-    execSync(`reg add "${extKey}" /v "" /t REG_SZ /d "Nexus.Vault" /f`);
-    execSync(`reg add "${progIdKey}" /v "" /t REG_SZ /d "Nexus Vault" /f`);
-    execSync(`reg add "${progIdKey}\\shell\\NexusDescifrar" /v "" /t REG_SZ /d "Abrir Boveda Nexus" /f`);
-    execSync(`reg add "${progCmdKey}" /v "" /t REG_SZ /d "${escapeRegValue(abrirCmd)}" /f`);
+    execSync(`reg add "${extKey}" /v "" /t REG_SZ /d "Nexus.Vault" /f`, { stdio: 'ignore' });
+    execSync(`reg add "${progIdKey}" /v "" /t REG_SZ /d "Nexus Vault" /f`, { stdio: 'ignore' });
+    execSync(`reg add "${progIdKey}\\shell\\NexusDescifrar" /v "" /t REG_SZ /d "Abrir Boveda Nexus" /f`, { stdio: 'ignore' });
+    execSync(`reg add "${progCmdKey}" /v "" /t REG_SZ /d "${escapeRegValue(abrirCmd)}" /f`, { stdio: 'ignore' });
 
-    execSync(`reg add "${assocKey}\\shell\\NexusDescifrar" /v "" /t REG_SZ /d "Abrir Boveda Nexus" /f`);
-    execSync(`reg add "${assocCmdKey}" /v "" /t REG_SZ /d "${escapeRegValue(abrirCmd)}" /f`);
+    execSync(`reg add "${assocKey}\\shell\\NexusDescifrar" /v "" /t REG_SZ /d "Abrir Boveda Nexus" /f`, { stdio: 'ignore' });
+    execSync(`reg add "${assocCmdKey}" /v "" /t REG_SZ /d "${escapeRegValue(abrirCmd)}" /f`, { stdio: 'ignore' });
   } catch (error) {
     console.error('Error creando entradas de menu contextual:', error);
   }

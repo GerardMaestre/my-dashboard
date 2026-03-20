@@ -7,7 +7,7 @@ let isFirstLoad = true;
 let autostartList = JSON.parse(localStorage.getItem('nexus_autostart') || '[]');
 
 function safeId(fileName) {
-	return fileName.replace(/[^a-z0-9_-]/gi, '_');
+	return encodeURIComponent(fileName).replace(/[^a-z0-9]/gi, '_');
 }
 
 function getElementId(fileName, prefix) {
@@ -34,7 +34,8 @@ function toggleInfo(id) {
 }
 
 function obtenerInfoArchivo(fileName) {
-	const ext = fileName.slice(fileName.lastIndexOf('.')).toLowerCase();
+	const lastDot = fileName.lastIndexOf('.');
+	const ext = lastDot !== -1 ? fileName.slice(lastDot).toLowerCase() : '';
 	if (ext === '.py') return { color: '#FFD60A', name: 'PY' };
 	if (ext === '.bat' || ext === '.cmd') return { color: '#0A84FF', name: 'BAT' };
 	if (ext === '.sh') return { color: '#30D158', name: 'SH' };
@@ -68,6 +69,8 @@ async function cargarScripts() {
 
 	const fragment = document.createDocumentFragment();
 
+	let pendingAutostarts = [];
+
 	for (const file of validFiles) {
 		const info = obtenerInfoArchivo(file);
 		const isAutoActive = !!autopilotTasks[file];
@@ -87,8 +90,7 @@ async function cargarScripts() {
 		}
 
 		if (isFirstLoad && isAutostart) {
-			logTerminal(`[AUTO-ARRANQUE] Lanzando ${file} de fondo...`, 'system');
-			ejecutar(file, false, true);
+			pendingAutostarts.push(file);
 		}
 
 		const key = safeId(file);
@@ -131,7 +133,7 @@ async function cargarScripts() {
 		const pArgs = document.createElement('p');
 		pArgs.style.marginTop = '5px';
 		const strongArgs = document.createElement('strong');
-		strongArgs.textContent = 'Par�metros: ';
+		strongArgs.textContent = 'Parámetros: ';
 		const codeArgs = document.createElement('code');
 		codeArgs.textContent = args; // Prevents XSS
 		pArgs.appendChild(strongArgs);
@@ -204,6 +206,11 @@ async function cargarScripts() {
 	}
 	
 	list.appendChild(fragment);
+
+	for (const file of pendingAutostarts) {
+		logTerminal(`[AUTO-ARRANQUE] Lanzando ${file} de fondo...`, 'system');
+		ejecutar(file, false, true);
+	}
 
 	isFirstLoad = false;
 	aplicarFiltros();
@@ -286,6 +293,10 @@ function iniciarAutopilot() {
 	
 	logTerminal(`[AUTOPILOT] Bucle iniciado para ${fileName}`, 'system');
 	ejecutar(fileName, true);
+
+	if (autopilotTasks[fileName] && autopilotTasks[fileName].timer) {
+		clearInterval(autopilotTasks[fileName].timer);
+	}
 
 	autopilotTasks[fileName] = { timer: null, nextRun: Date.now() + ms }; // Initialize immediately
 	
