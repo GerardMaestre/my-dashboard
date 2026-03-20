@@ -6,8 +6,51 @@
     --mac-red: #FF453A;
     --mac-green: #30D158;
     --mac-bg: rgba(30, 30, 30, 0.4); 
+    --mac-bg-hover: rgba(40, 40, 40, 0.6);
+    --mac-bg-terminal: rgba(0, 0, 0, 0.5);
     --mac-border: rgba(255, 255, 255, 0.1);
     --mac-glow: rgba(10, 132, 255, 0.4);
+    --mac-body: #000;
+    --bg-color-1: rgba(30, 27, 75, 0.8);
+    --bg-color-2: rgba(10, 40, 90, 0.8);
+    --bg-color-3: #09090b;
+    --bg-color-4: #171717;
+}
+
+[data-theme="cyber"] {
+    --mac-text: #0f0;
+    --mac-text-muted: #0a0;
+    --mac-blue: #0ff;
+    --mac-red: #f00;
+    --mac-green: #0f0;
+    --mac-bg: rgba(0, 20, 0, 0.6);
+    --mac-bg-hover: rgba(0, 30, 0, 0.8);
+    --mac-bg-terminal: rgba(0, 10, 0, 0.8);
+    --mac-border: rgba(0, 255, 0, 0.3);
+    --mac-glow: rgba(0, 255, 255, 0.6);
+    --mac-body: #000;
+    --bg-color-1: rgba(0, 40, 0, 0.8);
+    --bg-color-2: rgba(0, 20, 20, 0.8);
+    --bg-color-3: #000;
+    --bg-color-4: #051000;
+}
+
+[data-theme="light"] {
+    --mac-text: #1d1d1f;
+    --mac-text-muted: #86868b;
+    --mac-blue: #0066cc;
+    --mac-red: #ff3b30;
+    --mac-green: #28cd41;
+    --mac-bg: rgba(255, 255, 255, 0.5);
+    --mac-bg-hover: rgba(255, 255, 255, 0.8);
+    --mac-bg-terminal: rgba(255, 255, 255, 0.7);
+    --mac-border: rgba(0, 0, 0, 0.2);
+    --mac-glow: rgba(0, 102, 204, 0.3);
+    --mac-body: #f5f5f7;
+    --bg-color-1: rgba(200, 220, 255, 0.8);
+    --bg-color-2: rgba(220, 240, 255, 0.8);
+    --bg-color-3: #f5f5f7;
+    --bg-color-4: #ffffff;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { 
@@ -15,33 +58,14 @@ body {
     color: var(--mac-text); 
     height: 100vh; 
     overflow: hidden; 
-    background-color: #000;
+    background-color: var(--mac-body);
 }
 .mac-wallpaper {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
-    background: linear-gradient(45deg, #09090b, #1e1b4b, #171717, #09090b);
-    background-size: 400% 400%;
-    animation: gradientBG 15s ease infinite;
-}
-@keyframes gradientBG {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-}
-.mac-wallpaper::before, .mac-wallpaper::after {
-    content: ''; position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.5;
-    animation: floatOrb 20s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
-}
-.mac-wallpaper::before {
-    top: -20%; left: -10%; width: 60vw; height: 60vw; background: radial-gradient(circle, rgba(10,132,255,0.3), transparent 70%);
-}
-.mac-wallpaper::after {
-    bottom: -20%; right: -10%; width: 50vw; height: 50vw; background: radial-gradient(circle, rgba(48,209,88,0.2), transparent 70%);
-    animation-delay: -10s;
-}
-@keyframes floatOrb {
-    0% { transform: translate(0, 0) scale(1); }
-    100% { transform: translate(15%, 15%) scale(1.2); }
+    /* Fondo estático fluido y premium, cero consumo de GPU */
+    background: radial-gradient(circle at 15% 50%, var(--bg-color-1), transparent 50%),
+                radial-gradient(circle at 85% 30%, var(--bg-color-2), transparent 50%),
+                linear-gradient(135deg, var(--bg-color-3) 0%, var(--bg-color-4) 100%);
 }
 .mac-glass {
     background: var(--mac-bg);
@@ -88,10 +112,10 @@ body {
 .grid-container { flex: 1; padding: 20px 30px; overflow-y: auto; overflow-x: hidden; padding-bottom: 80px; }
 .script-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; list-style: none; }
 .script-item {
-    background: rgba(30,30,30,0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px;
+    background: var(--mac-bg); border: 1px solid var(--mac-border); border-radius: 16px;
     padding: 16px; display: flex; flex-direction: column; transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
     position: relative; overflow: hidden; backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05), 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: inset 0 0 0 1px var(--mac-border), 0 4px 6px rgba(0,0,0,0.1);
     opacity: 0; transform: translateY(20px); animation: fadeUp 0.5s forwards;
 }
 .script-item.hidden {
@@ -102,8 +126,8 @@ body {
 @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
 .script-item:hover { 
     transform: translateY(-6px); 
-    box-shadow: inset 0 0 0 1px rgba(10, 132, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.5); 
-    background: rgba(40,40,40,0.6);
+    box-shadow: inset 0 0 0 1px var(--mac-glow), 0 20px 40px rgba(0, 0, 0, 0.5); 
+    background: var(--mac-bg-hover);
 }
 
 .category-header {
@@ -182,7 +206,7 @@ input:checked + .slider:before { transform: translateX(14px); }
 .select-mode { width: auto; min-width: 180px; }
 
 .terminal-wrapper { flex: 1; padding: 15px; overflow: hidden; }
-.mac-terminal { height: 100%; border-radius: 10px; padding: 15px; font-family: "SF Mono", "Menlo", "Monaco", monospace; font-size: 12px; overflow-y: auto; line-height: 1.6; background: rgba(0,0,0,0.5); box-shadow: inset 0 0 10px rgba(0,0,0,0.5);}
+.mac-terminal { height: 100%; border-radius: 10px; padding: 15px; font-family: "SF Mono", "Menlo", "Monaco", monospace; font-size: 12px; overflow-y: auto; line-height: 1.6; background: var(--mac-bg-terminal); box-shadow: inset 0 0 10px rgba(0,0,0,0.5); color: var(--mac-text);}
 .log-line { display: block; word-break: break-all;}
 .log-system { color: #86868B; }
 .log-command { color: var(--mac-blue); font-weight: bold; margin-top: 5px;}

@@ -458,12 +458,14 @@ api.onProcessExit(({ fileName, code }) => {
 
 	silentRuns.delete(fileName);
 });
+let selectedIndex = -1;
+
 // Atajos de teclado utiles
 document.addEventListener('keydown', (e) => {
 	// Ctrl + L para limpiar consola
 	if (e.ctrlKey && e.key === 'l') {
 		e.preventDefault();
-		terminal.innerHTML = '<span class="log-system">? Sistema Nexus inicializado. Listo para operar.</span>';
+		terminal.innerHTML = '<span class="log-system"> Sistema Nexus inicializado. Listo para operar.</span>';
 	}
 	
 	// F3 para buscar
@@ -471,25 +473,59 @@ document.addEventListener('keydown', (e) => {
 		e.preventDefault();
 		document.getElementById('search-input').focus();
 	}
+
+	// Navegación con Teclado
+	if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        const visibleItems = Array.from(document.querySelectorAll('.script-item:not(.hidden)'));
+        if (visibleItems.length === 0) return;
+        
+        if (e.key === 'ArrowDown') {
+            selectedIndex = (selectedIndex + 1) % visibleItems.length;
+        } else {
+            selectedIndex = (selectedIndex - 1 + visibleItems.length) % visibleItems.length;
+        }
+        
+        visibleItems.forEach((item, idx) => {
+            if (idx === selectedIndex) {
+                item.style.boxShadow = 'inset 0 0 0 2px var(--mac-blue)';
+                item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            } else {
+                item.style.boxShadow = '';
+            }
+        });
+        e.preventDefault();
+    }
+
+	if (e.key === 'Enter' && selectedIndex >= 0) {
+        const visibleItems = Array.from(document.querySelectorAll('.script-item:not(.hidden)'));
+        if (visibleItems[selectedIndex]) {
+            const fileName = visibleItems[selectedIndex].getAttribute('data-name');
+            ejecutar(fileName);
+			e.preventDefault();
+        }
+    }
 });
 document.getElementById('btn-refresh').addEventListener('click', cargarScripts);
 document.getElementById('btn-clear').addEventListener('click', () => {
-	terminal.innerHTML = '<span class="log-system">? Log limpiado.</span>';
+	terminal.innerHTML = '<span class="log-system"> Log limpiado.</span>';
 });
 
 let searchTimeout;
 let currentFilter = 'all';
 
 function aplicarFiltros() {
+	selectedIndex = -1;
 	const term = document.getElementById('search-input').value.toLowerCase();
+	const terms = term.split(' ').filter(Boolean);
 	let found = false;
 
 	document.querySelectorAll('.script-item').forEach((item) => {
+		item.style.boxShadow = ''; // Limpiar selector teclado
 		const fileName = item.getAttribute('data-name');
 		const fileType = item.getAttribute('data-type');
 		const isRunning = runningFiles.has(fileName) || autopilotTasks[fileName];
 
-		const matchesSearch = fileName.toLowerCase().includes(term);
+		const matchesSearch = terms.every(t => fileName.toLowerCase().includes(t));
 		
 		let matchesFilter = true;
 		if (currentFilter === 'py') matchesFilter = fileType === 'PY';
@@ -613,3 +649,34 @@ function mostrarToast(mensaje, tipo = 'system') {
     }, 3500);
 }
 window.mostrarToast = mostrarToast;
+
+function copiarTerminal() {
+    const text = Array.from(document.getElementById('terminal').childNodes).map(node => node.innerText).join('\n');
+    navigator.clipboard.writeText(text);
+    mostrarToast('Log de consola copiado al portapapeles', 'success');
+}
+window.copiarTerminal = copiarTerminal;
+
+// Theming & Settings Logic
+function openSettings() {
+    document.getElementById('settings-modal').classList.add('active');
+}
+function closeSettings() {
+    document.getElementById('settings-modal').classList.remove('active');
+}
+window.openSettings = openSettings;
+window.closeSettings = closeSettings;
+
+function changeTheme() {
+    const theme = document.getElementById('theme-selector').value;
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('nexus_theme', theme);
+}
+window.changeTheme = changeTheme;
+
+// Init Theme on Load
+const savedTheme = localStorage.getItem('nexus_theme') || 'dark';
+document.documentElement.setAttribute('data-theme', savedTheme);
+if(document.getElementById('theme-selector')) {
+    document.getElementById('theme-selector').value = savedTheme;
+}

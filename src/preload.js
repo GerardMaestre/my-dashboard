@@ -125,6 +125,9 @@ function runInternal(fileName, args) {
 
 	child.on('close', (code) => {
 		activeProcesses.delete(fileName);
+		if (code !== 0 && code !== null) {
+			emitOutput({ fileName, type: 'error', message: `[SYS] Proceso finalizado con código ${code}. Si pedía permisos, el UAC pudo ser denegado.` });
+		}
 		emitExit({ fileName, code });
 	});
 
@@ -150,14 +153,14 @@ function runExternal(fileName, args) {
 
 function killProcessTree(fileName) {
 	const child = activeProcesses.get(fileName);
-	if (!child || child.killed) return false;
+	if (!child) return false;
 
 	if (process.platform === 'win32') {
 		execFile('taskkill', ['/pid', String(child.pid), '/T', '/F'], () => {});
 	} else {
 		child.kill('SIGKILL');
 	}
-
+	activeProcesses.delete(fileName);
 	return true;
 }
 
