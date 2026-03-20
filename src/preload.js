@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer, shell } = require('electron');
 const { spawn, execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 const isPackaged = __dirname.includes('app.asar');
 const storageDir = isPackaged
@@ -160,10 +161,42 @@ function killProcessTree(fileName) {
 	return true;
 }
 
+let previousCpuTime = null;
+function getCpuUsage() {
+    const cpus = os.cpus();
+    let totalIdle = 0, totalTick = 0;
+    
+    cpus.forEach(cpu => {
+        for (let type in cpu.times) {
+            totalTick += cpu.times[type];
+        }
+        totalIdle += cpu.times.idle;
+    });
+
+    if (!previousCpuTime) {
+        previousCpuTime = { idle: totalIdle, total: totalTick };
+        return 0;
+    }
+
+    const idleDifference = totalIdle - previousCpuTime.idle;
+    const totalDifference = totalTick - previousCpuTime.total;
+    previousCpuTime = { idle: totalIdle, total: totalTick };
+
+    if (totalDifference === 0) return 0;
+    return Math.round(100 - (100 * idleDifference / totalDifference));
+}
+
 const api = {
 	getStorageDir: async () => {
 		ensureStorageDir();
 		return storageDir;
+	},
+	getSystemStats: () => {
+		const totalMem = os.totalmem();
+		const freeMem = os.freemem();
+		const memPercent = Math.round(((totalMem - freeMem) / totalMem) * 100);
+		const cpuPercent = getCpuUsage();
+		return { cpu: cpuPercent, ram: memPercent };
 	},
 	listScripts: async () => {
 		ensureStorageDir();

@@ -5,6 +5,19 @@ const silentRuns = new Set();
 let isFirstLoad = true;
 
 let autostartList = JSON.parse(localStorage.getItem('nexus_autostart') || '[]');
+let favoritesList = JSON.parse(localStorage.getItem('nexus_favorites') || '[]');
+
+function toggleFavorite(fileName) {
+	if (favoritesList.includes(fileName)) {
+		favoritesList = favoritesList.filter((f) => f !== fileName);
+		mostrarToast('Habilidad desanclada de Favoritos', 'system');
+	} else {
+		favoritesList.push(fileName);
+		mostrarToast('Habilidad anclada en Favoritos', 'success');
+	}
+	localStorage.setItem('nexus_favorites', JSON.stringify(favoritesList));
+	cargarScripts(); // Re-render for sorting
+}
 
 function safeId(fileName) {
 	return encodeURIComponent(fileName).replace(/[^a-z0-9]/gi, '_');
@@ -77,8 +90,14 @@ async function cargarScripts() {
 	for (const file of validFiles) {
 		const parts = file.split('/');
 		const folder = parts.length > 1 ? parts.slice(0, -1).join('/') : 'Misceláneo';
-		if (!groups[folder]) groups[folder] = [];
-		groups[folder].push(file);
+		
+		if (favoritesList.includes(file)) {
+			if (!groups['★ Destacados']) groups['★ Destacados'] = [];
+			groups['★ Destacados'].push(file);
+		} else {
+			if (!groups[folder]) groups[folder] = [];
+			groups[folder].push(file);
+		}
 	}
 
 	const sortedFolders = Object.keys(groups).sort((a, b) => a.localeCompare(b));
@@ -135,13 +154,28 @@ async function cargarScripts() {
 			divTitle.appendChild(dot);
 			divTitle.appendChild(spanName);
 
+			const isFavorite = favoritesList.includes(file);
+			
+			const btnFav = document.createElement('button');
+			btnFav.className = 'mac-icon-btn';
+			btnFav.onclick = () => toggleFavorite(file);
+			btnFav.innerHTML = isFavorite ? 
+                `<svg viewBox="0 0 24 24" fill="var(--mac-blue)"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>` : 
+                `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z"/></svg>`;
+
 			const btnIcon = document.createElement('button');
 			btnIcon.className = 'mac-icon-btn';
 			btnIcon.onclick = () => toggleInfo(`info-${key}`);
 			btnIcon.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`; 
 			
+			const divActionsTop = document.createElement('div');
+			divActionsTop.style.display = 'flex';
+			divActionsTop.style.gap = '8px';
+			divActionsTop.appendChild(btnFav);
+			divActionsTop.appendChild(btnIcon);
+			
 			divHeader.appendChild(divTitle);
-			divHeader.appendChild(btnIcon);
+			divHeader.appendChild(divActionsTop);
 
 			const divInfo = document.createElement('div');
 			divInfo.id = `info-${key}`;
@@ -300,7 +334,7 @@ function iniciarAutopilot() {
 	const timeInput = parseInt(document.getElementById('sch-time').value);
 	
 	if (!timeInput || timeInput <= 0) {
-		alert("Por favor, introduce un tiempo v�lido mayor a 0.");
+		mostrarToast("Por favor, introduce un tiempo válido mayor a 0.", "error");
 		return;
 	}
 	
@@ -312,6 +346,7 @@ function iniciarAutopilot() {
 	document.getElementById('sch-time').value = '15';
 	
 	logTerminal(`[AUTOPILOT] Bucle iniciado para ${fileName}`, 'system');
+	mostrarToast(`Autopilot activado para ${fileName}`, 'success');
 	ejecutar(fileName, true);
 
 	if (autopilotTasks[fileName] && autopilotTasks[fileName].timer) {
@@ -367,6 +402,7 @@ function detenerAutopilot(fileName) {
 		clearInterval(autopilotTasks[fileName].timer);
 		delete autopilotTasks[fileName];
 		logTerminal(`[AUTOPILOT] Bucle cancelado para ${fileName}`, 'error');
+		mostrarToast(`Autopilot detenido: ${fileName}`, 'system');
 
 		const statusEl = document.getElementById(getElementId(fileName, 'status'));
 		if (statusEl) statusEl.classList.remove('active');
@@ -415,7 +451,9 @@ api.onProcessExit(({ fileName, code }) => {
 	if (currentFilter === 'active') aplicarFiltros();
 
 	if (!silentRuns.has(fileName)) {
-		logTerminal(`[Fin] C�digo ${code}`, code === 0 ? 'system' : 'error');
+		const isSuccess = code === 0;
+		logTerminal(`[Fin] Cdigo ${code}`, isSuccess ? 'system' : 'error');
+		mostrarToast(`Script finalizado: ${fileName}`, isSuccess ? 'success' : 'error');
 	}
 
 	silentRuns.delete(fileName);
@@ -531,3 +569,47 @@ function toggleTerminal() {
     }
 }
 window.toggleTerminal = toggleTerminal;
+
+// Monitor de sistema en vivo (HUD)
+setInterval(async () => {
+    if (api.getSystemStats) {
+        const stats = await api.getSystemStats();
+        const cpuBar = document.getElementById('hud-cpu-bar');
+        const cpuText = document.getElementById('hud-cpu-text');
+        if (cpuBar) {
+            cpuBar.style.width = stats.cpu + '%';
+            cpuText.innerText = stats.cpu + '%';
+            cpuBar.style.background = stats.cpu > 80 ? 'var(--mac-red)' : (stats.cpu > 50 ? '#FFBD2E' : 'var(--mac-blue)');
+        }
+        
+        const ramBar = document.getElementById('hud-ram-bar');
+        const ramText = document.getElementById('hud-ram-text');
+        if (ramBar) {
+            ramBar.style.width = stats.ram + '%';
+            ramText.innerText = stats.ram + '%';
+            ramBar.style.background = stats.ram > 85 ? 'var(--mac-red)' : (stats.ram > 65 ? '#FFBD2E' : 'var(--mac-green)');
+        }
+    }
+}, 1500);
+
+function mostrarToast(mensaje, tipo = 'system') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${tipo}`;
+    
+    let icon = '';
+    if (tipo === 'success') icon = '<svg viewBox="0 0 24 24" width="18" height="18" fill="var(--mac-green)"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+    else if (tipo === 'error') icon = '<svg viewBox="0 0 24 24" width="18" height="18" fill="var(--mac-red)"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
+    else icon = '<svg viewBox="0 0 24 24" width="18" height="18" fill="var(--mac-blue)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>';
+    
+    toast.innerHTML = `<div style="display:flex;align-items:center;gap:10px;">${icon}<span>${mensaje}</span></div>`;
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.classList.add('fadeOut');
+        setTimeout(() => toast.remove(), 300);
+    }, 3500);
+}
+window.mostrarToast = mostrarToast;

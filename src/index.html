@@ -14,6 +14,25 @@
             <button class="mac-btn maximize" onclick="windowControl('maximize')" title="Maximizar"></button>
         </div>
         <div class="mac-title">Nexus Executor Pro</div>
+        
+        <!-- START HUD -->
+        <div class="system-hud" style="position: absolute; right: 15px; display: flex; gap: 15px; font-size: 11px; font-weight: 600; color: var(--mac-text-muted); -webkit-app-region: no-drag;">
+            <div class="hud-item" style="display:flex; align-items:center; gap:6px;">
+                <span>CPU</span>
+                <div class="hud-bar-bg" style="width: 50px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                    <div id="hud-cpu-bar" style="height: 100%; width: 0%; background: var(--mac-blue); transition: width 0.3s ease, background 0.3s;"></div>
+                </div>
+                <span id="hud-cpu-text" style="width: 25px; text-align: right;">0%</span>
+            </div>
+            <div class="hud-item" style="display:flex; align-items:center; gap:6px;">
+                <span>RAM</span>
+                <div class="hud-bar-bg" style="width: 50px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                    <div id="hud-ram-bar" style="height: 100%; width: 0%; background: var(--mac-green); transition: width 0.3s ease, background 0.3s;"></div>
+                </div>
+                <span id="hud-ram-text" style="width: 25px; text-align: right;">0%</span>
+            </div>
+        </div>
+        <!-- END HUD -->
     </div>
 
     <!-- PANTALLA DE CARGA INICIAL -->
