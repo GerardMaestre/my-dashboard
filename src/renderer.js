@@ -71,138 +71,156 @@ async function cargarScripts() {
 
 	let pendingAutostarts = [];
 
+	const groups = {};
 	for (const file of validFiles) {
-		const info = obtenerInfoArchivo(file);
-		const isAutoActive = !!autopilotTasks[file];
-		const isAutostart = autostartList.includes(file);
+		const parts = file.split('/');
+		const folder = parts.length > 1 ? parts.slice(0, -1).join('/') : 'Misceláneo';
+		if (!groups[folder]) groups[folder] = [];
+		groups[folder].push(file);
+	}
 
-		let desc = "Añade 'DESC: tu descripción' dentro del código de tu script para que aparezca aquí.";
-		let args = 'Ninguno / Desconocido';
+	const sortedFolders = Object.keys(groups).sort((a, b) => a.localeCompare(b));
+	// fragment ya está declarado en la línea 70
 
-		try {
-			const lineas = await api.readScriptMeta(file);
-			for (const linea of lineas) {
-				if (linea.includes('DESC:')) desc = linea.split('DESC:')[1].trim();
-				if (linea.includes('ARGS:')) args = linea.split('ARGS:')[1].trim();
+	for (const folder of sortedFolders) {
+		const header = document.createElement('li');
+		header.className = 'category-header';
+		header.innerHTML = `<svg viewBox="0 0 24 24"><path d="M10 4H4c-1.11 0-2 .89-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+		<span>${folder.replace(/_/g, ' ')}</span>`;
+		fragment.appendChild(header);
+
+		for (const file of groups[folder]) {
+			const fileNameOnly = file.split('/').pop();
+			const info = obtenerInfoArchivo(file);
+			const isAutoActive = !!autopilotTasks[file];
+			const isAutostart = autostartList.includes(file);
+
+			let desc = "Añade 'DESC: tu descripción' dentro del código de tu script para que aparezca aquí.";
+			let args = 'Ninguno / Desconocido';
+
+			try {
+				const lineas = await api.readScriptMeta(file);
+				for (const linea of lineas) {
+					if (linea.includes('DESC:')) desc = linea.split('DESC:')[1].trim();
+					if (linea.includes('ARGS:')) args = linea.split('ARGS:')[1].trim();
+				}
+			} catch (err) {
+				console.error('No se pudo leer el archivo: ', file, err);
 			}
-		} catch (err) {
-			console.error('No se pudo leer el archivo: ', file, err);
+
+			if (isFirstLoad && isAutostart) {
+				pendingAutostarts.push(file);
+			}
+
+			const key = safeId(file);
+			const li = document.createElement('li');
+			li.className = 'script-item mac-glass';
+			li.setAttribute('data-name', file);
+			li.setAttribute('data-type', info.name);
+			
+			const divHeader = document.createElement('div');
+			divHeader.className = 'card-header';
+			const divTitle = document.createElement('div');
+			divTitle.className = 'card-title';
+			const dot = document.createElement('span');
+			dot.className = 'dot';
+			dot.style.background = info.color;
+			const spanName = document.createElement('span');
+			spanName.className = 'file-name';
+			spanName.title = file;
+			spanName.textContent = fileNameOnly; 
+
+			divTitle.appendChild(dot);
+			divTitle.appendChild(spanName);
+
+			const btnIcon = document.createElement('button');
+			btnIcon.className = 'mac-icon-btn';
+			btnIcon.onclick = () => toggleInfo(`info-${key}`);
+			btnIcon.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`; 
+			
+			divHeader.appendChild(divTitle);
+			divHeader.appendChild(btnIcon);
+
+			const divInfo = document.createElement('div');
+			divInfo.id = `info-${key}`;
+			divInfo.className = 'info-panel';
+			divInfo.style.display = 'none';
+			const pDesc = document.createElement('p');
+			pDesc.textContent = desc; 
+			const pArgs = document.createElement('p');
+			pArgs.style.marginTop = '5px';
+			const strongArgs = document.createElement('strong');
+			strongArgs.textContent = 'Parámetros: ';
+			const codeArgs = document.createElement('code');
+			codeArgs.textContent = args; 
+			pArgs.appendChild(strongArgs);
+			pArgs.appendChild(codeArgs);
+			divInfo.appendChild(pDesc);
+			divInfo.appendChild(pArgs);
+
+			const autostartRow = document.createElement('div');
+			autostartRow.className = 'autostart-row';
+			const asText = document.createElement('span');
+			asText.textContent = 'Arrancar con la App';
+			const asLabel = document.createElement('label');
+			asLabel.className = 'mac-toggle';
+			const asInput = document.createElement('input');
+			asInput.type = 'checkbox';
+			asInput.onchange = () => toggleAutoStart(file);
+			asInput.checked = isAutostart;
+			const asSlider = document.createElement('span');
+			asSlider.className = 'slider';
+			asLabel.appendChild(asInput);
+			asLabel.appendChild(asSlider);
+			autostartRow.appendChild(asText);
+			autostartRow.appendChild(asLabel);
+
+			const liveStatus = document.createElement('div');
+			liveStatus.id = `status-${key}`;
+			liveStatus.className = `live-status ${isAutoActive ? 'active' : ''}`;
+			liveStatus.innerHTML = `<div class="live-dot"></div><span>Autopilot en <b id="countdown-${key}">--:--</b></span>`; 
+
+			const cardActions = document.createElement('div');
+			cardActions.className = 'card-actions';
+
+			const btnEdit = document.createElement('button');
+			btnEdit.className = 'mac-action-btn edit';
+			btnEdit.onclick = () => openScript(file);
+			btnEdit.textContent = 'Editar';
+
+			const btnAuto = document.createElement('button');
+			btnAuto.id = `btn-auto-${key}`;
+			btnAuto.className = 'mac-action-btn auto';
+			btnAuto.onclick = () => toggleAutopilot(file);
+			btnAuto.style.display = isAutoActive ? 'none' : 'block';
+			btnAuto.textContent = 'Auto';
+
+			const btnRun = document.createElement('button');
+			btnRun.id = `btn-run-${key}`;
+			btnRun.className = 'mac-action-btn run';
+			btnRun.onclick = () => ejecutar(file);
+			btnRun.textContent = 'Ejecutar';
+
+			const btnStop = document.createElement('button');
+			btnStop.id = `btn-stop-${key}`;
+			btnStop.className = 'mac-action-btn stop';
+			btnStop.onclick = () => matarProceso(file);
+			btnStop.style.display = 'none';
+			btnStop.textContent = 'Parar';
+
+			cardActions.appendChild(btnEdit);
+			cardActions.appendChild(btnAuto);
+			cardActions.appendChild(btnRun);
+			cardActions.appendChild(btnStop);
+
+			li.appendChild(divHeader);
+			li.appendChild(divInfo);
+			li.appendChild(autostartRow);
+			li.appendChild(liveStatus);
+			li.appendChild(cardActions);
+
+			fragment.appendChild(li);
 		}
-
-		if (isFirstLoad && isAutostart) {
-			pendingAutostarts.push(file);
-		}
-
-		const key = safeId(file);
-		const li = document.createElement('li');
-		li.className = 'script-item mac-glass';
-		li.setAttribute('data-name', file);
-		li.setAttribute('data-type', info.name);
-
-		// === SEGURIDAD: Evitar innerHTML y construir elementos dinámicamente ===
-		
-		const divHeader = document.createElement('div');
-		divHeader.className = 'card-header';
-		const divTitle = document.createElement('div');
-		divTitle.className = 'card-title';
-		const dot = document.createElement('span');
-		dot.className = 'dot';
-		dot.style.background = info.color;
-		const spanName = document.createElement('span');
-		spanName.className = 'file-name';
-		spanName.title = file;
-		spanName.textContent = file; // Prevents XSS
-
-		divTitle.appendChild(dot);
-		divTitle.appendChild(spanName);
-
-		const btnIcon = document.createElement('button');
-		btnIcon.className = 'mac-icon-btn';
-		btnIcon.onclick = () => toggleInfo(`info-${key}`);
-		btnIcon.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`; // This SVGs is hardcoded and safe.
-		
-		divHeader.appendChild(divTitle);
-		divHeader.appendChild(btnIcon);
-
-		const divInfo = document.createElement('div');
-		divInfo.id = `info-${key}`;
-		divInfo.className = 'info-panel';
-		divInfo.style.display = 'none';
-		const pDesc = document.createElement('p');
-		pDesc.textContent = desc; // Prevents XSS from file metadata
-		const pArgs = document.createElement('p');
-		pArgs.style.marginTop = '5px';
-		const strongArgs = document.createElement('strong');
-		strongArgs.textContent = 'Parámetros: ';
-		const codeArgs = document.createElement('code');
-		codeArgs.textContent = args; // Prevents XSS
-		pArgs.appendChild(strongArgs);
-		pArgs.appendChild(codeArgs);
-		divInfo.appendChild(pDesc);
-		divInfo.appendChild(pArgs);
-
-		const autostartRow = document.createElement('div');
-		autostartRow.className = 'autostart-row';
-		const asText = document.createElement('span');
-		asText.textContent = 'Arrancar con la App';
-		const asLabel = document.createElement('label');
-		asLabel.className = 'mac-toggle';
-		const asInput = document.createElement('input');
-		asInput.type = 'checkbox';
-		asInput.onchange = () => toggleAutoStart(file);
-		asInput.checked = isAutostart;
-		const asSlider = document.createElement('span');
-		asSlider.className = 'slider';
-		asLabel.appendChild(asInput);
-		asLabel.appendChild(asSlider);
-		autostartRow.appendChild(asText);
-		autostartRow.appendChild(asLabel);
-
-		const liveStatus = document.createElement('div');
-		liveStatus.id = `status-${key}`;
-		liveStatus.className = `live-status ${isAutoActive ? 'active' : ''}`;
-		liveStatus.innerHTML = `<div class="live-dot"></div><span>Autopilot en <b id="countdown-${key}">--:--</b></span>`; // Static wrapper
-
-		const cardActions = document.createElement('div');
-		cardActions.className = 'card-actions';
-
-		const btnEdit = document.createElement('button');
-		btnEdit.className = 'mac-action-btn edit';
-		btnEdit.onclick = () => openScript(file);
-		btnEdit.textContent = 'Editar';
-
-		const btnAuto = document.createElement('button');
-		btnAuto.id = `btn-auto-${key}`;
-		btnAuto.className = 'mac-action-btn auto';
-		btnAuto.onclick = () => toggleAutopilot(file);
-		btnAuto.style.display = isAutoActive ? 'none' : 'block';
-		btnAuto.textContent = 'Auto';
-
-		const btnRun = document.createElement('button');
-		btnRun.id = `btn-run-${key}`;
-		btnRun.className = 'mac-action-btn run';
-		btnRun.onclick = () => ejecutar(file);
-		btnRun.textContent = 'Ejecutar';
-
-		const btnStop = document.createElement('button');
-		btnStop.id = `btn-stop-${key}`;
-		btnStop.className = 'mac-action-btn stop';
-		btnStop.onclick = () => matarProceso(file);
-		btnStop.style.display = 'none';
-		btnStop.textContent = 'Parar';
-
-		cardActions.appendChild(btnEdit);
-		cardActions.appendChild(btnAuto);
-		cardActions.appendChild(btnRun);
-		cardActions.appendChild(btnStop);
-
-		li.appendChild(divHeader);
-		li.appendChild(divInfo);
-		li.appendChild(autostartRow);
-		li.appendChild(liveStatus);
-		li.appendChild(cardActions);
-
-		fragment.appendChild(li);
 	}
 	
 	list.appendChild(fragment);

@@ -168,7 +168,17 @@ const api = {
 	listScripts: async () => {
 		ensureStorageDir();
 		try {
-			return await fs.promises.readdir(storageDir);
+			const getFiles = async (dir, base = '') => {
+				const dirents = await fs.promises.readdir(dir, { withFileTypes: true });
+				const files = await Promise.all(dirents.map((dirent) => {
+					const res = path.resolve(dir, dirent.name);
+					// Usamos posix.join para que siempre use '/' en la ruta relativa y funcione en regex luego
+					const rel = path.posix.join(base, dirent.name);
+					return dirent.isDirectory() ? getFiles(res, rel) : rel;
+				}));
+				return Array.prototype.concat(...files);
+			};
+			return await getFiles(storageDir);
 		} catch(e) { return []; }
 	},
 	readScriptMeta: async (fileName) => {

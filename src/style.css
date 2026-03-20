@@ -82,6 +82,25 @@ body {
 @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
 .script-item:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); border-color: rgba(255,255,255,0.2); }
 
+.category-header {
+    grid-column: 1 / -1;
+    margin-top: 15px;
+    margin-bottom: 5px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--mac-border);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--mac-text);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.category-header svg {
+    width: 22px;
+    height: 22px;
+    fill: var(--mac-blue);
+}
+
 .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;}
 .card-title-group { display: flex; flex-direction: column; gap: 6px; }
 .card-title { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px;}
