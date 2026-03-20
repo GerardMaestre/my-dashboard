@@ -11,7 +11,7 @@ if sys.stdout.encoding.lower() != 'utf-8':
 print("="*65)
 print("     ⚡ NEXUS SYSTEM - AUDITOR DE VULNERABILIDADES ⚡    ")
 print("="*65)
-print("[*] Escaneando tu propio sistema en busca de puertas traseras...\n")
+print("[⚡ NEXUS] Escaneando tu propio sistema en busca de puertas traseras...\n")
 
 # Puertos más comunes atacados por malware o mal configurados
 PUERTOS_PELIGROSOS = {
@@ -54,11 +54,11 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         res = futuro.result()
         if res:
             p, d = res
-            print(f" [!] ALERTA ROJA: El puerto {p} ({d}) está ABIERTO.")
+            print(f" [! NEXUS -> ADVERTENCIA] ALERTA ROJA: El puerto {p} ({d}) está ABIERTO.")
             abiertos.append(p)
 
 print("\n" + "-"*65)
 if len(abiertos) == 0:
-    print("[OK] Excelente. Tu sistema parece estar blindado localmente.")
+    print("[✔ NEXUS -> COMPLETADO] Excelente. Tu sistema parece estar blindado localmente.")
 else:
-    print(f"[X] CUIDADO: Se encontraron {len(abiertos)} puertos abiertos. Revisa tu Firewall o cierra aplicaciones de fondo.")
+    print(f"[! NEXUS -> ERROR] CUIDADO: Se encontraron {len(abiertos)} puertos abiertos. Revisa tu Firewall o cierra aplicaciones de fondo.")

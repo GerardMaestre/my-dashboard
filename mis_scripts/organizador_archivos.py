@@ -12,9 +12,9 @@ if sys.stdout.encoding.lower() != 'utf-8':
 # Configuración
 RUTA_DESCARGAS = os.path.join(Path.home(), "Downloads")
 
-# =====================================================================
+# ⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ========
 # MEGA-DICCIONARIO DE EXTENSIONES (Nivel Omni)
-# =====================================================================
+# ⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ========
 CATEGORIAS = {
     "IMAGENES": ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp', '.heic', '.raw', '.cr2', '.nef', '.orf', '.ico'],
     "VECTORES": ['.svg', '.ai', '.eps', '.cdr'],
@@ -40,12 +40,12 @@ for categoria, extensiones in CATEGORIAS.items():
 print("="*65)
 print("       ⚡ NEXUS SYSTEM - ORGANIZADOR OMNISCIENTE ⚡      ")
 print("="*65)
-print(f"[*] Analizando zona de impacto: {RUTA_DESCARGAS}\n")
+print(f"[⚡ NEXUS] Analizando zona de impacto: {RUTA_DESCARGAS}\n")
 
 # Sistema de prueba rápida (Dry Run)
 simulacion = len(sys.argv) > 1 and "--prueba" in sys.argv[1].lower()
 if simulacion:
-    print("[!] MODO PRUEBA (DRY-RUN) ACTIVO: No se moverá ningún archivo realmente.\n")
+    print("[! NEXUS -> ADVERTENCIA] MODO PRUEBA (DRY-RUN) ACTIVO: No se moverá ningún archivo realmente.\n")
 
 archivos_movidos = 0
 archivos_ignorados = 0
@@ -61,7 +61,7 @@ def resolver_colision(ruta_destino, nombre_archivo):
     return nueva_ruta
 
 if not os.path.exists(RUTA_DESCARGAS):
-    print("[X] Error: No se encuentra la carpeta de descargas.")
+    print("[! NEXUS -> ERROR] Error: No se encuentra la carpeta de descargas.")
 else:
     for entrada in os.scandir(RUTA_DESCARGAS):
         if entrada.is_file():
@@ -93,13 +93,13 @@ else:
                         print(f" [M] {nombre_visual:<38} --> /{categoria_destino}")
                         archivos_movidos += 1
                 except Exception as e:
-                    print(f" [X] Error crítico moviendo {archivo.name}: {e}")
+                    print(f" [! NEXUS -> ERROR] Error crítico moviendo {archivo.name}: {e}")
                     archivos_ignorados += 1
 
 print("\n" + "-" * 65)
 if simulacion:
-    print(f"[OK] Prueba Finalizada. Se habrían movido {archivos_movidos} archivos (cero cambios reales).")
+    print(f"[✔ NEXUS -> COMPLETADO] Prueba Finalizada. Se habrían movido {archivos_movidos} archivos (cero cambios reales).")
 elif archivos_movidos > 0:
-    print(f"[OK] Misión Cumplida. {archivos_movidos} archivos catalogados a la perfección.")
+    print(f"[✔ NEXUS -> COMPLETADO] Misión Cumplida. {archivos_movidos} archivos catalogados a la perfección.")
 else:
     print("[I] Todo estaba ya limpio y organizado.")

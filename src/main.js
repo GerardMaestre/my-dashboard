@@ -119,9 +119,9 @@ function ejecutarScriptOculto(scriptName, targetPath) {
 
 // Si la orden viene de hacer clic derecho...
 if (sellarIndex !== -1 && args.length > sellarIndex + 1) {
-  ejecutarScriptOculto('Cifrador_De_Carpetas.py', args[sellarIndex + 1]);
+  ejecutarScriptOculto('cifrador_carpetas.py', args[sellarIndex + 1]);
 } else if (abrirIndex !== -1 && args.length > abrirIndex + 1) {
-  ejecutarScriptOculto('descifrador.py', args[abrirIndex + 1]);
+  ejecutarScriptOculto('descifrador_carpetas.py', args[abrirIndex + 1]);
 } else {
   // =========================================================
   // 3. ARRANQUE NORMAL DEL DASHBOARD (Doble clic en el icono)

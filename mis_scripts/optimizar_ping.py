@@ -10,7 +10,7 @@ if sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
 
 if not ctypes.windll.shell32.IsUserAnAdmin():
-    print("[!] Escalando a Administrador para modificar red...")
+    print("[! NEXUS -> ADVERTENCIA] Escalando a Administrador para modificar red...")
     ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
     sys.exit()
 
@@ -24,7 +24,7 @@ SERVIDORES_DNS = {
 print("="*65)
 print("        ⚡ NEXUS SYSTEM - PING OPTIMIZER ⚡        ")
 print("="*65)
-print("[*] Lanzando micro-paquetes ICMP a los servidores globales...\n")
+print("[⚡ NEXUS] Lanzando micro-paquetes ICMP a los servidores globales...\n")
 
 resultados = {}
 
@@ -37,12 +37,12 @@ for nombre, ip in SERVIDORES_DNS.items():
             resultados[nombre] = {"ip": ip, "ms": ms}
             print(f" [>] {nombre:<25} : {ms} ms")
         else:
-            print(f" [X] {nombre:<25} : Tiempo de espera agotado")
+            print(f" [! NEXUS -> ERROR] {nombre:<25} : Tiempo de espera agotado")
     except subprocess.CalledProcessError:
-        print(f" [X] {nombre:<25} : Fallo de conexión")
+        print(f" [! NEXUS -> ERROR] {nombre:<25} : Fallo de conexión")
 
 if not resultados:
-    print("\n[!] Error: No hay conexión a internet.")
+    print("\n[! NEXUS -> ADVERTENCIA] Error: No hay conexión a internet.")
     sys.exit()
 
 # Encontrar el más rápido
@@ -52,8 +52,8 @@ mejor_ip = mejor_dns[1]['ip']
 mejor_ms = mejor_dns[1]['ms']
 
 print("\n" + "-"*65)
-print(f"[*] GANADOR: {mejor_nombre} con {mejor_ms} ms")
-print(f"[*] Aplicando la mejor configuración DNS al adaptador de red principal...")
+print(f"[⚡ NEXUS] GANADOR: {mejor_nombre} con {mejor_ms} ms")
+print(f"[⚡ NEXUS] Aplicando la mejor configuración DNS al adaptador de red principal...")
 
 try:
     ps_cmd = f"""
@@ -61,15 +61,15 @@ try:
     if ($adapter) {{
         Write-Host " [>] Configurando servidor DNS en $($adapter.Name)..." -NoNewline
         Set-DnsClientServerAddress -InterfaceAlias $adapter.Name -ServerAddresses ("{mejor_ip}")
-        Write-Host " [OK]"
+        Write-Host " [✔ NEXUS -> COMPLETADO]"
         ipconfig /flushdns | Out-Null
     }} else {{
-        Write-Host " [X] No se encontró adaptador activo."
+        Write-Host " [! NEXUS -> ERROR] No se encontró adaptador activo."
     }}
     """
     resultado = subprocess.check_output(["powershell", "-Command", ps_cmd]).decode('cp850')
     print(resultado.strip())
 except Exception as e:
-    print(f"[X] Fallo al establecer el DNS automáticamente: {e}")
+    print(f"[! NEXUS -> ERROR] Fallo al establecer el DNS automáticamente: {e}")
 
 print("-" * 65)

@@ -3,7 +3,7 @@ chcp 65001 >nul
 :: DESC: Automatiza entorno Cloud Gaming. Con menu interactivo o parametros directos.
 :: ARGS: host | client (Opcional, salta el menu)
 
-echo [*] Solicitando permisos de Administrador...
+echo [⚡ NEXUS] Solicitando permisos de Administrador...
 >nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
 if '%errorlevel%' NEQ '0' (
     echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\getadmin.vbs"
@@ -20,9 +20,9 @@ if "%~1"=="1" set choice=1& goto mode_selected
 if /I "%~1"=="client" set choice=2& goto mode_selected
 if "%~1"=="2" set choice=2& goto mode_selected
 
-echo ===================================================
+echo ⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS =====
 echo     ⚡ NEXUS SYSTEM - ORQUESTADOR CLOUD GAMING ⚡    
-echo ===================================================
+echo ⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS =====
 echo.
 echo Selecciona el rol de este PC:
 echo.
@@ -39,14 +39,14 @@ if "%choice%"=="2" goto client
 if "%choice%"=="3" exit
 goto end
 
-:: =======================================
+:: ⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ========
 :: RUTINA DE INSTALACION COMUN (TAILSCALE)
-:: =======================================
+:: ⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ========
 :instalar_tailscale
 where tailscale >nul 2>nul
 if %errorlevel% neq 0 (
     if not exist "C:\Program Files\Tailscale\tailscale.exe" (
-        echo [!] Tailscale VPN NO instalado. Descargando silenciosamente...
+        echo [! NEXUS -> ADVERTENCIA] Tailscale VPN NO instalado. Descargando silenciosamente...
         winget install --id Tailscale.Tailscale -e --silent --accept-package-agreements --accept-source-agreements
         set "PATH=%PATH%;C:\Program Files\Tailscale"
     ) else (
@@ -55,31 +55,31 @@ if %errorlevel% neq 0 (
 )
 goto :eof
 
-:: ==========================
+:: ⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS =====
 :: MODO HOST (SUNSHINE)
-:: ==========================
+:: ⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS =====
 :host
 echo.
-echo [*] MODO HOST SELECCIONADO. 
-echo [*] Escaneando dependencias (Tailscale y Sunshine)...
+echo [⚡ NEXUS] MODO HOST SELECCIONADO. 
+echo [⚡ NEXUS] Escaneando dependencias (Tailscale y Sunshine)...
 call :instalar_tailscale
 
 if not exist "C:\Program Files\Sunshine\sunshine.exe" (
     if not exist "C:\Program Files\Sunshine\tools\sunshine.exe" (
-        echo [!] Sunshine NO instalado. Descargando silenciosamente...
+        echo [! NEXUS -> ADVERTENCIA] Sunshine NO instalado. Descargando silenciosamente...
         winget install --id LizardByte.Sunshine -e --silent --accept-package-agreements --accept-source-agreements
     )
 )
 
-echo [*] Levantando tunel VPN (Tailscale)...
+echo [⚡ NEXUS] Levantando tunel VPN (Tailscale)...
 tailscale up
-echo [OK] Red conectada a los nodos globales.
-echo [*] ===== INGRESA ESTA IP EN EL MOONLIGHT CLIENTE =====
+echo [✔ NEXUS -> COMPLETADO] Red conectada a los nodos globales.
+echo [⚡ NEXUS] ⚡ ==== NEXUS ==== INGRESA ESTA IP EN EL MOONLIGHT CLIENTE ⚡ ==== NEXUS ====
 tailscale ip -4
-echo =======================================================
+echo ⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====
 echo.
 
-echo [*] Iniciando motor de transmision AV1/HEVC (Sunshine)...
+echo [⚡ NEXUS] Iniciando motor de transmision AV1/HEVC (Sunshine)...
 tasklist /FI "IMAGENAME eq sunshine.exe" 2>NUL | find /I /N "sunshine.exe">NUL
 if "%ERRORLEVEL%"=="0" (
     echo [I] Sunshine ya esta ejecutando.
@@ -92,7 +92,7 @@ if "%ERRORLEVEL%"=="0" (
 )
 
 timeout /t 2 /nobreak >nul
-echo [*] Optimizando prioridad de CPU para cero Input Lag...
+echo [⚡ NEXUS] Optimizando prioridad de CPU para cero Input Lag...
 powershell -Command "$p = Get-Process -Name 'sunshine' -ErrorAction SilentlyContinue; if ($p) { $p.PriorityClass = 'High' }"
 
 echo.
@@ -100,30 +100,30 @@ echo [V] HOST ONLINE Y LISTO.
 pause
 exit
 
-:: ==========================
+:: ⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS =====
 :: MODO CLIENTE (MOONLIGHT)
-:: ==========================
+:: ⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS =====
 :client
 echo.
-echo [*] MODO CLIENTE SELECCIONADO. 
-echo [*] Escaneando dependencias (Tailscale y Moonlight)...
+echo [⚡ NEXUS] MODO CLIENTE SELECCIONADO. 
+echo [⚡ NEXUS] Escaneando dependencias (Tailscale y Moonlight)...
 call :instalar_tailscale
 
 :: Validar si Moonlight existe
 set "moonlight_path=C:\Program Files\Moonlight Game Streaming\Moonlight.exe"
 if not exist "%moonlight_path%" (
-    echo [!] Moonlight NO instalado. Descargando silenciosamente...
+    echo [! NEXUS -> ADVERTENCIA] Moonlight NO instalado. Descargando silenciosamente...
     winget install --id MoonlightGameStreamingProject.Moonlight -e --silent --accept-package-agreements --accept-source-agreements
 )
 
-echo [*] Levantando tunel VPN conectando al Host...
+echo [⚡ NEXUS] Levantando tunel VPN conectando al Host...
 tailscale up
 
-echo [*] Iniciando Interfaz Moonlight...
+echo [⚡ NEXUS] Iniciando Interfaz Moonlight...
 if exist "%moonlight_path%" (
     start "" "%moonlight_path%"
 ) else (
-    echo [X] Error iniciando Moonlight. Abrelo manualmente desde el menu inicio.
+    echo [! NEXUS -> ERROR] Error iniciando Moonlight. Abrelo manualmente desde el menu inicio.
 )
 
 echo.

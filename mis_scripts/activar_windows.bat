@@ -2,7 +2,7 @@
 :: DESC: Activa Windows 11 (Home o Pro) conectándose a un servidor KMS de forma segura.
 :: ARGS: Ninguno (Tiene menú interactivo)
 
-echo [*] Solicitando permisos de Administrador...
+echo [⚡ NEXUS] Solicitando permisos de Administrador...
 >nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
 if '%errorlevel%' NEQ '0' (
     echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\getadmin.vbs"
@@ -11,9 +11,9 @@ if '%errorlevel%' NEQ '0' (
 )
 
 color 0a
-echo ===================================================
+echo ⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS =====
 echo         ACTIVADOR UNIVERSAL - WINDOWS 11         
-echo ===================================================
+echo ⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS ====⚡ ==== NEXUS =====
 echo.
 echo Selecciona la edicion de Windows que tienes instalada:
 echo.
@@ -30,24 +30,24 @@ if "%choice%"=="3" exit
 goto end
 
 :home
-echo [*] Aplicando clave de Windows 11 Home...
+echo [⚡ NEXUS] Aplicando clave de Windows 11 Home...
 slmgr.vbs -upk
 slmgr /ipk 7HNRX-D7KGG-3K4RQ-4WPJ4-YTDFH
 goto activate
 
 :pro
-echo [*] Aplicando clave de Windows 11 Pro...
+echo [⚡ NEXUS] Aplicando clave de Windows 11 Pro...
 slmgr.vbs -upk
 slmgr /ipk NRG8B-VKK3Q-CXVCJ-9G2XF-6Q84J
 goto activate
 
 :activate
-echo [*] Conectando al servidor KMS...
+echo [⚡ NEXUS] Conectando al servidor KMS...
 slmgr /skms kms.digiboy.ir
-echo [*] Forzando activacion...
+echo [⚡ NEXUS] Forzando activacion...
 slmgr /ato
 echo.
-echo [OK] Windows ha sido activado.
+echo [✔ NEXUS -> COMPLETADO] Windows ha sido activado.
 pause
 exit
 

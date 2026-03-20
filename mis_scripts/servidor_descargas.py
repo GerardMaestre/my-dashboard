@@ -16,7 +16,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 try:
     import qrcode
 except ImportError:
-    print("[X] ERROR: Falta la librería qrcode. Ejecuta en CMD: pip install qrcode")
+    print("[! NEXUS -> ERROR] ERROR: Falta la librería qrcode. Ejecuta en CMD: pip install qrcode")
     sys.exit()
 
 print("="*65)
@@ -32,7 +32,7 @@ if len(sys.argv) < 2:
 carpeta_objetivo = " ".join(sys.argv[1:]).strip('"')
 
 if not os.path.exists(carpeta_objetivo):
-    print(f"[X] No se encontró la carpeta: {carpeta_objetivo}")
+    print(f"[! NEXUS -> ERROR] No se encontró la carpeta: {carpeta_objetivo}")
     sys.exit()
 
 PUERTO = 8080
@@ -52,8 +52,8 @@ def obtener_ip_local():
 ip_local = obtener_ip_local()
 url_descarga = f"http://{ip_local}:{PUERTO}"
 
-print(f"[*] Preparando túnel de transferencia en: {carpeta_objetivo}")
-print(f"[*] Generando Código QR para acceso rápido...\n")
+print(f"[⚡ NEXUS] Preparando túnel de transferencia en: {carpeta_objetivo}")
+print(f"[⚡ NEXUS] Generando Código QR para acceso rápido...\n")
 
 # Generar QR en formato ASCII para la consola
 qr = qrcode.QRCode(version=1, box_size=1, border=2)
@@ -62,7 +62,7 @@ qr.make(fit=True)
 qr.print_ascii(invert=True)
 
 print("\n" + "-"*65)
-print(f"[OK] SERVIDOR ACTIVO EN: {url_descarga}")
+print(f"[✔ NEXUS -> COMPLETADO] SERVIDOR ACTIVO EN: {url_descarga}")
 print("[I] Pide a tus amigos que escaneen el QR con su móvil estando en tu Wi-Fi.")
 print("[I] Para apagar el servidor, simplemente pulsa el botón 'Parar' en el Nexus.")
 print("-" * 65)
@@ -74,6 +74,6 @@ try:
     with socketserver.TCPServer(("", PUERTO), Handler) as httpd:
         httpd.serve_forever()
 except OSError:
-    print(f"[X] El puerto {PUERTO} ya está en uso. Cierra servidores previos.")
+    print(f"[! NEXUS -> ERROR] El puerto {PUERTO} ya está en uso. Cierra servidores previos.")
 except KeyboardInterrupt:
     pass

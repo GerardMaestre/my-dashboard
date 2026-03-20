@@ -12,7 +12,7 @@ if sys.stdout.encoding.lower() != 'utf-8':
 print("="*65)
 print("      ⚡ NEXUS SYSTEM - PURGADOR DE SHADERS ⚡      ")
 print("="*65)
-print("[*] Rastreando caché gráfica corrupta o saturada...\n")
+print("[⚡ NEXUS] Rastreando caché gráfica corrupta o saturada...\n")
 
 localappdata = os.environ.get('LOCALAPPDATA')
 appdata = os.environ.get('APPDATA')
@@ -49,7 +49,7 @@ except:
 
 for carpeta in DIRECTORIOS_CACHE:
     if os.path.exists(carpeta):
-        print(f"[*] Escaneando núcleo de shaders: {os.path.basename(carpeta)}...")
+        print(f"[⚡ NEXUS] Escaneando núcleo de shaders: {os.path.basename(carpeta)}...")
         for root, dirs, files in os.walk(carpeta):
             for file in files:
                 try:
@@ -62,10 +62,10 @@ for carpeta in DIRECTORIOS_CACHE:
                     pass # Ignoramos archivos en uso persistente por Kernels (normal)
 
 print("\n" + "-" * 65)
-print(f"[OK] Limpieza de Caché Gráfica Completada.")
+print(f"[✔ NEXUS -> COMPLETADO] Limpieza de Caché Gráfica Completada.")
 if mb_liberados > 0:
     print(f"[I] Motores Gráficos reseteados (Destruidos: {archivos_borrados} micro-archivos).")
     print(f"[I] Basura VRAM liberada: {mb_liberados:.2f} MB.")
-    print("[!] Notarás más fluidez, aunque los juegos tardarán 1 minuto más en cargar la primera vez para regenerar el mapa.")
+    print("[! NEXUS -> ADVERTENCIA] Notarás más fluidez, aunque los juegos tardarán 1 minuto más en cargar la primera vez para regenerar el mapa.")
 else:
     print("[I] Tu caché ya estaba completamente limpia.")
