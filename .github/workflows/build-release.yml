@@ -8,6 +8,7 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -22,6 +23,9 @@ jobs:
 
       - name: Build Executable Setup
         run: npm run build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -29,6 +33,6 @@ jobs:
           tag_name: "v1.4.${{ github.run_number }}"
           name: "Nuevo Lanzamiento Nexus v1.4.${{ github.run_number }}"
           files: ../dist/*.exe
-          body: "Última versión autogenerada. Descargar Setup para instalar el Dashboard."
+          body: "Ultima version autogenerada. Descargar Setup para instalar."
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
