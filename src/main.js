@@ -100,7 +100,7 @@ function ensureContextMenuEntries() {
 function ejecutarScriptOculto(scriptName, targetPath) {
   const misScriptsPath = app.isPackaged
     ? path.join(process.resourcesPath, 'mis_scripts')
-    : path.join(__dirname, '..', '..', 'mis_scripts');
+    : path.join(__dirname, '..', 'mis_scripts');
 
   const scriptPath = path.join(misScriptsPath, scriptName);
   const portableTarget = path.join(misScriptsPath, 'env_python', 'python.exe');

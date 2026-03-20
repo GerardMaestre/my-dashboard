@@ -22,7 +22,7 @@
     },
     "extraResources": [
       {
-        "from": "../mis_scripts",
+        "from": "mis_scripts",
         "to": "mis_scripts",
         "filter": ["**/*"]
       }

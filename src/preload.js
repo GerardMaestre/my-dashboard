@@ -6,7 +6,7 @@ const path = require('path');
 const isPackaged = __dirname.includes('app.asar');
 const storageDir = isPackaged
 	? path.join(process.resourcesPath, 'mis_scripts')
-	: path.join(__dirname, '..', '..', 'mis_scripts');
+	: path.join(__dirname, '..', 'mis_scripts');
 
 const activeProcesses = new Map();
 const outputListeners = new Set();
