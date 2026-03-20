@@ -58,10 +58,12 @@ async function cargarScripts() {
 	// Internal logic will still be able to call them, but they won't clutter the dashboard.
 	let validFiles = files.filter(
 		(f) =>
-			f !== 'env_python' &&
-			f !== 'node_modules' &&
-			f !== 'DUPLICADOS_A_BORRAR' &&
-			!f.toLowerCase().endsWith('.exe')
+			!f.includes('env_python') &&
+			!f.includes('node_modules') &&
+			!f.includes('.git') &&
+			!f.toLowerCase().endsWith('.exe') &&
+			!f.toLowerCase().endsWith('.md') && 
+			!f.toLowerCase().endsWith('.txt')
 	);
 
 	// Sort files alphabetically for a solid experience
