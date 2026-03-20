@@ -12,13 +12,18 @@
   "build": {
     "appId": "com.nexus.executor",
     "copyright": "Copyright 2026 Gerar",
-    "icon": "../assets/icon.ico",
+    "icon": "assets/icon.ico",
     "directories": {
       "output": "../dist"
     },
     "win": {
       "target": ["nsis", "zip"],
-      "icon": "../assets/icon.ico"
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico"
     },
     "extraResources": [
       {
