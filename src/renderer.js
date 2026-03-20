@@ -135,12 +135,14 @@ async function cargarScripts() {
 
 			const key = safeId(file);
 			const li = document.createElement('li');
-			li.className = 'script-item mac-glass';
+			li.className = 'script-item';
 			li.setAttribute('data-name', file);
 			li.setAttribute('data-type', info.name);
 			
 			const divHeader = document.createElement('div');
 			divHeader.className = 'card-header';
+			const divTitleGroup = document.createElement('div');
+			divTitleGroup.className = 'card-title-group';
 			const divTitle = document.createElement('div');
 			divTitle.className = 'card-title';
 			const dot = document.createElement('span');
@@ -153,53 +155,32 @@ async function cargarScripts() {
 
 			divTitle.appendChild(dot);
 			divTitle.appendChild(spanName);
+			divTitleGroup.appendChild(divTitle);
+			divHeader.appendChild(divTitleGroup);
+
+			const divDesc = document.createElement('div');
+			divDesc.className = 'script-desc';
+			divDesc.title = desc;
+			divDesc.textContent = desc;
 
 			const isFavorite = favoritesList.includes(file);
 			
 			const btnFav = document.createElement('button');
 			btnFav.className = 'mac-icon-btn';
 			btnFav.onclick = () => toggleFavorite(file);
+			btnFav.style.marginRight = '10px';
 			btnFav.innerHTML = isFavorite ? 
                 `<svg viewBox="0 0 24 24" fill="var(--mac-blue)"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>` : 
                 `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z"/></svg>`;
 
-			const btnIcon = document.createElement('button');
-			btnIcon.className = 'mac-icon-btn';
-			btnIcon.onclick = () => toggleInfo(`info-${key}`);
-			btnIcon.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`; 
-			
-			const divActionsTop = document.createElement('div');
-			divActionsTop.style.display = 'flex';
-			divActionsTop.style.gap = '8px';
-			divActionsTop.appendChild(btnFav);
-			divActionsTop.appendChild(btnIcon);
-			
-			divHeader.appendChild(divTitle);
-			divHeader.appendChild(divActionsTop);
-
-			const divInfo = document.createElement('div');
-			divInfo.id = `info-${key}`;
-			divInfo.className = 'info-panel';
-			divInfo.style.display = 'none';
-			const pDesc = document.createElement('p');
-			pDesc.textContent = desc; 
-			const pArgs = document.createElement('p');
-			pArgs.style.marginTop = '5px';
-			const strongArgs = document.createElement('strong');
-			strongArgs.textContent = 'Parámetros: ';
-			const codeArgs = document.createElement('code');
-			codeArgs.textContent = args; 
-			pArgs.appendChild(strongArgs);
-			pArgs.appendChild(codeArgs);
-			divInfo.appendChild(pDesc);
-			divInfo.appendChild(pArgs);
-
 			const autostartRow = document.createElement('div');
 			autostartRow.className = 'autostart-row';
 			const asText = document.createElement('span');
-			asText.textContent = 'Arrancar con la App';
+			asText.className = 'autostart-text';
+			asText.textContent = 'Auto';
 			const asLabel = document.createElement('label');
 			asLabel.className = 'mac-toggle';
+			asLabel.title = "Arrancar con la App al inicio";
 			const asInput = document.createElement('input');
 			asInput.type = 'checkbox';
 			asInput.onchange = () => toggleAutoStart(file);
@@ -208,13 +189,14 @@ async function cargarScripts() {
 			asSlider.className = 'slider';
 			asLabel.appendChild(asInput);
 			asLabel.appendChild(asSlider);
+			autostartRow.appendChild(btnFav);
 			autostartRow.appendChild(asText);
 			autostartRow.appendChild(asLabel);
 
 			const liveStatus = document.createElement('div');
 			liveStatus.id = `status-${key}`;
 			liveStatus.className = `live-status ${isAutoActive ? 'active' : ''}`;
-			liveStatus.innerHTML = `<div class="live-dot"></div><span>Autopilot en <b id="countdown-${key}">--:--</b></span>`; 
+			liveStatus.innerHTML = `<div class="live-dot"></div><span><b id="countdown-${key}">--:--</b></span>`; 
 
 			const cardActions = document.createElement('div');
 			cardActions.className = 'card-actions';
@@ -228,21 +210,21 @@ async function cargarScripts() {
 			btnAuto.id = `btn-auto-${key}`;
 			btnAuto.className = 'mac-action-btn auto';
 			btnAuto.onclick = () => toggleAutopilot(file);
-			btnAuto.style.display = isAutoActive ? 'none' : 'block';
-			btnAuto.textContent = 'Auto';
+			btnAuto.style.display = isAutoActive ? 'none' : 'flex';
+			btnAuto.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg> Auto`;
 
 			const btnRun = document.createElement('button');
 			btnRun.id = `btn-run-${key}`;
 			btnRun.className = 'mac-action-btn run';
 			btnRun.onclick = () => ejecutar(file);
-			btnRun.textContent = 'Ejecutar';
+			btnRun.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="margin-right:4px;"><path d="M8 5v14l11-7z"/></svg> Run`;
 
 			const btnStop = document.createElement('button');
 			btnStop.id = `btn-stop-${key}`;
 			btnStop.className = 'mac-action-btn stop';
 			btnStop.onclick = () => matarProceso(file);
 			btnStop.style.display = 'none';
-			btnStop.textContent = 'Parar';
+			btnStop.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="margin-right:4px;"><path d="M6 6h12v12H6z"/></svg> Stop`;
 
 			cardActions.appendChild(btnEdit);
 			cardActions.appendChild(btnAuto);
@@ -250,7 +232,7 @@ async function cargarScripts() {
 			cardActions.appendChild(btnStop);
 
 			li.appendChild(divHeader);
-			li.appendChild(divInfo);
+			li.appendChild(divDesc);
 			li.appendChild(autostartRow);
 			li.appendChild(liveStatus);
 			li.appendChild(cardActions);
@@ -567,9 +549,19 @@ function aplicarFiltros() {
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
 	btn.addEventListener('click', (e) => {
+		const targetBtn = e.target.closest('.tab-btn');
+		if (!targetBtn) return;
+		
 		document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-		e.target.classList.add('active');
-		currentFilter = e.target.getAttribute('data-filter');
+		targetBtn.classList.add('active');
+		
+		currentFilter = targetBtn.getAttribute('data-filter');
+		
+		const titleEl = document.getElementById('current-category-title');
+		if (titleEl) {
+			titleEl.textContent = targetBtn.textContent.trim();
+		}
+		
 		aplicarFiltros();
 	});
 });
@@ -605,28 +597,6 @@ function toggleTerminal() {
     }
 }
 window.toggleTerminal = toggleTerminal;
-
-// Monitor de sistema en vivo (HUD)
-setInterval(async () => {
-    if (api.getSystemStats) {
-        const stats = await api.getSystemStats();
-        const cpuBar = document.getElementById('hud-cpu-bar');
-        const cpuText = document.getElementById('hud-cpu-text');
-        if (cpuBar) {
-            cpuBar.style.width = stats.cpu + '%';
-            cpuText.innerText = stats.cpu + '%';
-            cpuBar.style.background = stats.cpu > 80 ? 'var(--mac-red)' : (stats.cpu > 50 ? '#FFBD2E' : 'var(--mac-blue)');
-        }
-        
-        const ramBar = document.getElementById('hud-ram-bar');
-        const ramText = document.getElementById('hud-ram-text');
-        if (ramBar) {
-            ramBar.style.width = stats.ram + '%';
-            ramText.innerText = stats.ram + '%';
-            ramBar.style.background = stats.ram > 85 ? 'var(--mac-red)' : (stats.ram > 65 ? '#FFBD2E' : 'var(--mac-green)');
-        }
-    }
-}, 1500);
 
 function mostrarToast(mensaje, tipo = 'system') {
     const container = document.getElementById('toast-container');
