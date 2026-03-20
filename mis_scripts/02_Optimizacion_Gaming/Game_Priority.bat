@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 :: DESC: Inyecta máxima prioridad de procesador (High) a un juego en ejecución para ganar FPS y reducir Input Lag.
 :: ARGS: Nombre del ejecutable (Ej: cs2.exe)
 

@@ -2,6 +2,7 @@
 :: ARGS: Ninguno
 
 @echo off
+chcp 65001 >nul
 echo [*] Solicitando permisos de Administrador...
 >nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
 if '%errorlevel%' NEQ '0' (
