@@ -8,6 +8,9 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', line_buffering=True)
+
 def run():
     print("=== EXTRACTOR MULTI-MEDIA AVANZADO ===")
     

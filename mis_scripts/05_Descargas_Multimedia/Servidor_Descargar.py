@@ -16,8 +16,10 @@ if hasattr(sys.stdout, 'reconfigure'):
 try:
     import qrcode
 except ImportError:
-    print("[X] ERROR: Falta la librería qrcode. Ejecuta en CMD: pip install qrcode")
-    sys.exit()
+    print("[*] Instalando motor de Códigos QR...")
+    import subprocess
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "qrcode[pil]", "colorama", "--quiet"])
+    import qrcode
 
 print("="*65)
 print("      ⚡ NEXUS SYSTEM - SERVIDOR EFÍMERO CON QR ⚡      ")

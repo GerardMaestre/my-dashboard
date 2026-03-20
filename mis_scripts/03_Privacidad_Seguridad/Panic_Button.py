@@ -5,7 +5,11 @@ import os
 import shutil
 import getpass
 import sqlite3
+import sys
 from pathlib import Path
+
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', line_buffering=True)
 
 def close_browsers():
     print("[*] Cerrando navegadores...")
