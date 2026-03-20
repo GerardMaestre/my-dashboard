@@ -1,4 +1,5 @@
-
+const fs = require("fs");
+const css = `
 :root {
     --mac-text: #F5F5F7;
     --mac-text-muted: #86868B;
@@ -70,14 +71,9 @@ body {
 .script-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; list-style: none; }
 .script-item {
     background: rgba(40,40,40,0.4); border: 1px solid var(--mac-border); border-radius: 14px;
-    padding: 16px; display: flex; flex-direction: column; transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    padding: 16px; display: flex; flex-direction: column; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     position: relative; overflow: hidden; backdrop-filter: blur(10px);
     opacity: 0; transform: translateY(20px); animation: fadeUp 0.5s forwards;
-}
-.script-item.hidden {
-    opacity: 0;
-    transform: scale(0.95);
-    pointer-events: none;
 }
 @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
 .script-item:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); border-color: rgba(255,255,255,0.2); }
@@ -180,3 +176,6 @@ input:checked + .slider:before { transform: translateX(14px); }
 @keyframes rotate { 100% { transform: rotate(360deg); } }
 @keyframes dash { 0% { stroke-dasharray: 1, 150; stroke-dashoffset: 0; } 50% { stroke-dasharray: 90, 150; stroke-dashoffset: -35; } 100% { stroke-dasharray: 90, 150; stroke-dashoffset: -124; } }
 .splash-text { font-size: 18px; font-weight: 600; color: #e0e0e0; letter-spacing: 1.5px; }
+`
+fs.writeFileSync("src/style.css", css, "utf8");
+

@@ -1,26 +1,38 @@
 {
   "name": "scripts-dashboard",
   "productName": "Scripts Dashboard",
-  "version": "1.2.3",
+  "version": "1.4.1",
   "description": "NEXUS EXECUTOR: Dark Sci-Fi / Cyberpunk Automation IDE",
   "author": "Gerar",
-  "main": "main.js",
+  "main": "src/main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder"
   },
   "build": {
     "appId": "com.nexus.executor",
-    "icon": "assets/icon.ico",
+    "copyright": "Copyright 2026 Gerar",
+    "icon": "../assets/icon.ico",
+    "directories": {
+      "output": "../dist"
+    },
     "win": {
-      "target": "portable"
+      "target": ["nsis", "zip"],
+      "icon": "../assets/icon.ico"
     },
     "extraResources": [
-      "mis_scripts/**"
+      {
+        "from": "../mis_scripts",
+        "to": "mis_scripts",
+        "filter": ["**/*"]
+      }
     ]
   },
   "devDependencies": {
     "electron": "^29.0.0",
     "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "electron-squirrel-startup": "^1.0.1"
   }
 }

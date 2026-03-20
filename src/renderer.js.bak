@@ -53,27 +53,22 @@ async function cargarScripts() {
 		return;
 	}
 	
-	// Ignore venv folders, non scripts, and explicitly hide .exe files from the UI
-	// Internal logic will still be able to call them, but they won't clutter the dashboard.
-	let validFiles = files.filter(
-		(f) =>
-			f !== 'env_python' &&
-			f !== 'node_modules' &&
-			f !== 'DUPLICADOS_A_BORRAR' &&
-			!f.toLowerCase().endsWith('.exe')
-	);
+	// Ignore venv folders and non scripts
+const validFiles = files.filter(
+(f) =>
+f !== 'env_python' &&
+f !== 'node_modules' &&
+f !== 'DUPLICADOS_A_BORRAR'
+);
 
-	// Sort files alphabetically for a solid experience
-	validFiles.sort((a, b) => a.localeCompare(b));
+const fragment = document.createDocumentFragment();
 
-	const fragment = document.createDocumentFragment();
-
-	for (const file of validFiles) {
+        for (const file of validFiles) {
 		const info = obtenerInfoArchivo(file);
 		const isAutoActive = !!autopilotTasks[file];
 		const isAutostart = autostartList.includes(file);
 
-		let desc = "Añade 'DESC: tu descripción' dentro del código de tu script para que aparezca aquí.";
+		let desc = "A�ade 'DESC: tu descripci�n' dentro del c�digo de tu script para que aparezca aqu�.";
 		let args = 'Ninguno / Desconocido';
 
 		try {
@@ -95,9 +90,8 @@ async function cargarScripts() {
 		const li = document.createElement('li');
 		li.className = 'script-item mac-glass';
 		li.setAttribute('data-name', file);
-		li.setAttribute('data-type', info.name);
 
-		// === SEGURIDAD: Evitar innerHTML y construir elementos dinámicamente ===
+		// === SEGURIDAD: Evitar innerHTML y construir elementos din�micamente ===
 		
 		const divHeader = document.createElement('div');
 		divHeader.className = 'card-header';
@@ -206,8 +200,7 @@ async function cargarScripts() {
 	list.appendChild(fragment);
 
 	isFirstLoad = false;
-	aplicarFiltros();
-
+	
 	// Ocultar pantalla de carga
 	const splash = document.getElementById('splash-screen');
 	if (splash) {
@@ -255,7 +248,6 @@ function ejecutar(fileName, isAuto = false, isSilent = false) {
 	if (isSilent) silentRuns.add(fileName);
 	alternarBotones(fileName, true);
 	runningFiles.add(fileName);
-	if (currentFilter === 'active') aplicarFiltros();
 	api.runScript({ fileName, args, mode: 'internal' });
 }
 
@@ -381,7 +373,6 @@ api.onProcessOutput(({ fileName, type, message }) => {
 api.onProcessExit(({ fileName, code }) => {
 	runningFiles.delete(fileName);
 	alternarBotones(fileName, false);
-	if (currentFilter === 'active') aplicarFiltros();
 
 	if (!silentRuns.has(fileName)) {
 		logTerminal(`[Fin] C�digo ${code}`, code === 0 ? 'system' : 'error');
@@ -409,69 +400,34 @@ document.getElementById('btn-clear').addEventListener('click', () => {
 });
 
 let searchTimeout;
-let currentFilter = 'all';
-
-function aplicarFiltros() {
-	const term = document.getElementById('search-input').value.toLowerCase();
-	let found = false;
-
-	document.querySelectorAll('.script-item').forEach((item) => {
-		const fileName = item.getAttribute('data-name');
-		const fileType = item.getAttribute('data-type');
-		const isRunning = runningFiles.has(fileName) || autopilotTasks[fileName];
-
-		const matchesSearch = fileName.toLowerCase().includes(term);
-		
-		let matchesFilter = true;
-		if (currentFilter === 'py') matchesFilter = fileType === 'PY';
-		else if (currentFilter === 'bat') matchesFilter = fileType === 'BAT';
-		else if (currentFilter === 'active') matchesFilter = isRunning;
-
-		const show = matchesSearch && matchesFilter;
-		
-		if (show) {
-			item.classList.remove('hidden');
-			// Usamos setTimeout para que display block ocurra antes de la transicin de opacidad en CSS
-			item.style.display = ''; 
-			found = true;
-		} else {
-			item.classList.add('hidden');
-			setTimeout(() => {
-				if (item.classList.contains('hidden')) item.style.display = 'none';
-			}, 300); // Mismo tiempo que la transicin CSS
-		}
-	});
-
-	let noResults = document.getElementById('no-results');
-	if (!found) {
-		if (!noResults) {
-			noResults = document.createElement('div');
-			noResults.id = 'no-results';
-			noResults.style.color = '#888';
-			noResults.style.padding = '50px 20px';
-			noResults.style.textAlign = 'center';
-			noResults.style.gridColumn = '1 / -1';
-			noResults.innerHTML = `<h3>No hay scripts para mostrar</h3><p style="opacity:0.7; margin-top:10px;">Prueba ajustando los filtros o tu bsqueda.</p>`;
-			document.getElementById('script-list').appendChild(noResults);
-		}
-		noResults.style.display = 'block';
-	} else if (noResults) {
-		noResults.style.display = 'none';
-	}
-}
-
-document.querySelectorAll('.tab-btn').forEach(btn => {
-	btn.addEventListener('click', (e) => {
-		document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-		e.target.classList.add('active');
-		currentFilter = e.target.getAttribute('data-filter');
-		aplicarFiltros();
-	});
-});
-
-document.getElementById('search-input').addEventListener('input', () => {
+document.getElementById('search-input').addEventListener('input', (e) => {
 	clearTimeout(searchTimeout);
-	searchTimeout = setTimeout(aplicarFiltros, 300);
+	searchTimeout = setTimeout(() => {
+		const term = e.target.value.toLowerCase();
+		let found = false;
+		
+		document.querySelectorAll('.script-item').forEach((item) => {
+			const matches = item.getAttribute('data-name').toLowerCase().includes(term);
+			item.style.display = matches ? 'block' : 'none';
+			if (matches) found = true;
+		});
+		
+		let noResults = document.getElementById('no-results');
+		if (!found && term.length > 0) {
+			if (!noResults) {
+				noResults = document.createElement('div');
+				noResults.id = 'no-results';
+				noResults.style.color = '#888';
+				noResults.style.padding = '20px';
+				noResults.style.textAlign = 'center';
+				noResults.innerText = 'No se encontraron scripts.';
+				document.getElementById('script-list').appendChild(noResults);
+			}
+			noResults.style.display = 'block';
+		} else if (noResults) {
+			noResults.style.display = 'none';
+		}
+	}, 300);
 });
 
 window.windowControl = windowControl;
@@ -487,16 +443,3 @@ window.openScript = openScript;
 api.getStorageDir();
 cargarScripts();
 
-
-function toggleTerminal() {
-    const drawer = document.getElementById("terminal-drawer");
-    const icon = document.getElementById("btn-terminal-icon");
-    if (drawer.classList.contains("collapsed")) {
-        drawer.classList.remove("collapsed");
-        if(icon) icon.style.transform = "rotate(0deg)";
-    } else {
-        drawer.classList.add("collapsed");
-        if(icon) icon.style.transform = "rotate(180deg)";
-    }
-}
-window.toggleTerminal = toggleTerminal;

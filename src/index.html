@@ -16,47 +16,84 @@
         <div class="mac-title">Nexus Executor Pro</div>
     </div>
 
+    <!-- PANTALLA DE CARGA INICIAL -->
+    <div id="splash-screen" class="splash-screen">
+        <div class="splash-content">
+            <svg class="splash-spinner" viewBox="0 0 50 50">
+                <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+            </svg>
+            <div class="splash-text">Iniciando Motor Nexus...</div>
+        </div>
+    </div>
+
     <!-- FONDO FLUIDO ESTILO APPLE -->
     <div class="mac-wallpaper"></div>
 
     <div class="layout">
-        <!-- BARRA LATERAL -->
-        <aside class="sidebar mac-glass">
-            <div class="sidebar-header">
-                <input type="text" id="search-input" class="mac-input" placeholder="Buscar automatización...">
+        <!-- CABECERA SUPERIOR (BUSCADOR, PESTAÑAS Y SETTINGS) -->
+        <header class="main-header mac-glass">
+            <div class="header-controls">
+                <input type="text" id="search-input" class="mac-input search-bar" placeholder="Buscar automatización...">
                 <button id="btn-refresh" class="mac-icon-btn" title="Recargar Scripts">
                     <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
                 </button>
             </div>
-            <ul id="script-list" class="script-list">
-                <!-- Tarjetas inyectadas por JS -->
-            </ul>
-        </aside>
-
-        <!-- PANEL PRINCIPAL (CONSOLA) -->
-        <main class="console-container">
-            <div class="toolbar mac-glass">
-                <div class="tool-group">
-                    <label>Motor:</label>
-                    <select id="run-mode" class="mac-input">
+            <div class="category-tabs">
+                <button class="tab-btn active" data-filter="all">Todos</button>
+                <button class="tab-btn" data-filter="py">Python</button>
+                <button class="tab-btn" data-filter="bat">Batch</button>
+                <button class="tab-btn" data-filter="active">Activos</button>
+            </div>
+            
+            <!-- PARÁMETROS Y MOTOR GLOBALES SIEMPRE VISIBLES -->
+            <div class="global-settings" style="display:flex; gap:15px; margin-top:20px; align-items:center;">
+                <div class="tool-group" style="display:flex; align-items:center; gap:8px;">
+                    <label style="font-size:12px; color:var(--mac-text-muted);">Motor:</label>
+                    <select id="run-mode" class="mac-input select-mode" style="width: auto;">
                         <option value="internal">Silencioso (Integrado)</option>
                         <option value="external">Nativo (CMD/Terminal)</option>
                     </select>
                 </div>
-                <div class="tool-group flex-1">
-                    <label>Parámetros:</label>
-                    <input type="text" id="script-args" class="mac-input w-full" placeholder="Añade rutas, contraseñas o argumentos aquí...">
-                </div>
-                <button id="btn-clear" class="mac-btn-outline">Limpiar Log</button>
-            </div>
-            
-            <div class="terminal-wrapper">
-                <div id="terminal" class="mac-terminal mac-glass">
-                    <span class="log-system"> Sistema Nexus inicializado. Listo para operar.</span>
+                <div class="tool-group flex-1" style="display:flex; align-items:center; gap:8px; flex:1;">
+                    <label style="font-size:12px; color:var(--mac-text-muted);">Parámetros Globales:</label>
+                    <input type="text" id="script-args" class="mac-input w-full" style="flex:1;" placeholder="Añade rutas, contraseñas o argumentos aquí (Aplicará a todos)...">
                 </div>
             </div>
+        </header>
+
+        <!-- PANEL PRINCIPAL (CUADRÍCULA DE SCRIPTS) -->
+        <main class="grid-container">
+            <ul id="script-list" class="script-list script-grid">
+                <!-- Tarjetas inyectadas por JS -->
+            </ul>
         </main>
+
+        <!-- TERMINAL INFERIOR (CAJÓN) -->
+        <footer class="terminal-drawer mac-glass" id="terminal-drawer">
+            <div class="drawer-header" id="terminal-toggle" onclick="toggleTerminal()">
+                <div class="drawer-title" style="display:flex;align-items:center;gap:10px;font-weight:600;font-size:13px;color:var(--mac-blue);">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                    <span>Terminal de Sistema</span>
+                </div>
+                <div style="display:flex; gap:15px; align-items:center;">
+                    <button id="btn-clear" class="mac-btn-outline" style="font-size:11px; padding:4px 8px; z-index:101; position:relative;" onclick="event.stopPropagation();">Limpiar Log</button>
+                    <button class="mac-icon-btn btn-drawer-toggle" id="btn-terminal-icon" style="transform: rotate(0deg); transition: transform 0.3s; pointer-events:none;">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="drawer-content">
+                <div class="terminal-wrapper">
+                    <div id="terminal" class="mac-terminal mac-glass">
+                        <span class="log-system"> Sistema Nexus inicializado. Listo para operar.</span>
+                    </div>
+                </div>
+            </div>
+        </footer>
     </div>
+    
+    <!-- CONTENEDOR DE NOTIFICACIONES (TOAST) -->
+    <div id="toast-container" class="toast-container"></div>
 
     <!-- MODAL AUTOPILOT -->
     <div id="autopilot-modal" class="modal-overlay">
@@ -83,255 +120,6 @@
         </div>
     </div>
 
-    <script>
-        const fs = require('fs');
-        const path = require('path');
-        const { spawn, exec } = require('child_process');
-        const { shell } = require('electron');
-        const { ipcRenderer } = require('electron');
-
-        function windowControl(action) {
-            ipcRenderer.send('window-control', action);
-        }
-
-        const isPackaged = __dirname.includes('app.asar');
-        const storageDir = isPackaged ? path.join(process.resourcesPath, 'mis_scripts') : path.join(__dirname, 'mis_scripts');            
-
-        const terminal = document.getElementById('terminal');
-        const activeProcesses = {};
-        const autopilotTasks = {};
-        let isFirstLoad = true;
-
-        let autostartList = JSON.parse(localStorage.getItem('nexus_autostart') || '[]');
-
-        function toggleAutoStart(fileName) {
-            if (autostartList.includes(fileName)) {
-                autostartList = autostartList.filter(f => f !== fileName);
-            } else {
-                autostartList.push(fileName);
-            }
-            localStorage.setItem('nexus_autostart', JSON.stringify(autostartList));
-        }
-
-        function toggleInfo(id) {
-            const el = document.getElementById(id);
-            el.style.display = el.style.display === 'none' ? 'block' : 'none';
-        }
-
-        document.getElementById('btn-refresh').addEventListener('click', cargarScripts);
-        document.getElementById('btn-clear').addEventListener('click', () => terminal.innerHTML = '<span class="log-system"> Log limpiado.</span>');
-        
-        document.getElementById('search-input').addEventListener('input', (e) => {
-            const term = e.target.value.toLowerCase();
-            document.querySelectorAll('.script-item').forEach(item => {
-                item.style.display = item.getAttribute('data-name').toLowerCase().includes(term) ? 'block' : 'none';
-            });
-        });
-
-        if (!fs.existsSync(storageDir)) fs.mkdirSync(storageDir, { recursive: true });
-
-        cargarScripts();
-
-        setInterval(() => {
-            const now = Date.now();
-            for (const [fileName, task] of Object.entries(autopilotTasks)) {
-                const remaining = Math.max(0, Math.ceil((task.nextRun - now) / 1000));
-                const counterEl = document.getElementById(`countdown-${fileName}`);
-                if (counterEl) {
-                    const m = String(Math.floor(remaining / 60)).padStart(2, '0');
-                    const s = String(remaining % 60).padStart(2, '0');
-                    counterEl.innerText = `${m}:${s}`;
-                }
-            }
-        }, 1000);
-
-        function obtenerInfoArchivo(fileName) {
-            const ext = path.extname(fileName).toLowerCase();
-            if (ext === '.py') return { color: '#FFD60A', name: 'PY', cmd: 'python' };
-            if (ext === '.bat' || ext === '.cmd') return { color: '#0A84FF', name: 'BAT', cmd: '' };
-            if (ext === '.sh') return { color: '#30D158', name: 'SH', cmd: 'bash' };
-            return { color: '#8E8E93', name: 'BIN', cmd: '' };
-        }
-
-        function cargarScripts() {
-            const list = document.getElementById('script-list');
-            list.innerHTML = '';
-            
-            const files = fs.readdirSync(storageDir);
-            files.forEach(file => {
-                const filePath = path.join(storageDir, file);
-                const info = obtenerInfoArchivo(file);
-                const isAutoActive = !!autopilotTasks[file];
-                const isAutostart = autostartList.includes(file);
-                
-                // === MAGIA DE EXTRACCIÓN AUTOMATIZADA ===
-                let desc = "Añade 'DESC: tu descripción' dentro del código de tu script para que aparezca aquí.";
-                let args = "Ninguno / Desconocido";
-                
-                try {
-                    // Leemos solo los primeros 1000 caracteres para no saturar la memoria
-                    const content = fs.readFileSync(filePath, 'utf8').substring(0, 1000);
-                    const lineas = content.split(/\r?\n/);
-                    
-                    for (let linea of lineas) {
-                        if (linea.includes('DESC:')) desc = linea.split('DESC:')[1].trim();
-                        if (linea.includes('ARGS:')) args = linea.split('ARGS:')[1].trim();
-                    }
-                } catch (err) {
-                    console.error("No se pudo leer el archivo: ", file);
-                }
-
-                if (isFirstLoad && isAutostart) {
-                    logTerminal(`[AUTO-ARRANQUE] Lanzando ${file} de fondo...`, 'system');
-                    ejecutar(file, false, true); 
-                }
-                
-                const li = document.createElement('li');
-                li.className = 'script-item mac-glass';
-                li.setAttribute('data-name', file);
-                
-                li.innerHTML = `
-                    <div class="card-header">
-                        <div class="card-title">
-                            <span class="dot" style="background:${info.color}"></span>
-                            <span class="file-name" title="${file}">${file}</span>
-                        </div>
-                        <button class="mac-icon-btn" onclick="toggleInfo('info-${file}')" title="Ver Explicación">
-                            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-                        </button>
-                    </div>
-
-                    <div id="info-${file}" class="info-panel" style="display: none;">
-                        <p>${desc}</p>
-                        <p style="margin-top: 5px;"><strong>Parámetros:</strong> <code>${args}</code></p>
-                    </div>
-
-                    <div class="autostart-row">
-                        <span>Arrancar con la App</span>
-                        <label class="mac-toggle">
-                            <input type="checkbox" onchange="toggleAutoStart('${file}')" ${isAutostart ? 'checked' : ''}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div id="status-${file}" class="live-status ${isAutoActive ? 'active' : ''}">
-                        <div class="live-dot"></div>
-                        <span>Autopilot en <b id="countdown-${file}">--:--</b></span>
-                    </div>
-
-                    <div class="card-actions">
-                        <button class="mac-action-btn edit" onclick="shell.openPath(path.join(storageDir, '${file}'))">Editar</button>
-                        <button id="btn-auto-${file}" class="mac-action-btn auto" onclick="toggleAutopilot('${file}')" style="display: ${isAutoActive ? 'none' : 'block'};">Auto</button>
-                        <button id="btn-run-${file}" class="mac-action-btn run" onclick="ejecutar('${file}')">Ejecutar</button>
-                        <button id="btn-stop-${file}" class="mac-action-btn stop" onclick="matarProceso('${file}')" style="display: none;">Parar</button>
-                    </div>
-                `;
-                list.appendChild(li);
-            });
-            isFirstLoad = false;
-        }
-
-        function alternarBotones(fileName, ejecutando) {
-            if (autopilotTasks[fileName]) return;
-            const bRun = document.getElementById(`btn-run-${fileName}`);
-            const bStop = document.getElementById(`btn-stop-${fileName}`);
-            if (bRun && bStop) {
-                bRun.style.display = ejecutando ? 'none' : 'block';
-                bStop.style.display = ejecutando ? 'block' : 'none';
-            }
-        }
-
-        function matarProceso(fileName) {
-            if (activeProcesses[fileName]) {
-                activeProcesses[fileName].kill();
-                logTerminal(`[!] Operación abortada: ${fileName}`, 'error');
-                alternarBotones(fileName, false);
-            }
-        }
-
-        function ejecutar(fileName, isAuto = false, isSilent = false) {
-            const filePath = path.join(storageDir, fileName);
-            const info = obtenerInfoArchivo(fileName);
-            const args = document.getElementById('script-args').value.trim();
-            const isExternal = document.getElementById('run-mode').value === 'external';
-
-            if (!isSilent) logTerminal(`\n▶ Ejecutando: ${fileName} ${args}`, 'command');
-
-            if (isExternal) {
-                const fullCmd = info.cmd ? `${info.cmd} "${filePath}" ${args}` : `"${filePath}" ${args}`;
-                exec(`start cmd.exe /K "${fullCmd}"`);
-                return;
-            }
-
-            alternarBotones(fileName, true);
-            const child = spawn(info.cmd || filePath, info.cmd ? [filePath, ...args.split(' ').filter(Boolean)] : args.split(' ').filter(Boolean), { shell: true });
-            activeProcesses[fileName] = child;
-
-            child.stdout.on('data', data => logTerminal(data.toString(), 'success'));
-            child.stderr.on('data', data => logTerminal(data.toString(), 'error'));
-            
-            child.on('close', code => {
-                delete activeProcesses[fileName];
-                alternarBotones(fileName, false);
-                if(!isSilent) logTerminal(`[Fin] Código ${code}`, code === 0 ? 'system' : 'error');
-            });
-        }
-
-        function toggleAutopilot(fileName) {
-            document.getElementById('sch-filename').innerText = fileName;
-            document.getElementById('autopilot-modal').classList.add('active');
-        }
-
-        function cerrarAutopilot() {
-            document.getElementById('autopilot-modal').classList.remove('active');
-        }
-
-        function iniciarAutopilot() {
-            const fileName = document.getElementById('sch-filename').innerText;
-            const ms = parseInt(document.getElementById('sch-time').value) * parseInt(document.getElementById('sch-unit').value);
-            
-            cerrarAutopilot();
-            logTerminal(`[AUTOPILOT] Bucle iniciado para ${fileName}`, 'system');
-            ejecutar(fileName, true);
-
-            const timer = setInterval(() => {
-                autopilotTasks[fileName].nextRun = Date.now() + ms;
-                ejecutar(fileName, true);
-            }, ms);
-
-            autopilotTasks[fileName] = { timer, nextRun: Date.now() + ms };
-
-            document.getElementById(`status-${fileName}`).classList.add('active');
-            document.getElementById(`btn-auto-${fileName}`).style.display = 'none';
-            const btnRun = document.getElementById(`btn-run-${fileName}`);
-            btnRun.innerText = 'Stop Auto';
-            btnRun.className = "mac-action-btn stop";
-            btnRun.onclick = () => detenerAutopilot(fileName);
-        }
-
-        function detenerAutopilot(fileName) {
-            if (autopilotTasks[fileName]) {
-                clearInterval(autopilotTasks[fileName].timer);
-                delete autopilotTasks[fileName];
-                logTerminal(`[AUTOPILOT] Bucle cancelado para ${fileName}`, 'error');
-                
-                document.getElementById(`status-${fileName}`).classList.remove('active');
-                const btnRun = document.getElementById(`btn-run-${fileName}`);
-                btnRun.innerText = 'Ejecutar';
-                btnRun.className = "mac-action-btn run";
-                btnRun.onclick = () => ejecutar(fileName);
-                document.getElementById(`btn-auto-${fileName}`).style.display = 'block';
-                matarProceso(fileName);
-            }
-        }
-
-        function logTerminal(mensaje, tipo) {
-            const span = document.createElement('span');
-            span.className = `log-line log-${tipo}`;
-            span.innerText = mensaje;
-            terminal.appendChild(span);
-            terminal.scrollTop = terminal.scrollHeight;
-        }
-    </script>
+    <script src="renderer.js"></script>
 </body>
 </html>
