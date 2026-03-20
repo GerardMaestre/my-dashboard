@@ -7,6 +7,10 @@ import string
 import random
 import subprocess
 import time
+import sys
+
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', line_buffering=True)
 
 def gen_password(length=14):
     chars = string.ascii_letters + string.digits + "!@#$%"
