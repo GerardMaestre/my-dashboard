@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 :: DESC: Lee los sensores S.M.A.R.T. de tus discos (HDD/SSD) para alertarte si están a punto de romperse físicamente.
 :: ARGS: Ninguno
 

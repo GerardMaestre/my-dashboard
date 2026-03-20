@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 :: DESC: Instalador desatendido. Instala todo el software base de tu PC en segundo plano (Chrome, Steam, Discord, etc.).
 :: ARGS: Ninguno (Pide permisos de Administrador automáticamente)
 

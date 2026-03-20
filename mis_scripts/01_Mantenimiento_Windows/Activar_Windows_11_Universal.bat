@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 :: DESC: Activa Windows 11 (Home o Pro) conectándose a un servidor KMS de forma segura.
 :: ARGS: Ninguno (Tiene menú interactivo)
 
