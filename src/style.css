@@ -113,7 +113,7 @@ body {
     position: relative;
     z-index: 10;
 }
-.mac-btn { width: 12px; height: 12px; border-radius: 50%; border: none; cursor: pointer; transition: 0.2s; -webkit-app-region: no-drag; }
+.mac-btn { width: 12px; height: 12px; border-radius: 50%; border: none; cursor: pointer; transition: 0.2s; -webkit-app-region: no-drag; outline: none; }
 .mac-btn.close { background: #FF5F56; } .mac-btn.close:hover { filter: brightness(0.8); }
 .mac-btn.minimize { background: #FFBD2E; } .mac-btn.minimize:hover { filter: brightness(0.8); }
 .mac-btn.maximize { background: #27C93F; } .mac-btn.maximize:hover { filter: brightness(0.8); }
@@ -245,7 +245,7 @@ body {
     gap: 15px;
 }
 .mac-icon-btn-top {
-    background: none; border: none; color: var(--mac-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center;
+    background: none; border: none; color: var(--mac-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none;
 }
 .mac-icon-btn-top svg { width: 18px; fill: currentColor; }
 .mac-icon-btn-top:hover { color: white; }
@@ -337,13 +337,14 @@ body {
 }
 .category-header svg { display: none; } /* Hide the folder icon for cleaner look */
 
-.card-header { display: flex; align-items: center; gap: 15px; width: 35%; flex-shrink: 0;}
-.card-title-group { display: flex; flex-direction: column; gap: 2px; }
-.card-title { display: flex; align-items: center; gap: 8px; font-weight: 500; font-size: 14px; color: white;}
+.card-header { display: flex; align-items: center; gap: 15px; width: 35%; flex-shrink: 0; min-width: 0; }
+.card-title-group { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.card-title { display: flex; align-items: center; gap: 8px; font-weight: 500; font-size: 14px; color: white; min-width: 0; white-space: nowrap; margin-left: 5px; }
+.file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
 .dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 5px currentColor; flex-shrink:0; }
 .badge { display: none; } /* Ocultar badges en la lista para limpieza */
 
-.mac-icon-btn { background: none; border: none; color: var(--mac-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center;}
+.mac-icon-btn { background: none; border: none; color: var(--mac-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none;}
 .mac-icon-btn svg { width: 16px; fill: currentColor; }
 .mac-icon-btn:hover { color: var(--mac-text); }
 

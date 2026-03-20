@@ -101,32 +101,32 @@
                 <ul id="script-list" class="mac-grouped-list">
                     <!-- Tarjetas inyectadas por JS -->
                 </ul>
-            </div>
-        </main>
-
-        <!-- TERMINAL INFERIOR (CAJÓN) -->
-        <footer class="terminal-drawer mac-glass" id="terminal-drawer">
-            <div class="drawer-header" id="terminal-toggle" onclick="toggleTerminal()">
-                <div class="drawer-title" style="display:flex;align-items:center;gap:10px;font-weight:600;font-size:13px;color:var(--mac-blue);">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
-                    <span>Terminal de Sistema</span>
-                </div>
-                <div style="display:flex; gap:15px; align-items:center;">
-                    <button id="btn-copy" class="mac-btn-outline" style="font-size:11px; padding:4px 8px; z-index:101; position:relative;" onclick="event.stopPropagation(); copiarTerminal()">Copiar Logs</button>
-                    <button id="btn-clear" class="mac-btn-outline" style="font-size:11px; padding:4px 8px; z-index:101; position:relative;" onclick="event.stopPropagation();">Limpiar Log</button>
-                    <button class="mac-icon-btn btn-drawer-toggle" id="btn-terminal-icon" style="transform: rotate(0deg); transition: transform 0.3s; pointer-events:none;">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-                    </button>
-                </div>
-            </div>
-            <div class="drawer-content">
-                <div class="terminal-wrapper">
-                    <div id="terminal" class="mac-terminal mac-glass">
-                        <span class="log-system"> Sistema Nexus inicializado. Listo para operar.</span>
+            </div> <!-- CLOSE content-scrollable -->
+            
+            <!-- TERMINAL INFERIOR (CAJÓN) Moviéndolo dentro de mac-content -->
+            <footer class="terminal-drawer mac-glass" id="terminal-drawer">
+                <div class="drawer-header" id="terminal-toggle" onclick="toggleTerminal()">
+                    <div class="drawer-title" style="display:flex;align-items:center;gap:10px;font-weight:600;font-size:13px;color:var(--mac-blue);">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                        <span>Terminal de Sistema</span>
+                    </div>
+                    <div style="display:flex; gap:15px; align-items:center;">
+                        <button id="btn-copy" class="mac-btn-outline" style="font-size:11px; padding:4px 8px; z-index:101; position:relative;" onclick="event.stopPropagation(); copiarTerminal()">Copiar Logs</button>
+                        <button id="btn-clear" class="mac-btn-outline" style="font-size:11px; padding:4px 8px; z-index:101; position:relative;" onclick="event.stopPropagation();">Limpiar Log</button>
+                        <button class="mac-icon-btn btn-drawer-toggle" id="btn-terminal-icon" style="transform: rotate(0deg); transition: transform 0.3s; pointer-events:none;">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                        </button>
                     </div>
                 </div>
-            </div>
-        </footer>
+                <div class="drawer-content">
+                    <div class="terminal-wrapper">
+                        <div id="terminal" class="mac-terminal mac-glass">
+                            <span class="log-system"> Sistema Nexus inicializado. Listo para operar.</span>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+        </main>
     </div>
     
     <!-- CONTENEDOR DE NOTIFICACIONES (TOAST) -->
