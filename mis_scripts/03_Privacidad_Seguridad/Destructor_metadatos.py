@@ -48,17 +48,28 @@ for root, dirs, files in os.walk(carpeta_objetivo):
             try:
                 # 1. Abrimos la imagen
                 with Image.open(filepath) as img:
-                    # 2. Copiamos mágicamente solo los píxeles (ignora EXIF) sin saturar la RAM
-                    imagen_limpia = Image.new(img.mode, img.size)
-                    imagen_limpia.paste(img)
-                    
-                    # 3. Sobreescribimos la imagen original con máxima calidad
                     formato = img.format if img.format else 'JPEG'
-                    # Guardamos sin pasar el parámetro 'exif', por lo que nace huérfana de metadatos
-                    try:
-                        imagen_limpia.save(filepath, formato, quality=100)
-                    except:
-                        imagen_limpia.save(filepath, formato) # Fallback para formatos que no soportan variable re-quality
+                    # Copiamos mágicamente solo los píxeles (ignora EXIF, XMP, IPTC, ICC y metadatos de IA)
+                    # Forzamos conversión a RGB/RGBA descartando paletas ocultas
+                    modo_seguro = 'RGBA' if img.mode in ('RGBA', 'LA', 'P') else 'RGB'
+                    img_convertida = img.convert(modo_seguro)
+                    
+                    imagen_limpia = Image.new(modo_seguro, img_convertida.size)
+                    imagen_limpia.paste(img_convertida)
+                
+                # 2. Borrado Forense: Eliminamos el archivo original para destruir 
+                # los Alternate Data Streams de Windows (ej: Zone.Identifier) y registros del MFT
+                os.remove(filepath)
+                
+                # 3. Guardamos la nueva imagen huérfana de metadatos desde cero
+                try:
+                    imagen_limpia.save(filepath, formato, quality=100, optimize=True)
+                except:
+                    imagen_limpia.save(filepath, formato)
+                    
+                # 4. Modificamos las fechas de creación/modificación del archivo a una fecha genérica (1 Enero 1980)
+                # Esto rompe el análisis forense de la línea de tiempo del sistema de archivos
+                os.utime(filepath, (315532800, 315532800))
                 
                 # Mostrar progreso truncando el nombre
                 nombre_corto = filename[:35] + '...' if len(filename) > 35 else filename

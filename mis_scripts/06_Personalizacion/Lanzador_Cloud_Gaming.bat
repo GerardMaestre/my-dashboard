@@ -46,8 +46,10 @@ goto end
 where tailscale >nul 2>nul
 if %errorlevel% neq 0 (
     if not exist "C:\Program Files\Tailscale\tailscale.exe" (
-        echo [!] Tailscale VPN NO instalado. Descargando silenciosamente...
-        winget install --id Tailscale.Tailscale -e --silent --accept-package-agreements --accept-source-agreements
+        echo [!] Tailscale VPN NO instalado. Descargando silenciosamente con reparacion forzada...
+        winget install --id Tailscale.Tailscale -e --force --silent --accept-package-agreements --accept-source-agreements
+        echo [*] Esperando 5 segundos a que inicie el servicio Tailscale...
+        timeout /t 5 /nobreak >nul
         set "PATH=%PATH%;C:\Program Files\Tailscale"
     ) else (
         set "PATH=%PATH%;C:\Program Files\Tailscale"
@@ -66,8 +68,10 @@ call :instalar_tailscale
 
 if not exist "C:\Program Files\Sunshine\sunshine.exe" (
     if not exist "C:\Program Files\Sunshine\tools\sunshine.exe" (
-        echo [!] Sunshine NO instalado. Descargando silenciosamente...
-        winget install --id LizardByte.Sunshine -e --silent --accept-package-agreements --accept-source-agreements
+        echo [!] Sunshine NO instalado. Descargando silenciosamente con reparacion forzada...
+        winget install --id LizardByte.Sunshine -e --force --silent --accept-package-agreements --accept-source-agreements
+        echo [*] Esperando 5 segundos a que inicie el servicio Sunshine...
+        timeout /t 5 /nobreak >nul
     )
 )
 
@@ -112,8 +116,10 @@ call :instalar_tailscale
 :: Validar si Moonlight existe
 set "moonlight_path=C:\Program Files\Moonlight Game Streaming\Moonlight.exe"
 if not exist "%moonlight_path%" (
-    echo [!] Moonlight NO instalado. Descargando silenciosamente...
-    winget install --id MoonlightGameStreamingProject.Moonlight -e --silent --accept-package-agreements --accept-source-agreements
+    echo [!] Moonlight NO instalado. Descargando silenciosamente con reparacion forzada...
+    winget install --id MoonlightGameStreamingProject.Moonlight -e --force --silent --accept-package-agreements --accept-source-agreements
+    echo [*] Esperando 5 segundos a que Windows reconozca el programa...
+    timeout /t 5 /nobreak >nul
 )
 
 echo [*] Levantando tunel VPN conectando al Host...

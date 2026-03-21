@@ -762,7 +762,7 @@ function filtrarOjoDeDios() {
     matches.forEach(m => {
         const typeMatch = m.line.substring(0, 4); // "DIR|" o "FILE|"
         const type = typeMatch.startsWith('DIR') ? 'DIR' : 'FILE';
-        const fullPath = m.line.substring(5); // remove "DIR|"
+        const fullPath = type === 'DIR' ? m.line.substring(4) : m.line.substring(5);
         
         const li = document.createElement('li');
         li.style.cssText = `
