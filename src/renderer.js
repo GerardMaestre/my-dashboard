@@ -265,14 +265,14 @@ function alternarBotones(fileName, ejecutando) {
 	const bRun = document.getElementById(`btn-run-${key}`);
 	const bStop = document.getElementById(`btn-stop-${key}`);
 	if (bRun && bStop) {
-		bRun.style.display = ejecutando ? 'none' : 'block';
-		bStop.style.display = ejecutando ? 'block' : 'none';
+		bRun.style.display = ejecutando ? 'none' : 'flex';
+		bStop.style.display = ejecutando ? 'flex' : 'none';
 	}
 }
 
 function matarProceso(fileName) {
 	if (api.stopScript(fileName)) {
-		logTerminal(`[!] Operaci�n abortada: ${fileName}`, 'error');
+		logTerminal(`[!] Operación abortada: ${fileName}`, 'error');
 		alternarBotones(fileName, false);
 	}
 }
@@ -282,7 +282,7 @@ function ejecutar(fileName, isAuto = false, isSilent = false) {
 	const isExternal = document.getElementById('run-mode').value === 'external';
 
 	if (!isSilent) {
-		logTerminal(`\n? Ejecutando: ${fileName} ${args}`, 'command');
+		logTerminal(`\n▶ Ejecutando: ${fileName} ${args}`, 'command');
 	}
 
 	if (isExternal) {
@@ -291,7 +291,7 @@ function ejecutar(fileName, isAuto = false, isSilent = false) {
 	}
 
 	if (api.isRunning(fileName)) {
-		if (!isSilent) logTerminal(`[!] Ya est� en ejecuci�n: ${fileName}`, 'error');
+		if (!isSilent) logTerminal(`[!] Ya está en ejecución: ${fileName}`, 'error');
 		return;
 	}
 
@@ -395,7 +395,7 @@ function detenerAutopilot(fileName) {
 			btnRun.onclick = () => ejecutar(fileName);
 		}
 		const btnAuto = document.getElementById(getElementId(fileName, 'btn-auto'));
-		if (btnAuto) btnAuto.style.display = 'block';
+		if (btnAuto) btnAuto.style.display = 'flex';
 		matarProceso(fileName);
 	}
 }
@@ -434,7 +434,7 @@ api.onProcessExit(({ fileName, code }) => {
 
 	if (!silentRuns.has(fileName)) {
 		const isSuccess = code === 0;
-		logTerminal(`[Fin] Cdigo ${code}`, isSuccess ? 'system' : 'error');
+		logTerminal(`[Fin] Código ${code}`, isSuccess ? 'system' : 'error');
 		mostrarToast(`Script finalizado: ${fileName}`, isSuccess ? 'success' : 'error');
 	}
 
@@ -538,7 +538,7 @@ function aplicarFiltros() {
 			noResults.style.padding = '50px 20px';
 			noResults.style.textAlign = 'center';
 			noResults.style.gridColumn = '1 / -1';
-			noResults.innerHTML = `<h3>No hay scripts para mostrar</h3><p style="opacity:0.7; margin-top:10px;">Prueba ajustando los filtros o tu bsqueda.</p>`;
+			noResults.innerHTML = `<h3>No hay scripts para mostrar</h3><p style="opacity:0.7; margin-top:10px;">Prueba ajustando los filtros o tu búsqueda.</p>`;
 			document.getElementById('script-list').appendChild(noResults);
 		}
 		noResults.style.display = 'block';
@@ -605,12 +605,20 @@ function mostrarToast(mensaje, tipo = 'system') {
     const toast = document.createElement('div');
     toast.className = `toast toast-${tipo}`;
     
-    let icon = '';
-    if (tipo === 'success') icon = '<svg viewBox="0 0 24 24" width="18" height="18" fill="var(--mac-green)"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
-    else if (tipo === 'error') icon = '<svg viewBox="0 0 24 24" width="18" height="18" fill="var(--mac-red)"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
-    else icon = '<svg viewBox="0 0 24 24" width="18" height="18" fill="var(--mac-blue)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>';
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'display:flex;align-items:center;gap:10px;';
     
-    toast.innerHTML = `<div style="display:flex;align-items:center;gap:10px;">${icon}<span>${mensaje}</span></div>`;
+    const iconDiv = document.createElement('span');
+    if (tipo === 'success') iconDiv.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="var(--mac-green)"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+    else if (tipo === 'error') iconDiv.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="var(--mac-red)"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
+    else iconDiv.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="var(--mac-blue)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>';
+    
+    const textSpan = document.createElement('span');
+    textSpan.textContent = mensaje; // textContent prevents XSS
+    
+    wrapper.appendChild(iconDiv);
+    wrapper.appendChild(textSpan);
+    toast.appendChild(wrapper);
     container.appendChild(toast);
     
     setTimeout(() => {
@@ -622,8 +630,11 @@ window.mostrarToast = mostrarToast;
 
 function copiarTerminal() {
     const text = Array.from(document.getElementById('terminal').childNodes).map(node => node.innerText).join('\n');
-    navigator.clipboard.writeText(text);
-    mostrarToast('Log de consola copiado al portapapeles', 'success');
+    navigator.clipboard.writeText(text).then(() => {
+        mostrarToast('Log de consola copiado al portapapeles', 'success');
+    }).catch(() => {
+        mostrarToast('No se pudo copiar al portapapeles', 'error');
+    });
 }
 window.copiarTerminal = copiarTerminal;
 

@@ -126,6 +126,13 @@ if (sellarIndex !== -1 && args.length > sellarIndex + 1) {
   // =========================================================
   // 3. ARRANQUE NORMAL DEL DASHBOARD (Doble clic en el icono)
   // =========================================================
+  
+  // Prevenir múltiples instancias de la aplicación
+  const gotTheLock = app.requestSingleInstanceLock();
+  if (!gotTheLock) {
+    app.quit();
+  } else {
+
   const createWindow = () => {
     const mainWindow = new BrowserWindow({
       width: 1000,
@@ -145,10 +152,14 @@ if (sellarIndex !== -1 && args.length > sellarIndex + 1) {
     mainWindow.once('ready-to-show', () => {
       mainWindow.show();
     });
+
+    return mainWindow;
   };
 
+  let mainWindow = null;
+
   app.on('ready', () => {
-    createWindow();
+    mainWindow = createWindow();
     ensureContextMenuEntries();
     
     ipcMain.on('window-control', (event, action) => {
@@ -163,6 +174,14 @@ if (sellarIndex !== -1 && args.length > sellarIndex + 1) {
     });
   });
 
+  app.on('second-instance', () => {
+    // Si alguien intenta abrir otra instancia, enfocar la existente
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
       app.quit();
@@ -171,7 +190,9 @@ if (sellarIndex !== -1 && args.length > sellarIndex + 1) {
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
+      mainWindow = createWindow();
     }
   });
-}
+
+  } // end of single instance lock
+} // end of normal dashboard startup
