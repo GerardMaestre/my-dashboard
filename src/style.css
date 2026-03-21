@@ -122,6 +122,30 @@ body {
 .mac-btn.minimize { background: #FFBD2E; } .mac-btn.minimize:hover { filter: brightness(0.8); }
 .mac-btn.maximize { background: #27C93F; } .mac-btn.maximize:hover { filter: brightness(0.8); }
 
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+    margin-bottom: 15px;
+}
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--mac-text);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.logo-icon {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    min-height: 24px;
+    flex-shrink: 0;
+}
+
 .sidebar-search {
     padding: 0 15px;
     margin-bottom: 15px;

@@ -16,11 +16,11 @@ if not ctypes.windll.shell32.IsUserAnAdmin():
     sys.exit()
 
 HOSTS_PATH = r"C:\Windows\System32\drivers\etc\hosts"
-BACKUP_PATH = r"C:\Windows\System32\drivers\etc\hosts.nexus.bak"
+BACKUP_PATH = r"C:\Windows\System32\drivers\etc\hosts.horus.bak"
 BLOCKLIST_URL = "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
 
 print("="*65)
-print("        ⚡ NEXUS SYSTEM - ESCUDO ADBLOCK GLOBAL ⚡       ")
+print("        ⚡ HORUS ENGINE - ESCUDO ADBLOCK GLOBAL ⚡       ")
 print("="*65)
 
 try:
@@ -57,7 +57,7 @@ try:
     print("[*] Inyectando reglas de bloqueo en el firewall DNS de Windows...")
     with open(HOSTS_PATH, 'w', encoding='utf-8') as f:
         f.write("# =======================================================\n")
-        f.write("# NEXUS AUTOPILOT - ADBLOCK & ANTI-TELEMETRY SHIELD\n")
+        f.write("# HORUS AUTOPILOT - ADBLOCK & ANTI-TELEMETRY SHIELD\n")
         f.write("# =======================================================\n")
         f.write("127.0.0.1 localhost\n::1 localhost\n\n")
         f.write(datos_bloqueo)
@@ -75,4 +75,4 @@ try:
 
 except Exception as e:
     print(f"\n[X] Error crítico: {e}")
-    print("[!] Asegúrate de estar ejecutando Nexus Executor como Administrador.")
+    print("[!] Asegúrate de estar ejecutando Horus Engine como Administrador.")

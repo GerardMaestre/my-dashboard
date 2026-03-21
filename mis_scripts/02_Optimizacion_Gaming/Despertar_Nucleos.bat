@@ -15,7 +15,7 @@ if '%errorlevel%' NEQ '0' (
 )
 
 echo ===================================================
-echo     ⚡ NEXUS SYSTEM - DESPERTADOR DE NÚCLEOS CPU ⚡    
+echo     ⚡ HORUS ENGINE - DESPERTADOR DE NÚCLEOS CPU ⚡    
 echo ===================================================
 echo.
 echo [*] Interrogando a la BIOS y al Kernel de Windows...

@@ -4,7 +4,7 @@ chcp 65001 >nul
 :: ARGS: Nombre del ejecutable (Ej: cs2.exe)
 
 echo ===================================================
-echo     ⚡ NEXUS SYSTEM - INYECTOR DE PRIORIDAD VIP ⚡    
+echo     ⚡ HORUS ENGINE - INYECTOR DE PRIORIDAD VIP ⚡    
 echo ===================================================
 
 if "%~1"=="" (

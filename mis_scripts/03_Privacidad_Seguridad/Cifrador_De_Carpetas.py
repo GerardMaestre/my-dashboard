@@ -34,7 +34,7 @@ root.withdraw()
 root.configure(bg="#1e1e1e")
 
 # Pedimos contraseña
-password_raw = simpledialog.askstring("NEXUS SYSTEM - AES-256", 
+password_raw = simpledialog.askstring("HORUS ENGINE - AES-256", 
                                       f"Sellar carpeta:\n{os.path.basename(carpeta_objetivo)}\n\nIntroduce tu llave maestra:", 
                                       show='*')
 
@@ -43,7 +43,7 @@ if not password_raw:
 
 # Creamos la ventana de Progreso
 prog_win = tk.Toplevel(root)
-prog_win.title("Nexus - Cifrando Bóveda")
+prog_win.title("HORUS - Cifrando Bóveda")
 prog_win.geometry("400x120")
 prog_win.configure(bg="#1e1e1e")
 prog_win.resizable(False, False)
@@ -78,7 +78,7 @@ key = kdf.derive(password_raw.encode()) # Se genera clave de 256 bits
 cipher = Cipher(algorithms.AES(key), modes.CTR(nonce), backend=default_backend())
 encryptor = cipher.encryptor()
 
-archivo_cifrado = archivo_zip + ".nexus"
+archivo_cifrado = archivo_zip + ".horus"
 peso_total = os.path.getsize(archivo_zip)
 chunck_size = 64 * 1024 # 64KB en memoria como máximo
 bytes_procesados = 0
@@ -145,5 +145,5 @@ def secure_delete_folder(root_path):
 secure_delete_folder(carpeta_objetivo)
 
 prog_win.destroy()
-messagebox.showinfo("NEXUS SYSTEM", "BÓVEDA SELLADA Y ASEGURADA EXITOSAMENTE.\n\nTodos los rastros originales han sido destruidos mediante sobrescritura.")
+messagebox.showinfo("HORUS ENGINE", "BÓVEDA SELLADA Y ASEGURADA EXITOSAMENTE.\n\nTodos los rastros originales han sido destruidos mediante sobrescritura.")
 sys.exit()

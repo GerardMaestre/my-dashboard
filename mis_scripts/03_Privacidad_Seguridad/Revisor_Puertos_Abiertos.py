@@ -9,7 +9,7 @@ if sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
 
 print("="*65)
-print("     ⚡ NEXUS SYSTEM - AUDITOR DE VULNERABILIDADES ⚡    ")
+print("     ⚡ HORUS ENGINE - AUDITOR DE VULNERABILIDADES ⚡    ")
 print("="*65)
 print("[*] Escaneando tu propio sistema en busca de puertas traseras...\n")
 

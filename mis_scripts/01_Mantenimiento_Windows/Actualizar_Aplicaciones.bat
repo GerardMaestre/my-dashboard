@@ -12,7 +12,7 @@ if '%errorlevel%' NEQ '0' (
 )
 
 echo ===================================================
-echo     ⚡ NEXUS AUTOPILOT - ACTUALIZADOR INVISIBLE ⚡     
+echo     âš¡ HORUS AUTOPILOT - ACTUALIZADOR INVISIBLE âš¡     
 echo ===================================================
 echo.
 echo [*] Buscando y descargando actualizaciones de TODO el sistema...

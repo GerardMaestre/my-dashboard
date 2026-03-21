@@ -11,7 +11,7 @@ if sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
 
 print("="*65)
-print("      ⚡ NEXUS SYSTEM - PURGADOR DE SHADERS ⚡      ")
+print("      ⚡ HORUS ENGINE - PURGADOR DE SHADERS ⚡      ")
 print("="*65)
 print("[*] Rastreando caché gráfica corrupta o saturada...\n")
 

@@ -21,7 +21,7 @@ if not ctypes.windll.shell32.IsUserAnAdmin():
     sys.exit()
 
 print("="*65)
-print("       ⚡ NEXUS SYSTEM - RAM-DISK DINÁMICO (CERO CARGAS) ⚡      ")
+print("       ⚡ HORUS ENGINE - RAM-DISK DINÁMICO (CERO CARGAS) ⚡      ")
 print("="*65)
 
 # 2. Verificar o Instalar ImDisk (Motor de Disco Virtual)
@@ -48,7 +48,7 @@ root.withdraw()
 root.configure(bg="#1e1e1e")
 
 # 3. Seleccionar carpeta
-messagebox.showinfo("NEXUS SYSTEM - RAM DISK", "Selecciona primero la TABLA o LA CARPETA DEL JUEGO/PROGRAMA que quieres acelerar jugando desde la RAM.\n\nAtención: ¡Asegúrate de tener memoria RAM suficiente para albergar la carpeta entera!")
+messagebox.showinfo("HORUS ENGINE - RAM DISK", "Selecciona primero la TABLA o LA CARPETA DEL JUEGO/PROGRAMA que quieres acelerar jugando desde la RAM.\n\nAtención: ¡Asegúrate de tener memoria RAM suficiente para albergar la carpeta entera!")
 carpeta_objetivo = filedialog.askdirectory(title="Selecciona la carpeta o juego a Acelerar")
 
 if not carpeta_objetivo:
@@ -112,7 +112,7 @@ if not os.path.exists(UNIDAD_RAM):
 
 print(f"[+] Disco de RAM creado y formateado a la perfección.")
 
-carpeta_backup = carpeta_objetivo + "_NEXUS_BACKUP"
+carpeta_backup = carpeta_objetivo + "_HORUS_BACKUP"
 
 # 7. Engaño del Sistema (Enlaces Simbólicos)
 try:
@@ -174,4 +174,5 @@ print("[*] Desmaterializando Disco de RAM...")
 subprocess.run(f'imdisk -D -m {UNIDAD_RAM}', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 print("[+] Toda la Memoria RAM ha sido devuelta al sistema intacta.")
 print("\n[V] Misión Cumplida.")
-input("\nPresiona ENTER para cerrar el Nexus...")
+input("\nPresiona ENTER para cerrar el HORUS...")
+

@@ -4,7 +4,7 @@ chcp 65001 >nul
 :: ARGS: Ninguno
 
 echo ===================================================
-echo     ⚡ NEXUS SYSTEM - SPICETIFY THEME INJECTOR ⚡    
+echo     ⚡ HORUS ENGINE - SPICETIFY THEME INJECTOR ⚡    
 echo ===================================================
 echo.
 

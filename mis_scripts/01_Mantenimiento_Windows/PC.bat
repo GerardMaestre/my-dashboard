@@ -5,7 +5,7 @@ setlocal enabledelayedexpansion
 :: ARGS: Ninguno (Pide permisos de Administrador automáticamente)
 
 :: =====================================================================
-:: NEXUS AUTOPILOT - INSTALADOR MAESTRO DE SOFTWARE
+:: HORUS AUTOPILOT - INSTALADOR MAESTRO DE SOFTWARE
 :: =====================================================================
 color 0b
 echo [*] Solicitando permisos de Administrador...
@@ -26,7 +26,7 @@ set "APPS=EpicGames.EpicGamesLauncher Google.Chrome Valve.Steam Guru3D.Afterburn
 
 :: Bucle de instalación optimizado
 for %%A in (%APPS%) do (
-    echo [NEXUS] Instalando %%A en segundo plano...
+    echo [HORUS] Instalando %%A en segundo plano...
     winget install --id=%%A -e --silent --accept-package-agreements --accept-source-agreements >nul 2>&1
     if !errorlevel! equ 0 (
         echo         - Exito.

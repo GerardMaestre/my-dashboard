@@ -38,7 +38,7 @@ for categoria, extensiones in CATEGORIAS.items():
         MAPA_EXT[ext] = categoria
 
 print("="*65)
-print("       ⚡ NEXUS SYSTEM - ORGANIZADOR OMNISCIENTE ⚡      ")
+print("       ⚡ HORUS ENGINE - ORGANIZADOR OMNISCIENTE ⚡      ")
 print("="*65)
 print(f"[*] Analizando zona de impacto: {RUTA_DESCARGAS}\n")
 

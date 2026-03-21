@@ -16,7 +16,7 @@ if not ctypes.windll.shell32.IsUserAnAdmin():
     sys.exit()
 
 print("="*65)
-print("        ⚡ NEXUS SYSTEM - PROTOCOLO FANTASMA ⚡       ")
+print("        ⚡ HORUS ENGINE - PROTOCOLO FANTASMA ⚡       ")
 print("="*65)
 
 def generar_mac_valida():

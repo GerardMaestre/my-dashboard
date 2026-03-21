@@ -28,7 +28,7 @@ def hash_archivo(ruta):
         return None
 
 print("="*65)
-print("      ⚡ NEXUS AUTOPILOT - CAZADOR DE DUPLICADOS ⚡      ")
+print("      ⚡ HORUS AUTOPILOT - CAZADOR DE DUPLICADOS ⚡      ")
 print("="*65)
 print(f"[*] Escaneando en profundidad: {RUTA_ESCANEO}\n")
 

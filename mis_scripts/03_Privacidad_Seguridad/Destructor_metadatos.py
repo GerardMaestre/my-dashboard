@@ -17,7 +17,7 @@ except ImportError:
     from PIL import Image
 
 print("="*65)
-print("     ⚡ NEXUS SYSTEM - DESTRUCTOR DE METADATOS (EXIF) ⚡     ")
+print("     ⚡ HORUS ENGINE - DESTRUCTOR DE METADATOS (EXIF) ⚡     ")
 print("="*65)
 
 if len(sys.argv) < 2:

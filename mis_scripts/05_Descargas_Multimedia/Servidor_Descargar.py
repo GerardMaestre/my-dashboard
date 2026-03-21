@@ -23,7 +23,7 @@ except ImportError:
     import qrcode
 
 print("="*65)
-print("      ⚡ NEXUS SYSTEM - SERVIDOR EFÍMERO CON QR ⚡      ")
+print("      ⚡ HORUS ENGINE - SERVIDOR EFÍMERO CON QR ⚡      ")
 print("="*65)
 
 if len(sys.argv) < 2:
@@ -67,7 +67,7 @@ qr.print_ascii(invert=True)
 print("\n" + "-"*65)
 print(f"[OK] SERVIDOR ACTIVO EN: {url_descarga}")
 print("[I] Pide a tus amigos que escaneen el QR con su móvil estando en tu Wi-Fi.")
-print("[I] Para apagar el servidor, simplemente pulsa el botón 'Parar' en el Nexus.")
+print("[I] Para apagar el servidor, simplemente pulsa el botón 'Parar' en el HORUS.")
 print("-" * 65)
 
 # Iniciar el servidor web de forma silenciosa

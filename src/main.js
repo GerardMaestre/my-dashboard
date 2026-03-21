@@ -1,31 +1,31 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+﻿const { app, BrowserWindow, ipcMain } = require('electron');
 const { spawn, execSync } = require('child_process');
 const path = require('path');
 
 // =========================================================
-// 1. AUTO-INSTALADOR Y MENÚ CONTEXTUAL INVISIBLE
+// 1. AUTO-INSTALADOR Y MENÃš CONTEXTUAL INVISIBLE
 // =========================================================
-// Esto se ejecuta en 2º plano cuando alguien abre tu Setup.exe por primera vez
+// Esto se ejecuta en 2Âº plano cuando alguien abre tu Setup.exe por primera vez
 const squirrelEvent = process.argv[1];
 if (squirrelEvent && squirrelEvent.startsWith('--squirrel')) {
   const exePath = process.execPath; // La ruta donde se ha instalado
   try {
     if (squirrelEvent === '--squirrel-install' || squirrelEvent === '--squirrel-updated') {
-       // Inyecta en el menú contextual del usuario actual (¡No pide permisos de Administrador!)
-       execSync(`reg add "HKCU\\Software\\Classes\\Directory\\shell\\NexusCifrar" /v "" /t REG_SZ /d "⚡ Sellar con Nexus AES-128" /f`, { stdio: 'ignore' });
-       execSync(`reg add "HKCU\\Software\\Classes\\Directory\\shell\\NexusCifrar\\command" /v "" /t REG_SZ /d "\\"${exePath}\\" --sellar \\"%1\\"" /f`, { stdio: 'ignore' });
+       // Inyecta en el menÃº contextual del usuario actual (Â¡No pide permisos de Administrador!)
+       execSync(`reg add "HKCU\\Software\\Classes\\Directory\\shell\\HorusCifrar" /v "" /t REG_SZ /d "âš¡ Sellar con Horus AES-128" /f`, { stdio: 'ignore' });
+       execSync(`reg add "HKCU\\Software\\Classes\\Directory\\shell\\HorusCifrar\\command" /v "" /t REG_SZ /d "\\"${exePath}\\" --sellar \\"%1\\"" /f`, { stdio: 'ignore' });
        
-      execSync(`reg add "HKCU\\Software\\Classes\\.nexus" /v "" /t REG_SZ /d "Nexus.Vault" /f`, { stdio: 'ignore' });
-      execSync(`reg add "HKCU\\Software\\Classes\\Nexus.Vault\\shell\\NexusDescifrar" /v "" /t REG_SZ /d "⚡ Abrir Bóveda Nexus" /f`, { stdio: 'ignore' });
-      execSync(`reg add "HKCU\\Software\\Classes\\Nexus.Vault\\shell\\NexusDescifrar\\command" /v "" /t REG_SZ /d "\\"${exePath}\\" --abrir \\"%1\\"" /f`, { stdio: 'ignore' });
-      execSync(`reg add "HKCU\\Software\\Classes\\SystemFileAssociations\\.nexus\\shell\\NexusDescifrar" /v "" /t REG_SZ /d "⚡ Abrir Bóveda Nexus" /f`, { stdio: 'ignore' });
-      execSync(`reg add "HKCU\\Software\\Classes\\SystemFileAssociations\\.nexus\\shell\\NexusDescifrar\\command" /v "" /t REG_SZ /d "\\"${exePath}\\" --abrir \\"%1\\"" /f`, { stdio: 'ignore' });
+      execSync(`reg add "HKCU\\Software\\Classes\\.horus" /v "" /t REG_SZ /d "Horus.Vault" /f`, { stdio: 'ignore' });
+      execSync(`reg add "HKCU\\Software\\Classes\\Horus.Vault\\shell\\HorusDescifrar" /v "" /t REG_SZ /d "âš¡ Abrir BÃ³veda Nexus" /f`, { stdio: 'ignore' });
+      execSync(`reg add "HKCU\\Software\\Classes\\Horus.Vault\\shell\\HorusDescifrar\\command" /v "" /t REG_SZ /d "\\"${exePath}\\" --abrir \\"%1\\"" /f`, { stdio: 'ignore' });
+      execSync(`reg add "HKCU\\Software\\Classes\\SystemFileAssociations\\.horus\\shell\\HorusDescifrar" /v "" /t REG_SZ /d "âš¡ Abrir BÃ³veda Nexus" /f`, { stdio: 'ignore' });
+      execSync(`reg add "HKCU\\Software\\Classes\\SystemFileAssociations\\.horus\\shell\\HorusDescifrar\\command" /v "" /t REG_SZ /d "\\"${exePath}\\" --abrir \\"%1\\"" /f`, { stdio: 'ignore' });
     } else if (squirrelEvent === '--squirrel-uninstall') {
-       // Limpia el registro si se desinstala la aplicación
-       execSync(`reg delete "HKCU\\Software\\Classes\\Directory\\shell\\NexusCifrar" /f`, { stdio: 'ignore' });
-       execSync(`reg delete "HKCU\\Software\\Classes\\.nexus" /f`, { stdio: 'ignore' });
-      execSync(`reg delete "HKCU\\Software\\Classes\\Nexus.Vault" /f`, { stdio: 'ignore' });
-      execSync(`reg delete "HKCU\\Software\\Classes\\SystemFileAssociations\\.nexus" /f`, { stdio: 'ignore' });
+       // Limpia el registro si se desinstala la aplicaciÃ³n
+       execSync(`reg delete "HKCU\\Software\\Classes\\Directory\\shell\\HorusCifrar" /f`, { stdio: 'ignore' });
+       execSync(`reg delete "HKCU\\Software\\Classes\\.horus" /f`, { stdio: 'ignore' });
+      execSync(`reg delete "HKCU\\Software\\Classes\\Horus.Vault" /f`, { stdio: 'ignore' });
+      execSync(`reg delete "HKCU\\Software\\Classes\\SystemFileAssociations\\.horus" /f`, { stdio: 'ignore' });
     }
   } catch (e) {
     console.error("Error en el registro silencioso:", e);
@@ -38,7 +38,7 @@ if (require('electron-squirrel-startup')) {
 }
 
 // =========================================================
-// 2. ENRUTADOR DE ÓRDENES (Clic derecho de Windows)
+// 2. ENRUTADOR DE Ã“RDENES (Clic derecho de Windows)
 // =========================================================
 const args = process.argv;
 const sellarIndex = args.indexOf('--sellar');
@@ -64,13 +64,13 @@ function ensureContextMenuEntries() {
   const abrirCmd = isPackaged
     ? `"${exePath}" --abrir "%1"`
     : `"${exePath}" "${appPath}" --abrir "%1"`;
-  const dirKey = 'HKCU\\Software\\Classes\\Directory\\shell\\NexusCifrar';
-  const dirCmdKey = 'HKCU\\Software\\Classes\\Directory\\shell\\NexusCifrar\\command';
-  const extKey = 'HKCU\\Software\\Classes\\.nexus';
-  const progIdKey = 'HKCU\\Software\\Classes\\Nexus.Vault';
-  const progCmdKey = 'HKCU\\Software\\Classes\\Nexus.Vault\\shell\\NexusDescifrar\\command';
-  const assocKey = 'HKCU\\Software\\Classes\\SystemFileAssociations\\.nexus';
-  const assocCmdKey = 'HKCU\\Software\\Classes\\SystemFileAssociations\\.nexus\\shell\\NexusDescifrar\\command';
+  const dirKey = 'HKCU\\Software\\Classes\\Directory\\shell\\HorusCifrar';
+  const dirCmdKey = 'HKCU\\Software\\Classes\\Directory\\shell\\HorusCifrar\\command';
+  const extKey = 'HKCU\\Software\\Classes\\.horus';
+  const progIdKey = 'HKCU\\Software\\Classes\\Horus.Vault';
+  const progCmdKey = 'HKCU\\Software\\Classes\\Horus.Vault\\shell\\HorusDescifrar\\command';
+  const assocKey = 'HKCU\\Software\\Classes\\SystemFileAssociations\\.horus';
+  const assocCmdKey = 'HKCU\\Software\\Classes\\SystemFileAssociations\\.horus\\shell\\HorusDescifrar\\command';
 
   const escapeRegValue = (value) => value.replace(/"/g, '\\"');
 
@@ -82,15 +82,15 @@ function ensureContextMenuEntries() {
   } catch (e) {}
 
   try {
-    execSync(`reg add "${dirKey}" /v "" /t REG_SZ /d "Sellar con Nexus AES-128" /f`, { stdio: 'ignore' });
+    execSync(`reg add "${dirKey}" /v "" /t REG_SZ /d "Sellar con Horus AES-128" /f`, { stdio: 'ignore' });
     execSync(`reg add "${dirCmdKey}" /v "" /t REG_SZ /d "${escapeRegValue(sellarCmd)}" /f`, { stdio: 'ignore' });
 
-    execSync(`reg add "${extKey}" /v "" /t REG_SZ /d "Nexus.Vault" /f`, { stdio: 'ignore' });
-    execSync(`reg add "${progIdKey}" /v "" /t REG_SZ /d "Nexus Vault" /f`, { stdio: 'ignore' });
-    execSync(`reg add "${progIdKey}\\shell\\NexusDescifrar" /v "" /t REG_SZ /d "Abrir Boveda Nexus" /f`, { stdio: 'ignore' });
+    execSync(`reg add "${extKey}" /v "" /t REG_SZ /d "Horus.Vault" /f`, { stdio: 'ignore' });
+    execSync(`reg add "${progIdKey}" /v "" /t REG_SZ /d "Horus Vault" /f`, { stdio: 'ignore' });
+    execSync(`reg add "${progIdKey}\\shell\\HorusDescifrar" /v "" /t REG_SZ /d "Abrir Boveda Horus" /f`, { stdio: 'ignore' });
     execSync(`reg add "${progCmdKey}" /v "" /t REG_SZ /d "${escapeRegValue(abrirCmd)}" /f`, { stdio: 'ignore' });
 
-    execSync(`reg add "${assocKey}\\shell\\NexusDescifrar" /v "" /t REG_SZ /d "Abrir Boveda Nexus" /f`, { stdio: 'ignore' });
+    execSync(`reg add "${assocKey}\\shell\\HorusDescifrar" /v "" /t REG_SZ /d "Abrir Boveda Horus" /f`, { stdio: 'ignore' });
     execSync(`reg add "${assocCmdKey}" /v "" /t REG_SZ /d "${escapeRegValue(abrirCmd)}" /f`, { stdio: 'ignore' });
   } catch (error) {
     console.error('Error creando entradas de menu contextual:', error);
@@ -105,7 +105,7 @@ function ejecutarScriptOculto(scriptName, targetPath) {
   const scriptPath = path.join(misScriptsPath, scriptName);
   const portableTarget = path.join(misScriptsPath, 'env_python', 'python.exe');
   
-  // Usar portátil si existe, sino intentar con el del sistema.
+  // Usar portÃ¡til si existe, sino intentar con el del sistema.
   const pyExe = require('fs').existsSync(portableTarget) ? portableTarget : 'python';
 
   const pythonProcess = spawn(pyExe, [scriptPath, targetPath], {
@@ -127,7 +127,7 @@ if (sellarIndex !== -1 && args.length > sellarIndex + 1) {
   // 3. ARRANQUE NORMAL DEL DASHBOARD (Doble clic en el icono)
   // =========================================================
   
-  // Prevenir múltiples instancias de la aplicación
+  // Prevenir mÃºltiples instancias de la aplicaciÃ³n
   const gotTheLock = app.requestSingleInstanceLock();
   if (!gotTheLock) {
     app.quit();

@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Nexus Executor Pro</title>
+    <title>Horus Engine</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,7 +13,7 @@
             <svg class="splash-spinner" viewBox="0 0 50 50">
                 <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
             </svg>
-            <div class="splash-text">Iniciando Motor Nexus...</div>
+            <div class="splash-text">Iniciando Horus Engine...</div>
         </div>
     </div>
 
@@ -29,6 +29,14 @@
                 <button class="mac-btn maximize" onclick="windowControl('maximize')" title="Maximizar"></button>
             </div>
             
+            <div class="sidebar-header" style="-webkit-app-region: drag; padding-top: 5px;">
+                <div class="logo" style="-webkit-app-region: no-drag;">
+                    <svg viewBox="0 0 24 24" fill="currentColor" class="logo-icon" width="24" height="24">
+                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                    </svg>
+                    Horus
+                </div>
+            </div>
             <div class="sidebar-search">
                 <svg class="search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                 <input type="text" id="search-input" class="mac-input-search" placeholder="Buscar">
@@ -126,7 +134,7 @@
                 <div class="drawer-content">
                     <div class="terminal-wrapper">
                         <div id="terminal" class="mac-terminal mac-glass">
-                            <span class="log-system"> Sistema Nexus inicializado. Listo para operar.</span>
+                            <span class="log-system"> Sistema Horus inicializado. Listo para operar.</span>
                         </div>
                     </div>
                 </div>
@@ -163,7 +171,7 @@
     <!-- MODAL SETTINGS -->
     <div id="settings-modal" class="modal-overlay" onclick="if(event.target===this) closeSettings()">
         <div class="mac-modal mac-glass" style="width: 400px; text-align: left;">
-            <h3 style="margin-bottom: 20px;">Configuración Nexus</h3>
+            <h3 style="margin-bottom: 20px;">Configuración Horus</h3>
             <div class="mac-form-group">
                 <label>Tema de Interfaz Visual:</label>
                 <select id="theme-selector" class="mac-input" style="width: 100%;" onchange="changeTheme()">

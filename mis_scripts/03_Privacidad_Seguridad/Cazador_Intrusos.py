@@ -8,12 +8,12 @@ import re
 import threading
 from queue import Queue
 
-# Forzar codificación UTF-8 y escritura en tiempo real para la consola de Nexus
+# Forzar codificación UTF-8 y escritura en tiempo real para la consola de HORUS
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', line_buffering=True)
 
 print("="*65)
-print("      ⚡ NEXUS SYSTEM - CAZADOR DE INTRUSOS (RADAR) ⚡      ")
+print("      ⚡ HORUS ENGINE - CAZADOR DE INTRUSOS (RADAR) ⚡      ")
 print("="*65)
 print("[*] Iniciando barrido de radar en la subred local...")
 

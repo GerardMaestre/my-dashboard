@@ -12,7 +12,7 @@ const activeProcesses = new Map();
 const outputListeners = new Set();
 const exitListeners = new Set();
 
-const appDataNexus = path.join(process.env.APPDATA || process.env.USERPROFILE, 'NexusExecutorPro');
+const appDataNexus = path.join(process.env.APPDATA || process.env.USERPROFILE, 'HorusEngine');
 const pythonEnvPath = isPackaged 
 	? path.join(appDataNexus, 'env_python') 
 	: path.join(storageDir, 'env_python');

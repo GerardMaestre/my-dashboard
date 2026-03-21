@@ -17,7 +17,7 @@ if not ctypes.windll.shell32.IsUserAnAdmin():
     sys.exit()
 
 print("="*65)
-print("        ⚡ NEXUS SYSTEM - PURGATORIO DE MEMORIA RAM ⚡       ")
+print("        ⚡ HORUS ENGINE - PURGATORIO DE MEMORIA RAM ⚡       ")
 print("="*65)
 
 class MEMORYSTATUSEX(ctypes.Structure):

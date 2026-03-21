@@ -22,7 +22,7 @@ SERVIDORES_DNS = {
 }
 
 print("="*65)
-print("        ⚡ NEXUS SYSTEM - PING OPTIMIZER ⚡        ")
+print("        ⚡ HORUS ENGINE - PING OPTIMIZER ⚡        ")
 print("="*65)
 print("[*] Lanzando micro-paquetes ICMP a los servidores globales...\n")
 

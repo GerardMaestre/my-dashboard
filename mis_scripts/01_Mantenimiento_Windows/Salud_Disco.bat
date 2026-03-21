@@ -12,7 +12,7 @@ if '%errorlevel%' NEQ '0' (
 )
 
 echo ===================================================
-echo       ⚡ NEXUS SYSTEM - ORÁCULO DE HARDWARE ⚡      
+echo       ⚡ HORUS ENGINE - ORÁCULO DE HARDWARE ⚡      
 echo ===================================================
 echo [*] Interrogando a los chips S.M.A.R.T. de los discos...
 echo.

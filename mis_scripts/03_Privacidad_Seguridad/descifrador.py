@@ -28,7 +28,7 @@ root = tk.Tk()
 root.withdraw()
 root.configure(bg="#1e1e1e")
 
-password_raw = simpledialog.askstring("NEXUS SYSTEM - AES-256", 
+password_raw = simpledialog.askstring("HORUS ENGINE - AES-256", 
                                       f"Abrir Bóveda:\n{os.path.basename(archivo_cifrado)}\n\nIntroduce la llave maestra:", 
                                       show='*')
 
@@ -37,7 +37,7 @@ if not password_raw:
 
 # Ventana de progreso visual
 prog_win = tk.Toplevel(root)
-prog_win.title("Nexus - Extrayendo Bóveda")
+prog_win.title("HORUS - Extrayendo Bóveda")
 prog_win.geometry("400x120")
 prog_win.configure(bg="#1e1e1e")
 prog_win.resizable(False, False)
@@ -61,7 +61,7 @@ prog_bar.pack()
 root.update()
 
 try:
-    archivo_zip = archivo_cifrado.replace('.nexus', '')
+    archivo_zip = archivo_cifrado.replace('.horus', '')
     peso_total = os.path.getsize(archivo_cifrado) - 32 # Restar salt y nonce
     
     with open(archivo_cifrado, 'rb') as f_in, open(archivo_zip, 'wb') as f_out:
@@ -109,7 +109,7 @@ try:
         
     os.remove(archivo_zip)
     prog_win.destroy()
-    messagebox.showinfo("NEXUS SYSTEM", "BÓVEDA ABIERTA EXITOSAMENTE.\n\nTus datos han sido restaurados correctamente.")
+    messagebox.showinfo("HORUS ENGINE", "BÓVEDA ABIERTA EXITOSAMENTE.\n\nTus datos han sido restaurados correctamente.")
 
 except Exception as e:
     prog_win.destroy()

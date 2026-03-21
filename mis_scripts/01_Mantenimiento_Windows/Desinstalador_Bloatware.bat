@@ -12,7 +12,7 @@ if '%errorlevel%' NEQ '0' (
 )
 
 echo ===================================================
-echo     ⚡ NEXUS SYSTEM - WIN DEBLOATER (RAPHI) ⚡    
+echo     ⚡ HORUS ENGINE - WIN DEBLOATER (RAPHI) ⚡    
 echo ===================================================
 echo [*] Descargando el motor de desinstalación de Bloatware...
 

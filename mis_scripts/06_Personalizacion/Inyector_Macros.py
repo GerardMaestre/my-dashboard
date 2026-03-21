@@ -19,21 +19,21 @@ except ImportError:
     import keyboard
 
 print("="*65)
-print("      ⚡ NEXUS SYSTEM - INYECTOR DE MACROS E INCOGNITO ⚡    ")
+print("      ⚡ HORUS ENGINE - INYECTOR DE MACROS E INCOGNITO ⚡    ")
 print("="*65)
 
 # 2. Archivo de Configuración de Macros
 APPDATA = os.environ.get("APPDATA", os.path.expanduser("~"))
-NEXUS_DIR = os.path.join(APPDATA, "NexusExecutorPro")
-if not os.path.exists(NEXUS_DIR):
-    try: os.makedirs(NEXUS_DIR)
+HORUS_DIR = os.path.join(APPDATA, "HORUSExecutorPro")
+if not os.path.exists(HORUS_DIR):
+    try: os.makedirs(HORUS_DIR)
     except: pass
-CONFIG_FILE = os.path.join(NEXUS_DIR, "macros_config.json")
+CONFIG_FILE = os.path.join(HORUS_DIR, "macros_config.json")
 
 # Macros por defecto si es la primera vez
 default_macros = {
     "//correo": "test@gmail.com",
-    "//nexus": "⚡ NEXUS SYSTEM ACTIVADO ⚡",
+    "//HORUS": "⚡ HORUS ENGINE ACTIVADO ⚡",
     "//atencion": "Hola, gracias por contactar. En un momento te atiendo.",
     "//gg": "Good Game Well Played! :)"
 }
@@ -94,7 +94,7 @@ print("[✅] INYECTOR DE MACROS ONLINE Y OCULTO EN SEGUNDO PLANO.")
 print("="*65)
 print("\n[!] IMPORTANTE: Esta ventana se quedará en blanco escuchando tus teclas.")
 print("[!] Minimízala o escóndela.")
-print("    Si quieres apagar las macros, simplemente cierra el Nexus o detén este script.")
+print("    Si quieres apagar las macros, simplemente cierra el HORUS o detén este script.")
 print("\n[Modo Silencioso Activado...]")
 
 try:
@@ -103,3 +103,4 @@ try:
 except KeyboardInterrupt:
     print("\n[*] Apagando inyector...")
     sys.exit()
+

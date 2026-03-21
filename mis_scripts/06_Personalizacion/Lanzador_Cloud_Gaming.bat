@@ -21,7 +21,7 @@ if /I "%~1"=="client" set choice=2& goto mode_selected
 if "%~1"=="2" set choice=2& goto mode_selected
 
 echo ===================================================
-echo     ⚡ NEXUS SYSTEM - ORQUESTADOR CLOUD GAMING ⚡    
+echo     âš¡ HORUS ENGINE - ORQUESTADOR CLOUD GAMING âš¡    
 echo ===================================================
 echo.
 echo Selecciona el rol de este PC:
