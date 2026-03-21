@@ -190,7 +190,8 @@ const api = {
 					const rel = path.posix.join(base, dirent.name);
 					return dirent.isDirectory() ? getFiles(res, rel) : rel;
 				}));
-				return Array.prototype.concat(...files);
+				// Solo mostrar archivos ejecutables en el Dashboard, esconder los de configuración o datos
+				return Array.prototype.concat(...files).filter(f => f.match(/\.(py|bat|cmd|sh|exe)$/i));
 			};
 			return await getFiles(storageDir);
 		} catch(e) { return []; }
