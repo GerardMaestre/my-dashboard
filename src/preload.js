@@ -20,29 +20,37 @@ const pythonExePath = path.join(pythonEnvPath, 'python.exe');
 
 // Autoinstalador silencioso de Python Portable
 function ensureStandaloneEnvironment() {
-    if (fs.existsSync(pythonExePath)) return; // Ya está instalado, no hace nada
+    const pipPath = path.join(pythonEnvPath, 'Scripts', 'pip.exe');
+    
+    // Si ya existe python Y pip, estamos listos.
+    if (fs.existsSync(pythonExePath) && fs.existsSync(pipPath)) return;
     
     try {
-        if (!fs.existsSync(pythonEnvPath)) fs.mkdirSync(pythonEnvPath, { recursive: true });
-        const zipPath = path.join(pythonEnvPath, 'python.zip');
+        if (fs.existsSync(pythonEnvPath)) {
+            // Borrado forzado si el entorno existe pero está roto (sin pip)
+            try { fs.rmSync(pythonEnvPath, { recursive: true, force: true }); } catch (e) {}
+        }
         
-        // Pide a powershell descargar Python en modo sigiloso total
+        fs.mkdirSync(pythonEnvPath, { recursive: true });
+        const zipPath = path.join(pythonEnvPath, 'python.zip');
+        const getPipBase = path.join(pythonEnvPath, 'get-pip.py');
+        
+        // Pide a powershell descargar Python en modo sigiloso, activar site-packages e instalar pip
         const psCommand = `
         $ProgressPreference = 'SilentlyContinue';
         Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.11.8/python-3.11.8-embed-amd64.zip" -OutFile "${zipPath}";
         Expand-Archive -Path "${zipPath}" -DestinationPath "${pythonEnvPath}" -Force;
         Remove-Item "${zipPath}";
+        $PthFile = Join-Path "${pythonEnvPath}" "python311._pth";
+        (Get-Content $PthFile) -replace '#import site', 'import site' | Set-Content $PthFile;
+        Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile "${getPipBase}";
+        & "${pythonExePath}" "${getPipBase}" --no-warn-script-location;
+        Remove-Item "${getPipBase}";
         `;
 
         execFile('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psCommand], { windowsHide: true }, (err) => {
-            if (!err && fs.existsSync(pythonExePath)) {
-                // Habilitamos site-packages por si acaso en el portátil
-                const pthPath = path.join(pythonEnvPath, 'python311._pth');
-                if (fs.existsSync(pthPath)) {
-                    let pth = fs.readFileSync(pthPath, 'utf8');
-                    fs.writeFileSync(pthPath, pth.replace('#import site', 'import site'));
-                }
-                setTimeout(() => emitOutput({ fileName: 'Sistema', type: 'system', message: 'Entorno Python instalado correctamente' }), 2000);
+            if (!err && fs.existsSync(pipPath)) {
+                setTimeout(() => emitOutput({ fileName: 'Sistema', type: 'system', message: 'Entorno Python y Pip instalados correctamente' }), 2000);
             } else {
                 try { fs.rmSync(pythonEnvPath, { recursive: true, force: true }); } catch (e) {}
                 setTimeout(() => emitOutput({ fileName: 'Sistema', type: 'error', message: 'Fallo al instalar entorno Python (verifique su conexión)' }), 2000);
