@@ -30,7 +30,7 @@ resultados = {}
 
 for nombre, ip in SERVIDORES_DNS.items():
     try:
-        salida = subprocess.check_output(f"ping -n 3 -w 1000 {ip}", shell=True).decode('cp850')
+        salida = subprocess.check_output(f"ping -n 3 -w 1000 {ip}", shell=True).decode('utf-8', errors='replace')
         match = re.search(r"Media = (\d+) ms|Average = (\d+)ms", salida)
         if match:
             ms = int(match.group(1) or match.group(2))
@@ -67,7 +67,7 @@ try:
         Write-Host " [X] No se encontró adaptador activo."
     }}
     """
-    resultado = subprocess.check_output(["powershell", "-Command", ps_cmd]).decode('cp850')
+    resultado = subprocess.check_output(["powershell", "-Command", ps_cmd]).decode('utf-8', errors='replace')
     print(resultado.strip())
 except Exception as e:
     print(f"[X] Fallo al establecer el DNS automáticamente: {e}")

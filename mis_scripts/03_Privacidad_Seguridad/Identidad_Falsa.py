@@ -4,7 +4,7 @@
 import urllib.request
 import json
 import string
-import random
+import secrets
 import subprocess
 import time
 import sys
@@ -14,7 +14,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 def gen_password(length=14):
     chars = string.ascii_letters + string.digits + "!@#$%"
-    return ''.join(random.choice(chars) for _ in range(length))
+    return ''.join(secrets.choice(chars) for _ in range(length))
 
 def run():
     print("[*] Solicitando datos fantasmas...")

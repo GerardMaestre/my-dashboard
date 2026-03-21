@@ -28,6 +28,7 @@ set /p choice="Ingresa un numero (1-3): "
 if "%choice%"=="1" goto home
 if "%choice%"=="2" goto pro
 if "%choice%"=="3" exit
+echo [X] Opcion no valida. Intenta de nuevo.
 goto end
 
 :home
@@ -53,3 +54,5 @@ pause
 exit
 
 :end
+echo [X] Opcion no valida.
+pause

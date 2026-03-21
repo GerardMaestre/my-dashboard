@@ -114,5 +114,8 @@ try:
 except Exception as e:
     prog_win.destroy()
     if os.path.exists(archivo_zip):
-        os.remove(archivo_zip) # Limpiar zip corrupto en caso de fallo
+        try:
+            os.remove(archivo_zip) # Limpiar zip corrupto en caso de fallo
+        except Exception:
+            pass
     messagebox.showerror("ACCESO DENEGADO", "Contraseña incorrecta o archivo de bóveda dañado/incompatible.")

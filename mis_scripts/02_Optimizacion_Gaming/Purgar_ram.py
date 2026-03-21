@@ -44,33 +44,30 @@ print(f"[*] RAM Libre actual: {ram_antes:.2f} MB")
 print("[*] Inyectando llamada al Kernel de Windows para vaciar procesos inactivos...", flush=True)
 
 # 1. Vaciar el Working Set de todos los procesos abiertos
-# Obliga a los programas inactivos a devolver su RAM inútil usando Psapi (C nativo - Muy rápido)
-import psutil
+# Usa kernel32 directamente para enumerar PIDs sin necesitar psutil
 procesos_limpiados = 0
 try:
-    for proc in psutil.process_iter(['pid', 'name']):
+    # Enumerar todos los PIDs del sistema usando EnumProcesses
+    ArrayType = ctypes.c_ulong * 4096
+    pids = ArrayType()
+    bytes_returned = ctypes.c_ulong()
+    ctypes.windll.psapi.EnumProcesses(ctypes.byref(pids), ctypes.sizeof(pids), ctypes.byref(bytes_returned))
+    num_pids = bytes_returned.value // ctypes.sizeof(ctypes.c_ulong)
+    
+    PROCESS_ALL_ACCESS = 0x001F0FFF
+    for i in range(num_pids):
+        pid = pids[i]
+        if pid == 0:
+            continue
         try:
-            handle = ctypes.windll.kernel32.OpenProcess(0x001F0FFF, False, proc.info['pid'])
+            handle = ctypes.windll.kernel32.OpenProcess(PROCESS_ALL_ACCESS, False, pid)
             if handle:
                 ctypes.windll.psapi.EmptyWorkingSet(handle)
                 ctypes.windll.kernel32.CloseHandle(handle)
                 procesos_limpiados += 1
         except Exception:
             pass
-    print(f" [>] Se vaciaron fragmentos de RAM de {procesos_limpiados} procesos activos vía Psapi.")
-except ImportError:
-    # Fallback si no está psutil instalado, usando WMI
-    import subprocess
-    ps_script = """
-    $processes = Get-Process
-    foreach ($p in $processes) {
-        try {
-            [System.Diagnostics.Process]::GetProcessById($p.Id).MinWorkingSet = [System.IntPtr]::Subtract([System.IntPtr]::Zero, 1)
-        } catch {}
-    }
-    """
-    subprocess.run(["powershell", "-Command", ps_script], capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW)
-    print(" [>] Working Sets de procesos activos purgados vía PowerShell.")
+    print(f" [>] Se vaciaron fragmentos de RAM de {procesos_limpiados} procesos activos vía Kernel32.")
 except Exception as e:
     print(f" [X] Aviso menor: {e}")
 

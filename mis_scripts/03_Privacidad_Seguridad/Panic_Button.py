@@ -4,7 +4,7 @@
 import os
 import shutil
 import getpass
-import sqlite3
+import time
 import sys
 from pathlib import Path
 
@@ -17,7 +17,6 @@ def close_browsers():
     for b in browsers:
         os.system(f'taskkill /F /IM {b} /T >nul 2>&1')
     
-    import time
     time.sleep(2) # Esperar a que se liberen los archivos lock de SQLite
 
 def clear_browser_history():

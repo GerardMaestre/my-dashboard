@@ -1,5 +1,6 @@
 @echo off
 chcp 65001 >nul
+setlocal enabledelayedexpansion
 :: DESC: Instalador desatendido. Instala todo el software base de tu PC en segundo plano (Chrome, Steam, Discord, etc.).
 :: ARGS: Ninguno (Pide permisos de Administrador automáticamente)
 
@@ -9,7 +10,7 @@ chcp 65001 >nul
 color 0b
 echo [*] Solicitando permisos de Administrador...
 >nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
+if '!errorlevel!' NEQ '0' (
     echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\getadmin.vbs"
     echo UAC.ShellExecute "%~s0", "", "", "runas", 1 >> "%temp%\getadmin.vbs"
     "%temp%\getadmin.vbs" & del "%temp%\getadmin.vbs" & exit /B
@@ -27,7 +28,7 @@ set "APPS=EpicGames.EpicGamesLauncher Google.Chrome Valve.Steam Guru3D.Afterburn
 for %%A in (%APPS%) do (
     echo [NEXUS] Instalando %%A en segundo plano...
     winget install --id=%%A -e --silent --accept-package-agreements --accept-source-agreements >nul 2>&1
-    if %errorlevel% equ 0 (
+    if !errorlevel! equ 0 (
         echo         - Exito.
     ) else (
         echo         - Fallo o ya estaba instalado.

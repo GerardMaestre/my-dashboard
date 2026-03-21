@@ -3,6 +3,7 @@
 
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -40,7 +41,6 @@ archivos_borrados = 0
 mb_liberados = 0
 
 print("[~] Cerrando procesos de Epic/Steam temporalmente para liberar archivos...")
-import subprocess
 try:
     subprocess.run(["taskkill", "/F", "/IM", "steam.exe"], capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW)
     subprocess.run(["taskkill", "/F", "/IM", "EpicGamesLauncher.exe"], capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW)

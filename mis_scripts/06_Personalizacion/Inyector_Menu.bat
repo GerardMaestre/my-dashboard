@@ -21,12 +21,12 @@ set "RUTA_SCRIPTS=%~dp0"
 echo [*] Forjando llaves de registro para la ruta: %RUTA_SCRIPTS%
 
 :: 1. Menú contextual para CARPETAS (Cifrar)
-reg add "HKCR\Directory\shell\NexusCifrar" /v "" /t REG_SZ /d "⚡ Sellar con Nexus AES-256 CTR" /f >nul
-reg add "HKCR\Directory\shell\NexusCifrar\command" /v "" /t REG_SZ /d "python \"%RUTA_SCRIPTS%Cifrador_De_Carpetas.py\" \"%%1\"" /f >nul
+reg add "HKCU\Software\Classes\Directory\shell\NexusCifrar" /v "" /t REG_SZ /d "⚡ Sellar con Nexus AES-256 CTR" /f >nul
+reg add "HKCU\Software\Classes\Directory\shell\NexusCifrar\command" /v "" /t REG_SZ /d "python \"%RUTA_SCRIPTS%Cifrador_De_Carpetas.py\" \"%%1\"" /f >nul
 
 :: 2. Menú contextual para ARCHIVOS .NEXUS (Descifrar)
-reg add "HKCR\SystemFileAssociations\.nexus\shell\NexusDescifrar" /v "" /t REG_SZ /d "⚡ Abrir Bóveda Nexus (AES-256)" /f >nul
-reg add "HKCR\SystemFileAssociations\.nexus\shell\NexusDescifrar\command" /v "" /t REG_SZ /d "python \"%RUTA_SCRIPTS%descifrador.py\" \"%%1\"" /f >nul
+reg add "HKCU\Software\Classes\SystemFileAssociations\.nexus\shell\NexusDescifrar" /v "" /t REG_SZ /d "⚡ Abrir Bóveda Nexus (AES-256)" /f >nul
+reg add "HKCU\Software\Classes\SystemFileAssociations\.nexus\shell\NexusDescifrar\command" /v "" /t REG_SZ /d "python \"%RUTA_SCRIPTS%descifrador.py\" \"%%1\"" /f >nul
 
 echo [OK] INYECCIÓN COMPLETADA. Haz clic derecho en cualquier carpeta para probarlo.
 pause

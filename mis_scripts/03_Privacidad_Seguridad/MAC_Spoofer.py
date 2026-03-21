@@ -46,7 +46,7 @@ try:
         Write-Host " [X] Fallo"
     }}
     """
-    resultado = subprocess.check_output(["powershell", "-Command", ps_cmd]).decode('cp850')
+    resultado = subprocess.check_output(["powershell", "-Command", ps_cmd]).decode('utf-8', errors='replace')
     print(resultado)
 except Exception as e:
     print(f"[X] Fallo crítico: {e}")

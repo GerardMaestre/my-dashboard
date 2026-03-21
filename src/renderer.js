@@ -74,7 +74,9 @@ async function cargarScripts() {
 			!f.includes('env_python') &&
 			!f.includes('node_modules') &&
 			!f.includes('.git') &&
+			!f.includes('__pycache__') &&
 			!f.toLowerCase().endsWith('.exe') &&
+			!f.toLowerCase().endsWith('.pyc') &&
 			!f.toLowerCase().endsWith('.md') && 
 			!f.toLowerCase().endsWith('.txt')
 	);
@@ -401,7 +403,7 @@ function detenerAutopilot(fileName) {
 }
 
 function openScript(fileName) {
-	api.openPath(fileName);
+	api.editScript(fileName);
 }
 
 function logTerminal(mensaje, tipo) {
@@ -640,7 +642,137 @@ window.copiarTerminal = copiarTerminal;
 
 // Theming & Settings Logic
 function openSettings() {
-    document.getElementById('settings-modal').classList.add('active');
+    document.getElementById('settings-modal').classList.add('hidden');
+}
+
+// ==========================================
+// OJO DE DIOS (Buscador Global en Memoria RAM)
+// ==========================================
+let ojoDatabase = [];
+let ojoIndexing = false;
+let ojoIndexed = false;
+
+function abrirOjoDeDios() {
+    const modal = document.getElementById('modal-ojo-dios');
+    if (modal) {
+        modal.classList.add('active');
+        const input = document.getElementById('ojo-input');
+        if (input) input.focus();
+        
+        if (!ojoIndexed && !ojoIndexing) {
+            ojoIndexing = true;
+            document.getElementById('ojo-status').textContent = "Mapeando el disco duro hacia la memoria RAM... (Iniciando)";
+            
+            api.scanGlobalFiles((results) => {
+                ojoDatabase = results;
+                ojoIndexed = true;
+                ojoIndexing = false;
+                document.getElementById('ojo-status').textContent = `Índice listo: ${ojoDatabase.length.toLocaleString()} archivos inyectados en RAM.`;
+                filtrarOjoDeDios();
+            }, (count) => {
+                // Progress update
+                document.getElementById('ojo-status').textContent = `Indexando a ultra-velocidad: ${count.toLocaleString()} archivos encontrados...`;
+            });
+        } else {
+            filtrarOjoDeDios();
+        }
+    }
+}
+
+function cerrarOjoDeDios() {
+    const modal = document.getElementById('modal-ojo-dios');
+    if (modal) modal.classList.remove('active');
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        cerrarOjoDeDios();
+        closeSettings();
+    }
+});
+
+const ojoInput = document.getElementById('ojo-input');
+if (ojoInput) {
+    ojoInput.addEventListener('input', filtrarOjoDeDios);
+}
+
+function filtrarOjoDeDios() {
+    const input = document.getElementById('ojo-input');
+    const ul = document.getElementById('ojo-results');
+    if (!input || !ul) return;
+    
+    const query = input.value.trim().toLowerCase();
+    ul.innerHTML = '';
+    
+    if (query.length < 2) return;
+    if (!ojoIndexed) return;
+    
+    const parts = query.split(' ');
+    let matches = [];
+    
+    for (let i = 0; i < ojoDatabase.length; i++) {
+        const itemLine = ojoDatabase[i]; // ej: "FILE|C:\Users\foo\bar.txt"
+        
+        // Extraer nombre del archivo velozmente
+        const lastSlash = Math.max(itemLine.lastIndexOf('\\'), itemLine.lastIndexOf('/'));
+        const name = lastSlash !== -1 ? itemLine.substring(lastSlash + 1) : itemLine;
+        const lowerName = name.toLowerCase();
+        
+        if (parts.every(p => lowerName.includes(p))) {
+            matches.push({ line: itemLine, name: name });
+            if (matches.length >= 100) break; // Límite por rendimiento visual y DOM
+        }
+    }
+    
+    if (matches.length === 0) {
+        ul.innerHTML = '<li style="color:#888; padding: 20px; text-align:center;">Ningún archivo coincide con tu búsqueda (Ojo de Dios).</li>';
+        return;
+    }
+    
+    const iconMap = {
+        'DIR': '📁',
+        'FILE': '📄'
+    };
+    
+    const fragment = document.createDocumentFragment();
+    matches.forEach(m => {
+        const typeMatch = m.line.substring(0, 4); // "DIR|" o "FILE|"
+        const type = typeMatch.startsWith('DIR') ? 'DIR' : 'FILE';
+        const fullPath = m.line.substring(5); // remove "DIR|"
+        
+        const li = document.createElement('li');
+        li.style.cssText = `
+            background: rgba(255, 255, 255, 0.03); border-radius: 8px; padding: 10px 15px; 
+            display: flex; align-items: center; cursor: pointer; border: 1px solid transparent; transition: 0.1s;
+        `;
+        li.onmouseenter = () => { li.style.background = 'rgba(10, 132, 255, 0.15)'; li.style.borderColor = 'rgba(10, 132, 255, 0.3)'; };
+        li.onmouseleave = () => { li.style.background = 'rgba(255, 255, 255, 0.03)'; li.style.borderColor = 'transparent'; };
+        
+        // Match words for highlighting
+        let displayName = m.name;
+        parts.forEach(p => {
+            const regex = new RegExp(`(${escapeRegExp(p)})`, 'gi');
+            displayName = displayName.replace(regex, '<span style="color:#FF9500;">$1</span>');
+        });
+
+        li.innerHTML = `
+            <div style="font-size: 20px; margin-right: 15px;">${iconMap[type] || '📄'}</div>
+            <div style="flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
+                <div style="color: white; font-weight: 500; font-size: 14px;">${displayName}</div>
+                <div style="color: #888; font-size: 11px;">${fullPath}</div>
+            </div>
+        `;
+        li.onclick = () => {
+            api.showGlobalItemInFolder(fullPath);
+            cerrarOjoDeDios();
+        };
+        fragment.appendChild(li);
+    });
+    ul.appendChild(fragment);
+}
+
+function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
 }
 function closeSettings() {
     document.getElementById('settings-modal').classList.remove('active');

@@ -12,7 +12,10 @@ const activeProcesses = new Map();
 const outputListeners = new Set();
 const exitListeners = new Set();
 
-const pythonEnvPath = path.join(storageDir, 'env_python');
+const appDataNexus = path.join(process.env.APPDATA || process.env.USERPROFILE, 'NexusExecutorPro');
+const pythonEnvPath = isPackaged 
+	? path.join(appDataNexus, 'env_python') 
+	: path.join(storageDir, 'env_python');
 const pythonExePath = path.join(pythonEnvPath, 'python.exe');
 
 // Autoinstalador silencioso de Python Portable
@@ -196,6 +199,76 @@ const api = {
 		} catch(e) { return []; }
 	},
 	openPath: (fileName) => shell.openPath(path.join(storageDir, fileName)),
+	editScript: (fileName) => {
+		if (fileName.includes('Inyector_Macros')) {
+			const configPath = path.join(appDataNexus, 'macros_config.json');
+			if (fs.existsSync(configPath)) {
+				spawn('notepad.exe', [configPath]);
+				return;
+			}
+		}
+		// Forzar bloc de notas para Editar en lugar de Ejecutar (peligro default association)
+		const filePath = path.join(storageDir, fileName);
+		spawn('notepad.exe', [filePath]);
+	},
+	openGlobalPath: (fullPath) => shell.openPath(fullPath),
+	showGlobalItemInFolder: (fullPath) => shell.showItemInFolder(fullPath),
+	scanGlobalFiles: (callback, progressCallback) => {
+		// Modo Asíncrono no bloqueante absoluto
+		const results = [];
+		const excludePatterns = ['\\Windows', '\\ProgramData', '\\node_modules', '\\.git', '\\AppData\\Local\\Microsoft'];
+		
+		// Encontrar discos disponibles
+		execFile('wmic', ['logicaldisk', 'get', 'name'], (err, stdout) => {
+			let drives = ['C:'];
+			if (!err) {
+				const matches = stdout.match(/[A-Z]:/g);
+				if (matches) drives = matches;
+			}
+			
+			let activeWorkers = 0;
+			
+			async function walk(dir) {
+				activeWorkers++;
+				try {
+					// Yield event loop completely to prevent UI freeze
+					await new Promise(r => setTimeout(r, 0));
+					
+					const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+					for (const entry of entries) {
+						if (entry.name.startsWith('$')) continue;
+						
+						const resPath = path.join(dir, entry.name);
+						
+						if (entry.isDirectory()) {
+							// Ignorar carpetas del nucleo para no morir escaneando sistema
+							if (excludePatterns.some(p => resPath.includes(p))) continue;
+							results.push(`DIR|${resPath}`);
+							walk(resPath); // disparamos el worker asíncrono sin await
+						} else {
+							results.push(`FILE|${resPath}`);
+						}
+					}
+				} catch (e) {
+					// Ignorar accesos denegados
+				} finally {
+					activeWorkers--;
+					if (activeWorkers % 50 === 0 && progressCallback) {
+						progressCallback(results.length);
+					}
+					if (activeWorkers === 0) {
+						callback(results);
+					}
+				}
+			}
+			
+			// Iniciar crawler para cada disco
+			for (const drive of drives) {
+				const startDir = drive === 'C:' ? path.join('C:', 'Users', process.env.USERNAME || process.env.USER) : `${drive}\\`;
+				walk(startDir);
+			}
+		});
+	},
 	runScript: ({ fileName, args = '', mode = 'internal' }) => {
 		const parsedArgs = splitArgs(args);
 		if (mode === 'external') {

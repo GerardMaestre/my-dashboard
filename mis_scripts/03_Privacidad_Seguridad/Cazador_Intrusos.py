@@ -20,7 +20,7 @@ print("[*] Iniciando barrido de radar en la subred local...")
 # 1. Obtener la IP local para saber en qué red estamos
 ip_local = ""
 try:
-    salida_ip = subprocess.check_output("ipconfig", shell=True).decode('cp850', errors='ignore')
+    salida_ip = subprocess.check_output("ipconfig", shell=True).decode('utf-8', errors='replace')
     for linea in salida_ip.split('\n'):
         if "IPv4" in linea or "Dirección IPv4" in linea:
             ip_local = re.search(r'\d+\.\d+\.\d+\.\d+', linea).group()
@@ -60,9 +60,9 @@ print("-" * 65)
 # 3. Leer la tabla ARP de Windows para ver quién ha respondido
 dispositivos = 0
 try:
-    salida_arp = subprocess.check_output("arp -a", shell=True).decode('cp850', errors='ignore')
+    salida_arp = subprocess.check_output("arp -a", shell=True).decode('utf-8', errors='replace')
     for linea in salida_arp.split('\n'):
-        if base_ip in linea and "dinámico" in linea.lower() or "dynamic" in linea.lower():
+        if base_ip in linea and ("dinámico" in linea.lower() or "dynamic" in linea.lower()):
             partes = linea.split()
             if len(partes) >= 2:
                 ip_encontrada = partes[0]

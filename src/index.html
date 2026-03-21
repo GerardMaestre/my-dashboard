@@ -51,6 +51,11 @@
                     <span class="icon-container" style="background:var(--mac-green);"><svg viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg></span>
                     Activos
                 </button>
+                <div class="sidebar-divider" style="margin-top: 5px; margin-bottom: 5px;"></div>
+                <button class="sidebar-item" id="btn-ojo-dios" onclick="abrirOjoDeDios()">
+                    <span class="icon-container" style="background:linear-gradient(135deg, #FF9500, #FFCC00);"><svg viewBox="0 0 24 24" fill="white"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg></span>
+                    Ojo de Dios
+                </button>
             </nav>
 
             <div class="sidebar-bottom">
@@ -131,6 +136,29 @@
     
     <!-- CONTENEDOR DE NOTIFICACIONES (TOAST) -->
     <div id="toast-container" class="toast-container"></div>
+
+    <!-- MODAL OJO DE DIOS -->
+    <div id="modal-ojo-dios" class="modal-overlay" onclick="if(event.target===this) cerrarOjoDeDios()" style="z-index: 10000; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px);">
+        <div class="modal-content mac-window" style="width: 80vw; max-width: 900px; height: 80vh; background: rgba(30, 30, 30, 0.90); border: 1px solid rgba(255,255,255,0.1); padding: 0; display: flex; flex-direction: column; opacity: 1; transform: scale(1);">
+            <div style="padding: 20px; display: flex; flex-direction: column; gap: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); -webkit-app-region: drag;">
+                <div style="display: flex; justify-content: space-between; align-items: center; -webkit-app-region: no-drag;">
+                    <h2 style="margin: 0; font-size: 20px; font-weight: 500; display: flex; align-items: center; gap: 10px;">
+                        <span style="color: #FF9500; font-size:24px;">👁</span> Ojo de Dios <span style="font-size: 11px; color: #888; font-weight: normal; margin-top:4px;">Buscador Global en Memoria RAM</span>
+                    </h2>
+                    <button class="mac-btn close" onclick="cerrarOjoDeDios()" style="width: 14px; height: 14px; margin:0;" title="Cerrar Ojo de Dios"></button>
+                </div>
+                <!-- Input principal de Búsqueda -->
+                <input type="text" id="ojo-input" placeholder="Escribe para buscar cualquier archivo..." class="mac-input-search" style="font-size: 22px; padding: 15px 20px; border-radius: 12px; background: rgba(0,0,0,0.5); -webkit-app-region: no-drag;">
+                <div id="ojo-status" style="font-size: 13px; color: #0A84FF; -webkit-app-region: no-drag;">Mapeando tu disco duro hacia la memoria RAM... (Esto pasará solo una vez)</div>
+            </div>
+            
+            <div style="flex: 1; overflow-y: auto; padding: 10px 20px 20px 20px; -webkit-app-region: no-drag;" id="ojo-results-container">
+                <ul id="ojo-results" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px;">
+                    <!-- Resultados Ojo de Dios injectados desde JS -->
+                </ul>
+            </div>
+        </div>
+    </div>
 
     <!-- MODAL SETTINGS -->
     <div id="settings-modal" class="modal-overlay" onclick="if(event.target===this) closeSettings()">

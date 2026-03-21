@@ -7,6 +7,7 @@ import socket
 import threading
 import http.server
 import socketserver
+import functools
 import time
 
 # Forzar codificación y evitar buffer
@@ -70,7 +71,6 @@ print("[I] Para apagar el servidor, simplemente pulsa el botón 'Parar' en el Ne
 print("-" * 65)
 
 # Iniciar el servidor web de forma silenciosa
-import functools
 Handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=carpeta_objetivo)
 try:
     with socketserver.TCPServer(("", PUERTO), Handler) as httpd:
