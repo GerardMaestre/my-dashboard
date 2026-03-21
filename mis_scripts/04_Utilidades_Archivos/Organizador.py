@@ -1,5 +1,5 @@
 # DESC: Escanea tu carpeta de Descargas y mueve automáticamente todos los archivos a carpetas categorizadas limpiando el caos.
-# ARGS: Ninguno
+# ARGS: <Ruta_Carpeta>
 
 import os
 import sys
@@ -10,7 +10,10 @@ if sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
 
 # Configuración
-RUTA_DESCARGAS = os.path.join(Path.home(), "Downloads")
+if len(sys.argv) > 1 and not sys.argv[1].startswith("--"):
+    RUTA_DESCARGAS = sys.argv[1]
+else:
+    RUTA_DESCARGAS = os.path.join(Path.home(), "Downloads")
 
 # =====================================================================
 # MEGA-DICCIONARIO DE EXTENSIONES (Nivel Omni)

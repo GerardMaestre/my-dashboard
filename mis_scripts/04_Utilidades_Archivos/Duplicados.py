@@ -1,5 +1,5 @@
 # DESC: Escanea tu carpeta de Descargas buscando clones exactos (verificando Hashes MD5) y los aísla.
-# ARGS: Ninguno
+# ARGS: <Ruta_Carpeta> <Ruta_Cuarentena>
 
 import os
 import hashlib
@@ -10,9 +10,16 @@ from pathlib import Path
 if sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
 
-# Configura qué carpeta quieres escanear (Por defecto, Descargas)
-RUTA_ESCANEO = os.path.join(Path.home(), "Downloads")
-RUTA_PAPELERA = os.path.join(Path.home(), "Downloads", "DUPLICADOS_A_BORRAR")
+# Configuración
+if len(sys.argv) > 1 and not sys.argv[1].startswith("--"):
+    RUTA_ESCANEO = sys.argv[1]
+else:
+    RUTA_ESCANEO = os.path.join(Path.home(), "Downloads")
+
+if len(sys.argv) > 2:
+    RUTA_PAPELERA = sys.argv[2]
+else:
+    RUTA_PAPELERA = os.path.join(RUTA_ESCANEO, "DUPLICADOS_A_BORRAR")
 
 def hash_archivo(ruta):
     """Crea una huella digital única (hash) del archivo para compararlo."""

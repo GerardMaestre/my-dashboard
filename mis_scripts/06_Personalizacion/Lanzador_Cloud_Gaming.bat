@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 :: DESC: Automatiza entorno Cloud Gaming. Con menu interactivo o parametros directos.
-:: ARGS: host | client (Opcional, salta el menu)
+:: ARGS: host | client 
 
 echo [*] Solicitando permisos de Administrador...
 >nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"

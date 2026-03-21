@@ -1,5 +1,5 @@
 # DESC: Purga los datos ocultos (coordenadas GPS, fecha, modelo de cámara) de tus fotos para anonimato total.
-# ARGS: Ruta de la carpeta con imágenes
+# ARGS: <Ruta_Carpeta>
 
 import os
 import sys

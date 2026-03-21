@@ -1,5 +1,5 @@
 # DESC: Descarga video o MP3 de más de 1000 sitios. Añade 'mp3' al lado de la URL para bajarlo como audio.
-# ARGS: <URL> [mp3/720p/1080p/4k]
+# ARGS: URL [mp3/720p/1080p/4k]
 
 import sys
 import os

@@ -24,7 +24,7 @@ print("="*65)
 
 # 2. Archivo de Configuración de Macros
 APPDATA = os.environ.get("APPDATA", os.path.expanduser("~"))
-HORUS_DIR = os.path.join(APPDATA, "HORUSExecutorPro")
+HORUS_DIR = os.path.join(APPDATA, "HorusEngine")
 if not os.path.exists(HORUS_DIR):
     try: os.makedirs(HORUS_DIR)
     except: pass

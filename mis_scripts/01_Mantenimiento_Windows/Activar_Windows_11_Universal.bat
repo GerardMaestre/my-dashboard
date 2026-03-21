@@ -1,17 +1,25 @@
 @echo off
 chcp 65001 >nul
 :: DESC: Activa Windows 11 (Home o Pro) conectándose a un servidor KMS de forma segura.
-:: ARGS: Ninguno (Tiene menú interactivo)
+:: ARGS: 1 W11 Home | 2 W11 Pro | 3 Salir
 
 echo [*] Solicitando permisos de Administrador...
 >nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
 if '%errorlevel%' NEQ '0' (
     echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\getadmin.vbs"
-    echo UAC.ShellExecute "%~s0", "", "", "runas", 1 >> "%temp%\getadmin.vbs"
+    echo UAC.ShellExecute "%~s0", "%~1 %~2", "", "runas", 1 >> "%temp%\getadmin.vbs"
     "%temp%\getadmin.vbs" & del "%temp%\getadmin.vbs" & exit /B
 )
 
 color 0a
+
+:: Interpretar Parámetros Silenciosos (Desde Dashboard)
+if "%~1"=="1" goto home
+if /I "%~1"=="home" goto home
+if "%~1"=="2" goto pro
+if /I "%~1"=="pro" goto pro
+if "%~1"=="3" exit
+
 echo ===================================================
 echo         ACTIVADOR UNIVERSAL - WINDOWS 11         
 echo ===================================================

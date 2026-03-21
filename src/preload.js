@@ -211,10 +211,22 @@ const api = {
 	editScript: (fileName) => {
 		if (fileName.includes('Inyector_Macros')) {
 			const configPath = path.join(appDataNexus, 'macros_config.json');
-			if (fs.existsSync(configPath)) {
-				spawn('notepad.exe', [configPath]);
-				return;
+			if (!fs.existsSync(configPath)) {
+				try {
+					const default_macros = {
+						"//correo": "test@gmail.com",
+						"//HORUS": "⚡ HORUS ENGINE ACTIVADO ⚡",
+						"//atencion": "Hola, gracias por contactar. En un momento te atiendo.",
+						"//gg": "Good Game Well Played! :)"
+					};
+					fs.mkdirSync(appDataNexus, { recursive: true });
+					fs.writeFileSync(configPath, JSON.stringify(default_macros, null, 4), 'utf8');
+				} catch (e) {
+					console.error("Error creating default macros config:", e);
+				}
 			}
+			spawn('notepad.exe', [configPath]);
+			return;
 		}
 		// Forzar bloc de notas para Editar en lugar de Ejecutar (peligro default association)
 		const filePath = path.join(storageDir, fileName);

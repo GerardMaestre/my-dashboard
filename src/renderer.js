@@ -164,6 +164,30 @@ async function cargarScripts() {
 			divDesc.className = 'script-desc';
 			divDesc.title = desc;
 			divDesc.textContent = desc;
+			divDesc.style.flex = 'none';
+            divDesc.style.padding = '0'; // We'll move padding to the container
+
+			const divArgs = document.createElement('div');
+			divArgs.className = 'script-args-info';
+			divArgs.title = args;
+			divArgs.style.fontSize = '11px';
+			divArgs.style.color = '#0A84FF';
+			divArgs.style.marginTop = '4px';
+			divArgs.style.whiteSpace = 'nowrap';
+			divArgs.style.overflow = 'hidden';
+			divArgs.style.textOverflow = 'ellipsis';
+			divArgs.innerHTML = `<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" style="vertical-align: middle; margin-right: 4px; position:relative; top:-1px;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg><strong>Parámetros:</strong> ${args}`;
+
+			const divInfoContainer = document.createElement('div');
+			divInfoContainer.style.flex = '1';
+			divInfoContainer.style.display = 'flex';
+			divInfoContainer.style.flexDirection = 'column';
+			divInfoContainer.style.justifyContent = 'center';
+			divInfoContainer.style.overflow = 'hidden';
+			divInfoContainer.style.padding = '0 15px';
+			
+			divInfoContainer.appendChild(divDesc);
+			divInfoContainer.appendChild(divArgs);
 
 			const isFavorite = favoritesList.includes(file);
 			
@@ -234,7 +258,7 @@ async function cargarScripts() {
 			cardActions.appendChild(btnStop);
 
 			li.appendChild(divHeader);
-			li.appendChild(divDesc);
+			li.appendChild(divInfoContainer);
 			li.appendChild(autostartRow);
 			li.appendChild(liveStatus);
 			li.appendChild(cardActions);

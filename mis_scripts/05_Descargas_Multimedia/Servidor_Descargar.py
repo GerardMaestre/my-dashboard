@@ -1,5 +1,5 @@
 # DESC: Levanta un servidor web temporal en tu PC y genera un código QR para compartir archivos por Wi-Fi.
-# ARGS: Ruta de la carpeta a compartir
+# ARGS: <Ruta_Carpeta>
 
 import os
 import sys
