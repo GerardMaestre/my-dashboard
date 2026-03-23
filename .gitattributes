@@ -1,0 +1,16 @@
+* text=auto eol=lf
+
+# Windows scripts keep CRLF for compatibility
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary files
+*.exe binary
+*.ico binary
+*.zip binary
+*.7z binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
