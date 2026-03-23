@@ -57,7 +57,10 @@ function ensureStandaloneEnvironment() {
                 setTimeout(() => emitOutput({ fileName: 'Sistema', type: 'error', message: 'Fallo al instalar entorno Python (verifique su conexión)' }), 2000);
             }
         });
-    } catch(e) { }
+    } catch(e) {
+		// Si falla el instalador, al menos deja evidencia en consola para debug
+		console.error('[HorusEngine] Error instalando entorno Python:', e);
+    }
 }
 
 // Ejecutamos silenciosamente al arrancar
@@ -158,29 +161,54 @@ function runInternal(fileName, args) {
 }
 
 function runExternal(fileName, args) {
+	// Importante: no usar "start /k" para que el proceso quede registrado y sea stoppable.
 	const filePath = path.join(storageDir, fileName);
 	const info = getScriptInfo(fileName);
-	let command = '';
-
-	if (info.isCmdScript) {
-		command = [quoteCmdArg(filePath), ...args.map(quoteCmdArg)].join(' ');
-	} else if (info.cmd === fileName) {
-		command = [quoteCmdArg(filePath), ...args.map(quoteCmdArg)].join(' ');
-	} else {
-		command = [info.cmd, quoteCmdArg(filePath), ...args.map(quoteCmdArg)].join(' ');
-	}
+	let child = null;
 
 	const envBlock = Object.assign({}, process.env);
 	delete envBlock.PYTHONHOME;
 	delete envBlock.PYTHONPATH;
 
-	spawn('cmd.exe', ['/c', 'start', 'cmd.exe', '/k', command], { 
-		windowsHide: false, 
-		windowsVerbatimArguments: true, 
-		detached: true,
+	const spawnOptions = { 
+		windowsHide: false,
+		detached: false,
+		shell: false,
+		creationFlags: 0,
 		env: envBlock
+	};
+
+	if (info.isCmdScript) {
+		child = spawn(info.cmd, ['/c', filePath, ...args], spawnOptions);
+	} else if (info.cmd === fileName) {
+		child = spawn(filePath, args, spawnOptions);
+	} else {
+		child = spawn(info.cmd, [filePath, ...args], spawnOptions);
+	}
+
+	activeProcesses.set(fileName, child);
+
+	child.stdout.on('data', (data) => {
+		emitOutput({ fileName, type: 'success', message: data.toString() });
 	});
-	return null;
+
+	child.stderr.on('data', (data) => {
+		emitOutput({ fileName, type: 'error', message: data.toString() });
+	});
+
+	child.on('error', (error) => {
+		emitOutput({ fileName, type: 'error', message: String(error) });
+	});
+
+	child.on('close', (code) => {
+		activeProcesses.delete(fileName);
+		if (code !== 0 && code !== null) {
+			emitOutput({ fileName, type: 'error', message: `[SYS] Proceso finalizado con código ${code}. Si pedía permisos, el UAC pudo ser denegado.` });
+		}
+		emitExit({ fileName, code });
+	});
+
+	return child.pid;
 }
 
 function killProcessTree(fileName) {
@@ -261,6 +289,8 @@ const api = {
 	scanGlobalFiles: (callback, progressCallback) => {
 		// Modo Asíncrono no bloqueante absoluto
 		const results = [];
+		const MAX_RESULTS = 200000; // evita que "Ojo de Dios" se coma toda la RAM
+		let reachedMax = false;
 		const excludePatterns = ['\\Windows', '\\ProgramData', '\\node_modules', '\\.git', '\\AppData\\Local\\Microsoft'];
 		
 		// Encontrar discos disponibles
@@ -276,6 +306,7 @@ const api = {
 			async function walk(dir) {
 				activeWorkers++;
 				try {
+					if (reachedMax) return;
 					// Yield event loop completely to prevent UI freeze
 					await new Promise(r => setTimeout(r, 0));
 					
@@ -288,9 +319,11 @@ const api = {
 						if (entry.isDirectory()) {
 							// Ignorar carpetas del nucleo para no morir escaneando sistema
 							if (excludePatterns.some(p => resPath.includes(p))) continue;
+							if (results.length >= MAX_RESULTS) { reachedMax = true; continue; }
 							results.push(`DIR|${resPath}`);
 							walk(resPath); // disparamos el worker asíncrono sin await
 						} else {
+							if (results.length >= MAX_RESULTS) { reachedMax = true; continue; }
 							results.push(`FILE|${resPath}`);
 						}
 					}
@@ -317,8 +350,8 @@ const api = {
 	runScript: ({ fileName, args = '', mode = 'internal' }) => {
 		const parsedArgs = splitArgs(args);
 		if (mode === 'external') {
-			runExternal(fileName, parsedArgs);
-			return { pid: null };
+			const pid = runExternal(fileName, parsedArgs);
+			return { pid };
 		}
 		const pid = runInternal(fileName, parsedArgs);
 		return { pid };
@@ -339,5 +372,5 @@ const api = {
 try {
 	contextBridge.exposeInMainWorld('api', api);
 } catch (err) {
-	globalThis.api = api;
+	console.error('[HorusEngine] No se pudo exponer api mediante contextBridge:', err);
 }
