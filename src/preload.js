@@ -27,7 +27,8 @@ const toolCandidates = {
 	],
 	wiztree: [
 		path.join(storageDir, 'tools', 'WizTree64.exe'),
-		path.join(process.cwd(), 'tools', 'WizTree64.exe')
+		path.join(process.cwd(), 'tools', 'WizTree64.exe'),
+		'C:\\Program Files\\WizTree\\WizTree64.exe'
 	],
 	geek: [
 		path.join(storageDir, 'tools', 'GeekUninstaller.exe'),
@@ -132,22 +133,30 @@ function findExistingTool(paths) {
 
 function runPowerShell(command, timeout = 60000) {
 	return new Promise((resolve, reject) => {
-		execFile(
-			'powershell.exe',
-			['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command],
-			{ windowsHide: true, timeout, maxBuffer: 1024 * 1024 * 10 },
-			(err, stdout, stderr) => {
-				if (err) {
-					if (err.killed) {
-						reject(new Error(`Tiempo de espera agotado tras ${Math.round(timeout / 1000)}s`));
-						return;
-					}
-					reject(new Error(stderr || err.message));
-					return;
-				}
-				resolve({ stdout: (stdout || '').trim(), stderr: (stderr || '').trim() });
-			}
-		);
+		const child = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', '-'], { windowsHide: true });
+		let stdout = '';
+		let stderr = '';
+		child.stdout.on('data', (data) => stdout += data.toString());
+		child.stderr.on('data', (data) => stderr += data.toString());
+		
+		let timer = setTimeout(() => {
+			child.kill();
+			reject(new Error('PowerShell Timeout'));
+		}, timeout);
+
+		child.on('close', (code) => {
+			clearTimeout(timer);
+			if (code !== 0 && stderr) return reject(new Error(stderr));
+			resolve({ stdout: stdout.trim(), stderr: stderr.trim() });
+		});
+		
+		child.on('error', (err) => {
+			clearTimeout(timer);
+			reject(err);
+		});
+
+		child.stdin.write(command + '\n\nExit\n');
+		child.stdin.end();
 	});
 }
 
@@ -251,22 +260,78 @@ async function ghostScanDisk(rootPath = 'C:\\') {
 				);
 			});
 			if (fs.existsSync(tempCsv)) {
-				const csvRaw = fs.readFileSync(tempCsv, 'utf8');
-				const lines = csvRaw.split(/\r?\n/).filter(Boolean).slice(1, 150);
-				const rows = lines.map((line, idx) => {
-					const cols = line.split(',');
-					const fullPath = (cols[0] || '').replace(/^"|"$/g, '');
-					const sizeBytes = Number((cols[2] || '0').replace(/[^\d]/g, '')) || 0;
-					return { id: `wiz-${idx}`, fullPath, sizeBytes };
-				}).filter((x) => x.fullPath && x.sizeBytes > 0).sort((a, b) => b.sizeBytes - a.sizeBytes).slice(0, 25);
-				const total = rows.reduce((acc, cur) => acc + cur.sizeBytes, 0) || 1;
+				const itemsParse = [];
+				const extMap = new Map();
+				let totalFilesBytes = 0;
+				const normBase = (base.endsWith('\\') ? base : base + '\\').toLowerCase();
+
+				await new Promise((resolveParse, rejectParse) => {
+					const readline = require('readline');
+					const fileStream = fs.createReadStream(tempCsv, { encoding: 'utf8' });
+					const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
+					
+					let isFirstLine = true;
+					let i = 0;
+
+					rl.on('line', (line) => {
+						if (isFirstLine) { isFirstLine = false; return; }
+						
+						const firstComma = line.indexOf('",');
+						if (firstComma === -1) return;
+
+						let fullPath = line.substring(1, firstComma).replace(/\\\\/g, '\\');
+						const fullPathLower = fullPath.toLowerCase();
+
+						const rest = line.substring(firstComma + 2);
+						const cols = rest.split(',');
+						const sizeBytes = Number(cols[0]) || 0;
+						const attributes = Number(cols[cols.length - 3]) || 0;
+						const isDir = (attributes & 16) !== 0;
+
+						if (fullPath && sizeBytes > 0) {
+							if (fullPathLower.startsWith(normBase) && fullPath.length > normBase.length) {
+								const subPath = fullPath.substring(normBase.length);
+								const slashIdx = subPath.indexOf('\\');
+								if (slashIdx === -1 || slashIdx === subPath.length - 1) {
+									itemsParse.push({ id: `wiz-${i}`, fullPath, sizeBytes, isDir });
+								}
+							}
+							
+							if (!isDir) {
+								totalFilesBytes += sizeBytes;
+								const idxDot = fullPath.lastIndexOf('.');
+								const idxSlash = fullPath.lastIndexOf('\\');
+								if (idxDot > idxSlash) {
+									const ext = fullPath.substring(idxDot).toLowerCase();
+									extMap.set(ext, (extMap.get(ext) || 0) + sizeBytes);
+								} else {
+									extMap.set('otros', (extMap.get('otros') || 0) + sizeBytes);
+								}
+							}
+						}
+						i++;
+					});
+
+					rl.on('close', resolveParse);
+					rl.on('error', rejectParse);
+				});
+
+				const topItems = itemsParse.sort((a, b) => b.sizeBytes - a.sizeBytes).slice(0, 100);
+				const totalFoldersBytes = topItems.reduce((acc, cur) => acc + cur.sizeBytes, 0) || 1;
+				
+				const topExts = Array.from(extMap.entries())
+					.map(([ext, sizeBytes]) => ({ ext, sizeBytes, percent: Number(Math.max(0.1, (sizeBytes * 100) / (totalFilesBytes || 1)).toFixed(1)) }))
+					.sort((a, b) => b.sizeBytes - a.sizeBytes)
+					.slice(0, 50);
+
 				return {
 					engine: 'wiztree',
-					items: rows.map((item) => ({
+					items: topItems.map((item) => ({
 						...item,
-						name: path.basename(item.fullPath),
-						percent: Math.max(1, Math.round((item.sizeBytes * 100) / total))
-					}))
+						name: path.basename(item.fullPath) || item.fullPath.replace(/\\$/, '').split('\\').pop(),
+						percent: Number(Math.max(0.1, (item.sizeBytes * 100) / totalFoldersBytes).toFixed(1))
+					})),
+					extensions: topExts
 				};
 			}
 		} catch {
@@ -386,30 +451,40 @@ async function ghostUninstallApp(payload) {
 	function Invoke-AutoUninstall([string]$line) {
 	  $parsed = Normalize-UninstallCommand $line;
 	  $code = -1;
+	  
 	  if ($parsed.IsMsi) {
 	    $all = ($line -replace '/I','/X');
 	    if ($all -notmatch '/X') { $all = '/X ' + $all }
-	    if ($all -notmatch '/qn') { $all += ' /qn' }
-	    if ($all -notmatch '/norestart') { $all += ' /norestart' }
-	    $p = Start-Process -FilePath 'msiexec.exe' -ArgumentList $all -Verb RunAs -WindowStyle Hidden -PassThru -Wait;
+	    if ($all -notmatch '/qn') { $all += ' /qn /norestart' }
+	    $p = Start-Process -FilePath 'msiexec.exe' -ArgumentList $all -Verb RunAs -WindowStyle Normal -PassThru -Wait;
 	    return $p.ExitCode
 	  }
 
 	  if (-not $parsed.File) { throw 'Comando de desinstalacion invalido' }
+	  
 	  $argBase = $parsed.Args;
-	  $silentCandidates = @(' /S',' /silent',' /verysilent',' /qn',' /quiet',' /SILENT /NORESTART');
-	  foreach ($s in $silentCandidates) {
-	    try {
-	      $p = Start-Process -FilePath $parsed.File -ArgumentList ($argBase + $s) -Verb RunAs -WindowStyle Hidden -PassThru -Wait -ErrorAction Stop;
-	      $code = $p.ExitCode;
-	      if ($code -in @(0, 1605, 3010)) { return $code }
-	    } catch {
-	      continue
-	    }
+	  $fileLower = $parsed.File.ToLower();
+	  $silentArg = '';
+
+	  # Smart parameter matching
+	  if ($fileLower -match 'unins[a-z0-9]*\\.exe$') {
+	      if ($argBase -notmatch '/VERYSILENT') { $silentArg = ' /VERYSILENT /SUPPRESSMSGBOXES /NORESTART' }
+	  } elseif ($fileLower -match 'uninstall\\.exe$') {
+	      if ($argBase -notmatch '/S') { $silentArg = ' /S' }
 	  }
 
-	  $p2 = Start-Process -FilePath $parsed.File -ArgumentList $argBase -Verb RunAs -WindowStyle Hidden -PassThru -Wait;
-	  return $p2.ExitCode
+	  $finalArgs = ($argBase + $silentArg).Trim();
+	  
+	  try {
+	      $p2 = Start-Process -FilePath $parsed.File -ArgumentList $finalArgs -Verb RunAs -WindowStyle Normal -PassThru -Wait -ErrorAction Stop;
+	      if ($p2) { return $p2.ExitCode }
+	  } catch {
+	      # Fallback a silencioso nativo si la ruta necesita comillas
+	      $p3 = Start-Process -FilePath ('"' + $parsed.File + '"') -ArgumentList $finalArgs -Verb RunAs -WindowStyle Normal -PassThru -Wait -ErrorAction SilentlyContinue;
+	      if ($p3) { return $p3.ExitCode }
+	  }
+
+	  return $code;
 	}
 
 	function Remove-AppRegistryEntries([string]$subKey) {
@@ -813,7 +888,8 @@ const api = {
 	},
 	desinstalarApp: async (payload) => {
 		return await ghostUninstallApp(payload);
-	}
+	},
+	getFileIcon: (filePath) => ipcRenderer.invoke('get-file-icon', filePath)
 };
 
 try {

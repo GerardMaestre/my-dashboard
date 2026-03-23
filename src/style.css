@@ -741,3 +741,8 @@ input:checked + .slider:before { transform: translateX(12px); }
 .ojo-screen.active {
     display: block;
 }
+
+@keyframes scanProgress {
+    0% { transform: translateX(-50%); }
+    100% { transform: translateX(150%); }
+}

@@ -41,6 +41,15 @@ const fs = require('fs');
   app.on('ready', () => {
     mainWindow = createWindow();
     
+    ipcMain.handle('get-file-icon', async (event, filePath) => {
+        try {
+            const icon = await app.getFileIcon(filePath, { size: 'normal' });
+            return icon.toDataURL();
+        } catch (e) {
+            return null;
+        }
+    });
+
     ipcMain.on('window-control', (event, action) => {
       const win = BrowserWindow.fromWebContents(event.sender);
       if (!win) return;

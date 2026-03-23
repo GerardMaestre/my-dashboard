@@ -59,11 +59,6 @@
                     <span class="icon-container" style="background:var(--mac-green);"><svg viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg></span>
                     Activos
                 </button>
-                <div class="sidebar-divider" style="margin-top: 5px; margin-bottom: 5px;"></div>
-                <button class="sidebar-item" id="btn-ojo-dios" onclick="abrirOjoDeDios()">
-                    <span class="icon-container" style="background:linear-gradient(135deg, #FF9500, #FFCC00);"><svg viewBox="0 0 24 24" fill="white"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg></span>
-                    Ojo Total
-                </button>
                 <div class="sidebar-divider" style="margin-top: 8px; margin-bottom: 8px;"></div>
                 <div class="sidebar-group-title">Centro Pro</div>
                 <button class="sidebar-item" onclick="abrirOjoDeDios('search')">
@@ -188,18 +183,48 @@
                     </div>
                 </div>
 
-                <div id="ojo-screen-disk" class="ojo-screen">
-                    <div class="mac-group ghost-tools-panel" style="margin-bottom: 14px;">
-                        <div class="mac-group-row" style="gap: 12px; justify-content: space-between;">
-                            <div class="mac-group-label">Mapa de Disco</div>
+                <div id="ojo-screen-disk" class="ojo-screen" style="height: 100%;">
+                    <div class="mac-group ghost-tools-panel" style="margin-bottom: 0; display: flex; flex-direction: column; height: 100%; padding: 15px;">
+                        <div class="mac-group-row" style="gap: 12px; justify-content: space-between; flex-shrink: 0;">
+                            <div class="mac-group-label">Mapa de Disco <span style="font-size:10px; color:#888; font-weight:normal; margin-left:8px;">WizTree Engine Integrado</span></div>
                             <div style="display:flex; gap:8px;">
                                 <button id="ojo-btn-disk-up" class="mac-action-btn edit">Subir nivel</button>
                                 <button id="ojo-btn-scan" class="mac-action-btn run">Raiz C:</button>
                             </div>
                         </div>
-                        <div id="ojo-disk-breadcrumb" class="disk-breadcrumb"></div>
-                        <div id="ojo-disk-treemap" class="disk-treemap"></div>
-                        <div id="ojo-disk-results" class="disk-bar-list"></div>
+                        <div id="ojo-disk-breadcrumb" class="disk-breadcrumb" style="flex-shrink: 0; margin-bottom: 12px;"></div>
+                        
+                        <!-- Panel de carga -->
+                        <div id="ojo-disk-loading" style="display: none; flex: 1; min-height: 0; margin-bottom: 15px; align-items: center; justify-content: center; flex-direction: column; gap: 15px;">
+                            <div style="width: 300px; height: 10px; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; position: relative;">
+                                <div style="width: 50%; height: 100%; background: linear-gradient(90deg, #0A84FF, #5b5bd6); border-radius: 10px; animation: scanProgress 1.5s infinite ease-in-out alternate;"></div>
+                            </div>
+                            <div style="color: #0A84FF; font-size: 14px; font-weight: 500; text-shadow: 0 0 10px rgba(10,132,255,0.3);">Analizando MFT con WizTree Engine... (Por favor, espera)</div>
+                        </div>
+
+                        <div id="ojo-disk-content" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+                            <!-- Panel dividido como WizTree -->
+                            <div style="display: flex; gap: 15px; flex: 1; min-height: 0; margin-bottom: 15px;">
+                                <!-- Panel izquierdo (Listado de carpetas/archivos) -->
+                                <div style="flex: 2; display: flex; flex-direction: column; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
+                                    <div style="padding: 8px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">Listado (Top Mayores)</div>
+                                    <div id="ojo-disk-results" class="disk-bar-list" style="flex: 1; overflow-y: auto; padding: 10px;"></div>
+                                </div>
+
+                                <!-- Panel derecho (Extensiones) -->
+                                <div style="flex: 1; display: flex; flex-direction: column; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
+                                    <div style="padding: 8px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">Top Extensiones</div>
+                                    <div id="ojo-disk-extensions" class="disk-bar-list" style="flex: 1; overflow-y: auto; padding: 10px;"></div>
+                                </div>
+                            </div>
+
+                            <!-- Treemap inferior -->
+                            <div style="flex: 1; min-height: 150px; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; display: flex; flex-direction: column;">
+                                <div style="padding: 8px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">Treemap Visual</div>
+                                <div id="ojo-disk-treemap" class="disk-treemap" style="flex: 1; padding: 10px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 

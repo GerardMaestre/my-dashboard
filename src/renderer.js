@@ -93,11 +93,30 @@ function buildFileUrl(winPath) {
 	return `file://${encodeURI(normalized)}`;
 }
 
-function normalizeDisplayIconPath(iconPath) {
-	let raw = String(iconPath || '').trim();
+function extractIconPath(app) {
+	let raw = String(app?.displayIcon || '').trim();
+
+	if (!raw && app?.uninstallString) {
+		const match = app.uninstallString.match(/([a-zA-Z]:\\[^"*,]+\.(exe|ico))/i);
+		if (match) raw = match[1];
+	}
+
+	if (!raw && app?.installLocation) {
+		raw = app.installLocation;
+	}
+
 	if (!raw) return '';
-	raw = raw.replace(/^"|"$/g, '');
+
 	raw = raw.replace(/,[\s\-]?\d+$/, '').trim();
+	raw = raw.replace(/"/g, '');
+
+	raw = raw.replace(/%ProgramFiles%/gi, 'C:\\Program Files')
+			 .replace(/%ProgramFiles\(x86\)%/gi, 'C:\\Program Files (x86)')
+			 .replace(/%AppData%/gi, 'C:\\Users\\gerar\\AppData\\Roaming')
+			 .replace(/%LocalAppData%/gi, 'C:\\Users\\gerar\\AppData\\Local')
+			 .replace(/%SystemRoot%/gi, 'C:\\Windows')
+			 .replace(/%WinDir%/gi, 'C:\\Windows');
+
 	return raw;
 }
 
@@ -111,15 +130,31 @@ function safeText(v) {
 	}[ch]));
 }
 
-function getAppIconMarkup(app) {
-	const displayIconPath = normalizeDisplayIconPath(app?.displayIcon || app?.iconPath || '');
+function getAppIconMarkup(app, iconId) {
+	const fallback = getAppIcon(app?.name || '');
+	return `<span class="app-icon-fallback" id="${iconId}">${fallback}</span>`;
+}
+
+async function loadRealAppIcon(app, iconId) {
+	const displayIconPath = extractIconPath(app);
+	if (!displayIconPath) return;
+
 	if (displayIconPath.match(/\.(png|jpg|jpeg|webp|gif|ico)$/i)) {
 		const src = buildFileUrl(displayIconPath);
-		return `<img class="app-icon-img" src="${src}" alt="icon" loading="lazy" onerror="this.remove()">`;
+		const el = document.getElementById(iconId);
+		if (el) el.outerHTML = `<img class="app-icon-img" id="${iconId}" src="${src}" alt="icon" loading="lazy" onerror="this.outerHTML=''">`;
+		return;
 	}
 
-	const fallback = getAppIcon(app?.name || '');
-	return `<span class="app-icon-fallback">${fallback}</span>`;
+	if (window.api && api.getFileIcon) {
+		try {
+			const base64 = await api.getFileIcon(displayIconPath);
+			if (base64) {
+				const el = document.getElementById(iconId);
+				if (el) el.outerHTML = `<img class="app-icon-img" id="${iconId}" src="${base64}" alt="icon" loading="lazy">`;
+			}
+		} catch (e) {}
+	}
 }
 
 function filterAppsList(query) {
@@ -624,6 +659,27 @@ api.onProcessExit(({ fileName, code }) => {
 
 	silentRuns.delete(fileName);
 });
+let isDragging = false;
+let startY, startX, initialTop, initialLeft;
+
+window.addEventListener('error', (event) => {
+	setTimeout(() => {
+		if (typeof logTerminal === 'function') {
+			logTerminal(`[UI Crash] ${event.message} at ${event.filename}:${event.lineno}`, 'error');
+		} else {
+			alert(`FATAL UI ERROR: ${event.message} en lineno ${event.lineno}`);
+		}
+	}, 100);
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+	setTimeout(() => {
+		if (typeof logTerminal === 'function') {
+			logTerminal(`[UI Promise] ${event.reason?.message || event.reason}`, 'error');
+		}
+	}, 100);
+});
+
 let selectedIndex = -1;
 
 // Atajos de teclado utiles
@@ -854,10 +910,12 @@ function buscarEnIndiceLocal(query, max = 120) {
 function renderEscaneoDisco(payload) {
 	const container = document.getElementById('ojo-disk-results');
 	const treemap = document.getElementById('ojo-disk-treemap');
+	const extensionsContainer = document.getElementById('ojo-disk-extensions');
 	const breadcrumb = document.getElementById('ojo-disk-breadcrumb');
 	if (!container) return;
 	container.innerHTML = '';
 	if (treemap) treemap.innerHTML = '';
+	if (extensionsContainer) extensionsContainer.innerHTML = '';
 
 	const currentPath = ghostState.diskPathStack[ghostState.diskPathStack.length - 1] || 'C:\\';
 	if (breadcrumb) {
@@ -928,6 +986,26 @@ function renderEscaneoDisco(payload) {
 		fragment.appendChild(card);
 	});
 	container.appendChild(fragment);
+
+	if (payload?.extensions && extensionsContainer) {
+		const extFragment = document.createDocumentFragment();
+		payload.extensions.forEach((ext) => {
+			const card = document.createElement('div');
+			card.className = 'disk-item';
+			const pct = Math.max(1, Math.min(100, Number(ext.percent || 0)));
+			card.innerHTML = `
+				<div class="disk-topline">
+					<span style="color:#a8c7fa; font-weight:600;">${ext.ext}</span>
+					<span>${formatBytes(ext.sizeBytes)}</span>
+				</div>
+				<div class="disk-bar-bg" style="background: rgba(255,255,255,0.05);">
+					<div class="disk-bar-fill" style="width:${pct}%; background: linear-gradient(90deg, #5b5bd6, #a8c7fa);"></div>
+				</div>
+			`;
+			extFragment.appendChild(card);
+		});
+		extensionsContainer.appendChild(extFragment);
+	}
 }
 
 function navegarDiscoAIndice(idx) {
@@ -955,10 +1033,16 @@ async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false) {
 
 	const scanSeq = ++ghostState.diskScanSeq;
 	const btn = document.getElementById('ojo-btn-scan');
+	const loadingEl = document.getElementById('ojo-disk-loading');
+	const contentEl = document.getElementById('ojo-disk-content');
+	
 	if (btn) {
 		btn.disabled = true;
-		btn.textContent = 'Escaneando...';
+		btn.textContent = 'Calculando...';
 	}
+	if (loadingEl) loadingEl.style.display = 'flex';
+	if (contentEl) contentEl.style.display = 'none';
+
 	try {
 		setOjoStatus(`Escaneando ${targetRoot}...`);
 		const payload = await api.escanearDisco(targetRoot);
@@ -966,7 +1050,6 @@ async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false) {
 		renderEscaneoDisco(payload);
 		ghostState.diskScanned = true;
 		setOjoStatus(`Mapa listo para ${targetRoot} (${(payload?.engine || 'native').toUpperCase()}).`);
-		mostrarToast('Escaneo de disco completado', 'success');
 	} catch (error) {
 		setOjoStatus('Fallo en escaneo de disco. Reintenta.');
 		mostrarToast('Error escaneando disco', 'error');
@@ -976,6 +1059,8 @@ async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false) {
 			btn.disabled = false;
 			btn.textContent = 'Raiz C:';
 		}
+		if (loadingEl) loadingEl.style.display = 'none';
+		if (contentEl) contentEl.style.display = 'flex';
 	}
 }
 
@@ -993,9 +1078,13 @@ function renderAppsGrid(apps) {
 	apps.slice(0, 300).forEach((app) => {
 		const card = document.createElement('div');
 		card.className = 'app-card';
-		const iconMarkup = getAppIconMarkup(app);
+		const iconId = `app-icon-${Math.random().toString(36).substr(2, 9)}`;
+		const iconMarkup = getAppIconMarkup(app, iconId);
 		const safeName = safeText(app.name);
 		const safeVersion = safeText(app.version || '-');
+
+		// Iniciar carga asíncrona del icono real nativo al encolar la carta
+		setTimeout(() => loadRealAppIcon(app, iconId), 10);
 		const safePublisher = safeText(app.publisher || 'Desconocido');
 		card.innerHTML = `
 			<div class="app-card-top">
