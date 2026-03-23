@@ -74,7 +74,10 @@ function ensureStandaloneEnvironment() {
                 setTimeout(() => emitOutput({ fileName: 'Sistema', type: 'error', message: 'Fallo al instalar entorno Python (verifique su conexión)' }), 2000);
             }
         });
-    } catch(e) { }
+    } catch(e) {
+		// Si falla el instalador, al menos deja evidencia en consola para debug
+		console.error('[HorusEngine] Error instalando entorno Python:', e);
+    }
 }
 
 // Ejecutamos silenciosamente al arrancar
@@ -554,30 +557,54 @@ function runInternal(fileName, args) {
 function runExternal(fileName, args) {
 	const filePath = path.join(storageDir, toOsRelativePath(fileName));
 	const info = getScriptInfo(fileName);
-	let command = '';
+	let child = null;
 
 	emitOutput({ fileName: 'Sistema', type: 'system', message: `[VISUAL] Abriendo ejecución externa para ${fileName}` });
 	if (shouldForceExternal(fileName)) {
 		emitOutput({ fileName: 'Sistema', type: 'system', message: '[VISUAL] Esta herramienta puede solicitar permisos UAC y abrir su interfaz nativa.' });
 	}
 
-	if (info.isCmdScript) {
-		command = [quoteCmdArg(filePath), ...args.map(quoteCmdArg)].join(' ');
-	} else if (info.cmd === fileName) {
-		command = [quoteCmdArg(filePath), ...args.map(quoteCmdArg)].join(' ');
-	} else {
-		command = [info.cmd, quoteCmdArg(filePath), ...args.map(quoteCmdArg)].join(' ');
-	}
-
 	const envBlock = createSanitizedEnv(process.env);
 
-	spawn('cmd.exe', ['/c', 'start', 'cmd.exe', '/k', command], { 
-		windowsHide: false, 
-		windowsVerbatimArguments: true, 
-		detached: true,
+	const spawnOptions = { 
+		windowsHide: false,
+		detached: false,
+		shell: false,
+		creationFlags: 0,
 		env: envBlock
+	};
+
+	if (info.isCmdScript) {
+		child = spawn(info.cmd, ['/c', filePath, ...args], spawnOptions);
+	} else if (info.cmd === fileName) {
+		child = spawn(filePath, args, spawnOptions);
+	} else {
+		child = spawn(info.cmd, [filePath, ...args], spawnOptions);
+	}
+
+	activeProcesses.set(fileName, child);
+
+	child.stdout.on('data', (data) => {
+		emitOutput({ fileName, type: 'success', message: data.toString() });
 	});
-	return null;
+
+	child.stderr.on('data', (data) => {
+		emitOutput({ fileName, type: 'error', message: data.toString() });
+	});
+
+	child.on('error', (error) => {
+		emitOutput({ fileName, type: 'error', message: String(error) });
+	});
+
+	child.on('close', (code) => {
+		activeProcesses.delete(fileName);
+		if (code !== 0 && code !== null) {
+			emitOutput({ fileName, type: 'error', message: `[SYS] Proceso finalizado con código ${code}. Si pedía permisos, el UAC pudo ser denegado.` });
+		}
+		emitExit({ fileName, code });
+	});
+
+	return child.pid;
 }
 
 function killProcessTree(fileName) {
@@ -658,7 +685,7 @@ const api = {
 	scanGlobalFiles: (callback, progressCallback) => {
 		// Modo Asincrono no bloqueante absoluto con proteccion de carrera.
 		const results = [];
-		const maxResults = 1500000;
+		const maxResults = 200000;
 		const excludePatterns = ['\\Windows', '\\ProgramData', '\\node_modules', '\\.git', '\\AppData\\Local\\Microsoft'];
 		let completed = false;
 		let lastProgressSent = 0;
@@ -752,8 +779,8 @@ const api = {
 		}
 
 		if (modeUsed === 'external') {
-			runExternal(fileName, parsedArgs);
-			return { pid: null, modeUsed, forcedExternal };
+			const pid = runExternal(fileName, parsedArgs);
+			return { pid, modeUsed, forcedExternal };
 		}
 		const pid = runInternal(fileName, parsedArgs);
 		return { pid, modeUsed: 'internal', forcedExternal: false };
@@ -792,5 +819,5 @@ const api = {
 try {
 	contextBridge.exposeInMainWorld('api', api);
 } catch (err) {
-	globalThis.api = api;
+	console.error('[HorusEngine] No se pudo exponer api mediante contextBridge:', err);
 }

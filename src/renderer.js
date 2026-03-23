@@ -232,8 +232,11 @@ async function cargarScripts() {
 	for (const folder of sortedFolders) {
 		const header = document.createElement('li');
 		header.className = 'category-header';
-		header.innerHTML = `<svg viewBox="0 0 24 24"><path d="M10 4H4c-1.11 0-2 .89-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
-		<span>${folder.replace(/_/g, ' ')}</span>`;
+		// No usar innerHTML con datos dinámicos del disco (XSS en nombres de carpetas)
+		header.innerHTML = `<svg viewBox="0 0 24 24"><path d="M10 4H4c-1.11 0-2 .89-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`;
+		const title = document.createElement('span');
+		title.textContent = folder.replace(/_/g, ' ');
+		header.appendChild(title);
 		fragment.appendChild(header);
 
 		for (const file of groups[folder]) {
@@ -300,7 +303,12 @@ async function cargarScripts() {
 			divArgs.style.whiteSpace = 'nowrap';
 			divArgs.style.overflow = 'hidden';
 			divArgs.style.textOverflow = 'ellipsis';
-			divArgs.innerHTML = `<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" style="vertical-align: middle; margin-right: 4px; position:relative; top:-1px;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg><strong>Parámetros:</strong> ${args}`;
+			// Importante: evita XSS (args viene de metadatos/entrada y no debe inyectarse con innerHTML)
+			divArgs.innerHTML = `<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" style="vertical-align: middle; margin-right: 4px; position:relative; top:-1px;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`;
+			const strong = document.createElement('strong');
+			strong.textContent = 'Parámetros:';
+			divArgs.appendChild(strong);
+			divArgs.appendChild(document.createTextNode(' ' + args));
 
 			const modeHint = document.createElement('div');
 			const preferredMode = proModePolicy[file] || document.getElementById('run-mode').value;
@@ -457,7 +465,6 @@ function ejecutar(fileName, isAuto = false, isSilent = false) {
 		}
 		return;
 	}
-
 	if (api.isRunning(fileName)) {
 		if (!isSilent) logTerminal(`[!] Ya está en ejecución: ${fileName}`, 'error');
 		return;
@@ -1339,6 +1346,45 @@ function filtrarOjoDeDios() {
 
 function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+}
+
+function highlightText(text, parts) {
+	// Devuelve nodos con resaltado seguro (sin inyectar HTML)
+	if (!parts || parts.length === 0) return document.createTextNode(text);
+
+	const escapedParts = parts
+		.map(p => String(p).trim())
+		.filter(Boolean)
+		.map(escapeRegExp);
+
+	if (escapedParts.length === 0) return document.createTextNode(text);
+
+	const regex = new RegExp(`(${escapedParts.join('|')})`, 'gi');
+	const fragment = document.createDocumentFragment();
+	let lastIndex = 0;
+	let match = null;
+
+	while ((match = regex.exec(text)) !== null) {
+		const start = match.index;
+		const matched = match[0];
+		if (start > lastIndex) {
+			fragment.appendChild(document.createTextNode(text.slice(lastIndex, start)));
+		}
+
+		const span = document.createElement('span');
+		span.style.color = '#FF9500';
+		span.textContent = matched;
+		fragment.appendChild(span);
+
+		lastIndex = start + matched.length;
+		if (matched.length === 0) regex.lastIndex++;
+	}
+
+	if (lastIndex < text.length) {
+		fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+	}
+
+	return fragment;
 }
 function closeSettings() {
 	const modal = document.getElementById('settings-modal');
