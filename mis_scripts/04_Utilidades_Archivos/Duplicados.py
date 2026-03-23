@@ -86,10 +86,9 @@ for rutas in posibles_duplicados.values():
                     nueva_ruta = os.path.join(RUTA_PAPELERA, f"{base} ({contador}){ext}")
                     contador += 1
 
+                visual = archivo_nombre[:40] + '...' if len(archivo_nombre) > 40 else archivo_nombre
                 try:
                     shutil.move(ruta, nueva_ruta)
-                    # Truncamos strings largos para interfaz limpia
-                    visual = archivo_nombre[:40] + '...' if len(archivo_nombre) > 40 else archivo_nombre
                     print(f" [!] CLON AISLADO: {visual}")
                 except Exception as e:
                     print(f" [X] ERROR aislando {visual}: {e}")

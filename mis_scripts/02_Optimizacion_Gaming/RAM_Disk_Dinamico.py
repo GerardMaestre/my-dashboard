@@ -1,4 +1,4 @@
-# DESC: Combierte tu Memoria RAM en un Disco virtual ultra-rápido (20,000 MB/s). Elimina tiempos de carga en juegos pesados usando enlaces Mágicos (Junctions).
+# DESC: Convierte tu Memoria RAM en un Disco virtual ultra-rápido (20,000 MB/s). Elimina tiempos de carga en juegos pesados usando enlaces Mágicos (Junctions).
 # ARGS: Ninguno (Tiene interfaz interactiva)
 
 import os
