@@ -7,6 +7,130 @@ let isFirstLoad = true;
 let autostartList = JSON.parse(localStorage.getItem('nexus_autostart') || '[]');
 let favoritesList = JSON.parse(localStorage.getItem('nexus_favorites') || '[]');
 
+const proModePolicy = {
+	'07_Herramientas_Pro/Analizador_Espacio.py': 'internal',
+	'07_Herramientas_Pro/Desinstalador_Root.bat': 'external'
+};
+
+function resolveRunMode(fileName, selectedMode) {
+	return proModePolicy[fileName] || selectedMode;
+}
+
+function modeLabel(mode) {
+	return mode === 'external' ? 'Visual externo' : 'Integrado';
+}
+
+const ghostState = {
+	engines: {
+		everythingAvailable: false,
+		wiztreeAvailable: false,
+		geekAvailable: false
+	},
+	searchTimer: null,
+	lastQuery: '',
+	activeScreen: 'search',
+	appsLoaded: false,
+	diskScanned: false,
+	listenersBound: false,
+	searchAppsCache: null,
+	searchSeq: 0,
+	diskPathStack: ['C:\\'],
+	diskScanSeq: 0,
+	appsList: []
+};
+
+function formatBytes(size) {
+	const bytes = Number(size || 0);
+	if (bytes <= 0) return '0 B';
+	const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+	let idx = 0;
+	let value = bytes;
+	while (value >= 1024 && idx < units.length - 1) {
+		value /= 1024;
+		idx += 1;
+	}
+	return `${value.toFixed(value >= 100 ? 0 : 1)} ${units[idx]}`;
+}
+
+function getFileIconFromPath(filePath) {
+	const lower = String(filePath || '').toLowerCase();
+	if (lower.endsWith('.exe')) return '🧩';
+	if (lower.endsWith('.pdf')) return '📕';
+	if (lower.endsWith('.zip') || lower.endsWith('.rar') || lower.endsWith('.7z')) return '🗜️';
+	if (lower.endsWith('.mp4') || lower.endsWith('.mkv') || lower.endsWith('.avi')) return '🎬';
+	if (lower.endsWith('.mp3') || lower.endsWith('.wav') || lower.endsWith('.flac')) return '🎵';
+	if (lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.webp')) return '🖼️';
+	if (lower.endsWith('.doc') || lower.endsWith('.docx')) return '📝';
+	if (lower.endsWith('.xls') || lower.endsWith('.xlsx') || lower.endsWith('.csv')) return '📊';
+	if (lower.endsWith('.js') || lower.endsWith('.ts') || lower.endsWith('.py') || lower.endsWith('.bat')) return '💻';
+	return '📄';
+}
+
+function getAppIcon(name) {
+	const n = String(name || '').toLowerCase();
+	if (n.includes('chrome')) return '🌐';
+	if (n.includes('firefox')) return '🦊';
+	if (n.includes('edge')) return '🔷';
+	if (n.includes('discord')) return '🎮';
+	if (n.includes('spotify')) return '🎧';
+	if (n.includes('steam')) return '🎲';
+	if (n.includes('nvidia')) return '🟩';
+	if (n.includes('adobe')) return '🅰️';
+	if (n.includes('microsoft')) return '🪟';
+	if (n.includes('visual studio') || n.includes('vscode')) return '🧠';
+	if (n.includes('java')) return '☕';
+	if (n.includes('python')) return '🐍';
+	return '🧩';
+}
+
+function buildFileUrl(winPath) {
+	const p = String(winPath || '').trim();
+	if (!p) return '';
+	const normalized = p.replace(/\\/g, '/');
+	if (/^[a-zA-Z]:\//.test(normalized)) {
+		return `file:///${encodeURI(normalized)}`;
+	}
+	return `file://${encodeURI(normalized)}`;
+}
+
+function normalizeDisplayIconPath(iconPath) {
+	let raw = String(iconPath || '').trim();
+	if (!raw) return '';
+	raw = raw.replace(/^"|"$/g, '');
+	raw = raw.replace(/,[\s\-]?\d+$/, '').trim();
+	return raw;
+}
+
+function safeText(v) {
+	return String(v || '').replace(/[&<>"']/g, (ch) => ({
+		'&': '&amp;',
+		'<': '&lt;',
+		'>': '&gt;',
+		'"': '&quot;',
+		"'": '&#39;'
+	}[ch]));
+}
+
+function getAppIconMarkup(app) {
+	const displayIconPath = normalizeDisplayIconPath(app?.displayIcon || app?.iconPath || '');
+	if (displayIconPath.match(/\.(png|jpg|jpeg|webp|gif|ico)$/i)) {
+		const src = buildFileUrl(displayIconPath);
+		return `<img class="app-icon-img" src="${src}" alt="icon" loading="lazy" onerror="this.remove()">`;
+	}
+
+	const fallback = getAppIcon(app?.name || '');
+	return `<span class="app-icon-fallback">${fallback}</span>`;
+}
+
+function filterAppsList(query) {
+	const term = String(query || '').trim().toLowerCase();
+	if (!term) return ghostState.appsList;
+	return ghostState.appsList.filter((app) => {
+		const fields = [app.name, app.publisher, app.version, app.installLocation].map((x) => String(x || '').toLowerCase());
+		return fields.some((x) => x.includes(term));
+	});
+}
+
 function toggleFavorite(fileName) {
 	if (favoritesList.includes(fileName)) {
 		favoritesList = favoritesList.filter((f) => f !== fileName);
@@ -178,6 +302,14 @@ async function cargarScripts() {
 			divArgs.style.textOverflow = 'ellipsis';
 			divArgs.innerHTML = `<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" style="vertical-align: middle; margin-right: 4px; position:relative; top:-1px;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg><strong>Parámetros:</strong> ${args}`;
 
+			const modeHint = document.createElement('div');
+			const preferredMode = proModePolicy[file] || document.getElementById('run-mode').value;
+			const modeColor = preferredMode === 'external' ? '#FF9F0A' : '#30D158';
+			modeHint.style.fontSize = '11px';
+			modeHint.style.marginTop = '4px';
+			modeHint.style.color = modeColor;
+			modeHint.textContent = `Modo recomendado: ${modeLabel(preferredMode)}`;
+
 			const divInfoContainer = document.createElement('div');
 			divInfoContainer.style.flex = '1';
 			divInfoContainer.style.display = 'flex';
@@ -188,6 +320,7 @@ async function cargarScripts() {
 			
 			divInfoContainer.appendChild(divDesc);
 			divInfoContainer.appendChild(divArgs);
+			divInfoContainer.appendChild(modeHint);
 
 			const isFavorite = favoritesList.includes(file);
 			
@@ -305,14 +438,23 @@ function matarProceso(fileName) {
 
 function ejecutar(fileName, isAuto = false, isSilent = false) {
 	const args = document.getElementById('script-args').value.trim();
-	const isExternal = document.getElementById('run-mode').value === 'external';
+	const selectedMode = document.getElementById('run-mode').value;
+	const modeToUse = resolveRunMode(fileName, selectedMode);
+	const isExternal = modeToUse === 'external';
 
 	if (!isSilent) {
 		logTerminal(`\n▶ Ejecutando: ${fileName} ${args}`, 'command');
+		logTerminal(`[MODO] ${modeLabel(modeToUse)}`, 'system');
 	}
 
 	if (isExternal) {
-		api.runScript({ fileName, args, mode: 'external' });
+		const result = api.runScript({ fileName, args, mode: modeToUse });
+		if (!isSilent) {
+			if (result && result.forcedExternal) {
+				mostrarToast('Herramienta Pro ejecutada en modo visual externo automáticamente.', 'system');
+			}
+			mostrarToast(`Lanzado en modo visual: ${fileName.split('/').pop()}`, 'success');
+		}
 		return;
 	}
 
@@ -325,7 +467,15 @@ function ejecutar(fileName, isAuto = false, isSilent = false) {
 	alternarBotones(fileName, true);
 	runningFiles.add(fileName);
 	if (currentFilter === 'active') aplicarFiltros();
-	api.runScript({ fileName, args, mode: 'internal' });
+	const result = api.runScript({ fileName, args, mode: modeToUse });
+	if (!result || result.pid === null) {
+		runningFiles.delete(fileName);
+		alternarBotones(fileName, false);
+		if (!isSilent) {
+			logTerminal(`[SYS] No se pudo iniciar: ${fileName}`, 'error');
+			mostrarToast(`Error al iniciar ${fileName.split('/').pop()}`, 'error');
+		}
+	}
 }
 
 function toggleAutopilot(fileName) {
@@ -514,10 +664,462 @@ document.addEventListener('keydown', (e) => {
         }
     }
 });
-document.getElementById('btn-refresh').addEventListener('click', cargarScripts);
+document.getElementById('btn-refresh').addEventListener('click', async () => {
+	await cargarScripts();
+	await cargarMotoresFantasma();
+});
 document.getElementById('btn-clear').addEventListener('click', () => {
 	terminal.innerHTML = '<span class="log-system"> Log limpiado.</span>';
 });
+
+async function cargarMotoresFantasma() {
+	const statusEl = document.getElementById('ojo-status');
+	if (!statusEl) return;
+
+	try {
+		ghostState.engines = await api.getGhostEngineStatus();
+		const modeEverything = ghostState.engines.everythingAvailable ? 'Everything' : 'Fallback nativo';
+		const modeWiz = ghostState.engines.wiztreeAvailable ? 'WizTree' : 'Fallback nativo';
+		const modeGeek = ghostState.engines.geekAvailable ? 'Geek' : 'Registro + PowerShell';
+		statusEl.textContent = `Motores activos -> Search: ${modeEverything} | Disco: ${modeWiz} | Apps: ${modeGeek}`;
+	} catch (error) {
+		statusEl.textContent = 'Motores fallback nativo activo';
+		logTerminal(`[Ghost] Error obteniendo estado de motores: ${error.message || error}`, 'error');
+	}
+}
+
+function setOjoScreen(screen) {
+	const target = ['search', 'disk', 'apps'].includes(screen) ? screen : 'search';
+	ghostState.activeScreen = target;
+
+	document.querySelectorAll('.ojo-tab-btn').forEach((btn) => {
+		btn.classList.toggle('active', btn.getAttribute('data-ojo-screen') === target);
+	});
+
+	document.querySelectorAll('.ojo-screen').forEach((view) => {
+		view.classList.toggle('active', view.id === `ojo-screen-${target}`);
+	});
+
+	if (target === 'search') {
+		const input = document.getElementById('ojo-input');
+		if (input) input.focus();
+	} else if (target === 'disk' && !ghostState.diskScanned) {
+		ejecutarEscaneoFantasma();
+	} else if (target === 'apps' && !ghostState.appsLoaded) {
+		cargarAppsFantasma();
+	}
+}
+
+function setOjoStatus(message) {
+	const status = document.getElementById('ojo-status');
+	if (status) status.textContent = message;
+}
+
+function renderResultadosBusqueda(items) {
+	const container = document.getElementById('ojo-results');
+	if (!container) return;
+	container.innerHTML = '';
+
+	if (!items || items.length === 0) {
+		const empty = document.createElement('div');
+		empty.className = 'ghost-item';
+		empty.innerHTML = '<div class="ghost-item-name">Sin resultados para esta busqueda.</div>';
+		container.appendChild(empty);
+		return;
+	}
+
+	setOjoStatus(`Resultados encontrados: ${items.length.toLocaleString()}`);
+
+	const fragment = document.createDocumentFragment();
+	items.forEach((item) => {
+		const row = document.createElement('div');
+		row.className = 'ghost-item';
+		const fileIcon = getFileIconFromPath(item.fullPath || item.name);
+		const sourceLabel = item.source ? `<span style="font-size:10px;color:#8aa7ff;">${item.source}</span>` : '';
+		row.innerHTML = `
+			<div style="font-size:16px;">${fileIcon}</div>
+			<div style="min-width:0;flex:1;">
+				<div class="ghost-item-name">${item.name || 'archivo'} ${sourceLabel}</div>
+				<div class="ghost-item-path">${item.fullPath || ''}</div>
+			</div>
+		`;
+		row.addEventListener('click', () => {
+			if (!item.fullPath) return;
+			if (item.fullPath.startsWith('[APP]')) {
+				if (item.installLocation) {
+					api.openGlobalPath(item.installLocation);
+				} else {
+					mostrarToast('App detectada sin ruta local disponible', 'system');
+				}
+				return;
+			}
+			api.showGlobalItemInFolder(item.fullPath);
+		});
+		fragment.appendChild(row);
+	});
+	container.appendChild(fragment);
+}
+
+async function ejecutarBusquedaFantasma(query) {
+	const q = String(query || '').trim();
+	ghostState.lastQuery = q;
+	const runSeq = ++ghostState.searchSeq;
+	if (q.length < 2) {
+		setOjoStatus('Escribe al menos 2 caracteres para buscar.');
+		renderResultadosBusqueda([]);
+		return;
+	}
+
+	try {
+		const qLower = q.toLowerCase();
+		const isExeSearch = qLower === '.exe' || qLower === 'exe' || qLower.endsWith('.exe');
+		const shouldSearchApps = isExeSearch || qLower.includes('app') || qLower.includes('program');
+		const useBackend = ghostState.engines.everythingAvailable || !ojoIndexed;
+		setOjoStatus(useBackend ? 'Buscando en indice RAM + motor rapido...' : 'Buscando en indice RAM...');
+
+		const backendPromise = useBackend ? api.buscarArchivo(q, 12000) : Promise.resolve([]);
+		const appsPromise = shouldSearchApps
+			? (ghostState.searchAppsCache ? Promise.resolve(ghostState.searchAppsCache) : api.listarAppsInstaladas())
+			: Promise.resolve([]);
+		const [backend, apps] = await Promise.all([backendPromise, appsPromise]);
+		if (runSeq !== ghostState.searchSeq || ghostState.lastQuery !== q) return;
+		if (shouldSearchApps && !ghostState.searchAppsCache) ghostState.searchAppsCache = apps || [];
+
+		const local = ojoIndexed ? buscarEnIndiceLocal(q, 12000) : [];
+		const mergedMap = new Map();
+		for (const item of local) mergedMap.set((item.fullPath || '').toLowerCase(), item);
+		for (const item of (backend || [])) {
+			const key = (item.fullPath || '').toLowerCase();
+			if (!mergedMap.has(key)) mergedMap.set(key, { ...item, source: 'backend' });
+		}
+
+		if (shouldSearchApps) {
+			for (const app of (apps || [])) {
+				const n = String(app.name || '').toLowerCase();
+				if (!n.includes(qLower) && !isExeSearch) continue;
+				const syntheticPath = `[APP] ${app.name}`;
+				const key = syntheticPath.toLowerCase();
+				if (!mergedMap.has(key)) {
+					mergedMap.set(key, {
+						id: `app-${app.id || app.name}`,
+						name: `${app.name}.exe`,
+						fullPath: syntheticPath,
+						installLocation: app.installLocation || '',
+						source: 'apps-registry'
+					});
+				}
+			}
+		}
+
+		renderResultadosBusqueda(Array.from(mergedMap.values()));
+	} catch (error) {
+		setOjoStatus('Error de busqueda. Reintenta.');
+		mostrarToast('Error en Buscador Cuantico', 'error');
+		logTerminal(`[Ghost] Buscar archivo fallo: ${error.message || error}`, 'error');
+	}
+}
+
+function buscarEnIndiceLocal(query, max = 120) {
+	const qLower = query.toLowerCase();
+	const parts = qLower.split(' ').filter(Boolean);
+	const isExeSearch = qLower === '.exe' || qLower === 'exe' || qLower.endsWith('.exe');
+	const matches = [];
+	for (let i = 0; i < ojoDatabase.length; i++) {
+		const itemLine = ojoDatabase[i];
+		const fullPath = itemLine.startsWith('DIR|') ? itemLine.substring(4) : itemLine.substring(5);
+		const lower = fullPath.toLowerCase();
+		const pass = isExeSearch
+			? (itemLine.startsWith('FILE|') && lower.endsWith('.exe'))
+			: parts.every((p) => lower.includes(p));
+		if (pass) {
+			matches.push({
+				id: `local-${i}`,
+				name: fullPath.split('\\').pop() || fullPath,
+				fullPath,
+				source: 'ram'
+			});
+			if (matches.length >= max) break;
+		}
+	}
+	return matches;
+}
+
+function renderEscaneoDisco(payload) {
+	const container = document.getElementById('ojo-disk-results');
+	const treemap = document.getElementById('ojo-disk-treemap');
+	const breadcrumb = document.getElementById('ojo-disk-breadcrumb');
+	if (!container) return;
+	container.innerHTML = '';
+	if (treemap) treemap.innerHTML = '';
+
+	const currentPath = ghostState.diskPathStack[ghostState.diskPathStack.length - 1] || 'C:\\';
+	if (breadcrumb) {
+		breadcrumb.innerHTML = '';
+		ghostState.diskPathStack.forEach((p, idx) => {
+			const node = document.createElement('button');
+			node.className = 'disk-crumb';
+			node.textContent = idx === 0 ? p : (p.split('\\').filter(Boolean).slice(-1)[0] || p);
+			node.addEventListener('click', () => navegarDiscoAIndice(idx));
+			breadcrumb.appendChild(node);
+			if (idx < ghostState.diskPathStack.length - 1) {
+				const sep = document.createElement('span');
+				sep.className = 'disk-crumb-sep';
+				sep.textContent = '›';
+				breadcrumb.appendChild(sep);
+			}
+		});
+	}
+
+	const items = payload?.items || [];
+	if (items.length === 0) {
+		container.innerHTML = '<div class="disk-item"><div class="disk-topline"><span>No hay datos de escaneo.</span></div></div>';
+		return;
+	}
+
+	if (treemap) {
+		const tmFragment = document.createDocumentFragment();
+		items.slice(0, 180).forEach((item, idx) => {
+			const tile = document.createElement('button');
+			tile.className = 'disk-tile';
+			const pct = Math.max(1, Math.min(100, Number(item.percent || 0)));
+			tile.style.flex = `${Math.max(1, Math.round(pct))} 1 140px`;
+			tile.style.minHeight = `${70 + Math.min(90, Math.round(pct * 1.1))}px`;
+			tile.style.background = `linear-gradient(135deg, hsla(${(idx * 27) % 360},75%,48%,0.78), hsla(${(idx * 27 + 42) % 360},80%,28%,0.85))`;
+			tile.innerHTML = `
+				<div class="disk-tile-name">${item.name || item.fullPath || 'item'}</div>
+				<div class="disk-tile-meta">${formatBytes(item.sizeBytes)} • ${pct}%</div>
+			`;
+			tile.title = item.fullPath || item.name || '';
+			tile.addEventListener('click', () => {
+				if (!item.fullPath) return;
+				ejecutarEscaneoFantasma(item.fullPath, true);
+			});
+			tmFragment.appendChild(tile);
+		});
+		treemap.appendChild(tmFragment);
+	}
+
+	const fragment = document.createDocumentFragment();
+	items.slice(0, 220).forEach((item) => {
+		const card = document.createElement('div');
+		card.className = 'disk-item';
+		const pct = Math.max(1, Math.min(100, Number(item.percent || 0)));
+		card.innerHTML = `
+			<div class="disk-topline">
+				<span>${item.name || item.fullPath}</span>
+				<span>${formatBytes(item.sizeBytes)}</span>
+			</div>
+			<div class="disk-bar-bg">
+				<div class="disk-bar-fill" style="width:${pct}%"></div>
+			</div>
+		`;
+		card.addEventListener('click', () => {
+			if (!item.fullPath) return;
+			if (item.fullPath.toLowerCase() === currentPath.toLowerCase()) return;
+			ejecutarEscaneoFantasma(item.fullPath, true);
+		});
+		fragment.appendChild(card);
+	});
+	container.appendChild(fragment);
+}
+
+function navegarDiscoAIndice(idx) {
+	if (idx < 0 || idx >= ghostState.diskPathStack.length) return;
+	ghostState.diskPathStack = ghostState.diskPathStack.slice(0, idx + 1);
+	const target = ghostState.diskPathStack[idx] || 'C:\\';
+	ejecutarEscaneoFantasma(target, false);
+}
+
+function subirNivelDisco() {
+	if (ghostState.diskPathStack.length <= 1) return;
+	ghostState.diskPathStack.pop();
+	const target = ghostState.diskPathStack[ghostState.diskPathStack.length - 1] || 'C:\\';
+	ejecutarEscaneoFantasma(target, false);
+}
+
+async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false) {
+	const targetRoot = String(rootPath || ghostState.diskPathStack[ghostState.diskPathStack.length - 1] || 'C:\\');
+	if (pushStack) {
+		const last = ghostState.diskPathStack[ghostState.diskPathStack.length - 1];
+		if (!last || last.toLowerCase() !== targetRoot.toLowerCase()) {
+			ghostState.diskPathStack.push(targetRoot);
+		}
+	}
+
+	const scanSeq = ++ghostState.diskScanSeq;
+	const btn = document.getElementById('ojo-btn-scan');
+	if (btn) {
+		btn.disabled = true;
+		btn.textContent = 'Escaneando...';
+	}
+	try {
+		setOjoStatus(`Escaneando ${targetRoot}...`);
+		const payload = await api.escanearDisco(targetRoot);
+		if (scanSeq !== ghostState.diskScanSeq) return;
+		renderEscaneoDisco(payload);
+		ghostState.diskScanned = true;
+		setOjoStatus(`Mapa listo para ${targetRoot} (${(payload?.engine || 'native').toUpperCase()}).`);
+		mostrarToast('Escaneo de disco completado', 'success');
+	} catch (error) {
+		setOjoStatus('Fallo en escaneo de disco. Reintenta.');
+		mostrarToast('Error escaneando disco', 'error');
+		logTerminal(`[Ghost] Escaneo disco fallo: ${error.message || error}`, 'error');
+	} finally {
+		if (btn) {
+			btn.disabled = false;
+			btn.textContent = 'Raiz C:';
+		}
+	}
+}
+
+function renderAppsGrid(apps) {
+	const grid = document.getElementById('ojo-apps-grid');
+	if (!grid) return;
+	grid.innerHTML = '';
+
+	if (!apps || apps.length === 0) {
+		grid.innerHTML = '<div class="app-card"><div class="app-title">No hay aplicaciones detectadas.</div></div>';
+		return;
+	}
+
+	const fragment = document.createDocumentFragment();
+	apps.slice(0, 300).forEach((app) => {
+		const card = document.createElement('div');
+		card.className = 'app-card';
+		const iconMarkup = getAppIconMarkup(app);
+		const safeName = safeText(app.name);
+		const safeVersion = safeText(app.version || '-');
+		const safePublisher = safeText(app.publisher || 'Desconocido');
+		card.innerHTML = `
+			<div class="app-card-top">
+				<div class="app-icon">${iconMarkup}</div>
+				<div style="min-width:0;flex:1;">
+					<div class="app-title">${safeName}</div>
+					<div class="app-meta">Version: ${safeVersion}</div>
+				</div>
+			</div>
+			<div class="app-meta">Proveedor: ${safePublisher}</div>
+		`;
+
+		const actions = document.createElement('div');
+		actions.style.display = 'flex';
+		actions.style.gap = '8px';
+
+		const locateBtn = document.createElement('button');
+		locateBtn.className = 'mac-action-btn edit';
+		locateBtn.textContent = 'Ruta';
+		locateBtn.addEventListener('click', () => {
+			if (app.installLocation) {
+				api.openGlobalPath(app.installLocation);
+			} else {
+				mostrarToast('No hay ruta de instalacion disponible', 'system');
+			}
+		});
+
+		const uninstallBtn = document.createElement('button');
+		uninstallBtn.className = 'mac-action-btn stop';
+		uninstallBtn.textContent = 'Auto-Desinstalar';
+		uninstallBtn.addEventListener('click', async () => {
+			const ok = window.confirm(`Desinstalar automaticamente ${app.name} y limpiar rastros detectables?`);
+			if (!ok) return;
+			try {
+				uninstallBtn.disabled = true;
+				uninstallBtn.textContent = 'Procesando...';
+				const result = await api.desinstalarApp(app);
+				if (result?.started) {
+					mostrarToast(`Desinstalacion automatica finalizada para ${app.name}`, 'success');
+					logTerminal(`[Ghost] Auto-desinstalacion: ${app.name} | exit:${result.exitCode} | limpieza:${result.cleanupPerformed ? 'si' : 'no'}`, 'system');
+				} else {
+					mostrarToast(`Proceso no confirmado para ${app.name}`, 'error');
+				}
+				await cargarAppsFantasma();
+			} catch (error) {
+				mostrarToast(`No se pudo desinstalar ${app.name}`, 'error');
+				logTerminal(`[Ghost] Desinstalar fallo (${app.name}): ${error.message || error}`, 'error');
+			} finally {
+				uninstallBtn.disabled = false;
+				uninstallBtn.textContent = 'Auto-Desinstalar';
+			}
+		});
+
+		actions.appendChild(locateBtn);
+		actions.appendChild(uninstallBtn);
+		card.appendChild(actions);
+		fragment.appendChild(card);
+	});
+	grid.appendChild(fragment);
+}
+
+async function cargarAppsFantasma() {
+	const btn = document.getElementById('ojo-btn-apps');
+	const searchInput = document.getElementById('ojo-apps-search');
+	if (btn) {
+		btn.disabled = true;
+		btn.textContent = 'Cargando...';
+	}
+	try {
+		setOjoStatus('Listando aplicaciones instaladas...');
+		const apps = await api.listarAppsInstaladas();
+		ghostState.appsList = apps;
+		const filtered = filterAppsList(searchInput?.value || '');
+		renderAppsGrid(filtered);
+		ghostState.appsLoaded = true;
+		setOjoStatus(`Aplicaciones detectadas: ${apps.length}. Mostradas: ${filtered.length}.`);
+		mostrarToast(`Apps detectadas: ${apps.length}`, 'system');
+	} catch (error) {
+		setOjoStatus('No se pudo cargar la lista de aplicaciones.');
+		mostrarToast('Error cargando aplicaciones', 'error');
+		logTerminal(`[Ghost] Listar apps fallo: ${error.message || error}`, 'error');
+	} finally {
+		if (btn) {
+			btn.disabled = false;
+			btn.textContent = 'Cargar Apps';
+		}
+	}
+}
+
+function bindGhostEvents() {
+	if (ghostState.listenersBound) return;
+	ghostState.listenersBound = true;
+
+	const searchInput = document.getElementById('ojo-input');
+	if (searchInput) {
+		searchInput.addEventListener('input', (event) => {
+			const query = event.target.value;
+			if (ghostState.searchTimer) clearTimeout(ghostState.searchTimer);
+			ghostState.searchTimer = setTimeout(() => ejecutarBusquedaFantasma(query), 120);
+		});
+	}
+
+	const scanBtn = document.getElementById('ojo-btn-scan');
+	if (scanBtn) {
+		scanBtn.addEventListener('click', () => {
+			ghostState.diskPathStack = ['C:\\'];
+			ejecutarEscaneoFantasma('C:\\', false);
+		});
+	}
+
+	const upBtn = document.getElementById('ojo-btn-disk-up');
+	if (upBtn) upBtn.addEventListener('click', subirNivelDisco);
+
+	const appsBtn = document.getElementById('ojo-btn-apps');
+	if (appsBtn) appsBtn.addEventListener('click', cargarAppsFantasma);
+
+	const appsSearch = document.getElementById('ojo-apps-search');
+	if (appsSearch) {
+		appsSearch.addEventListener('input', (event) => {
+			const filtered = filterAppsList(event.target.value || '');
+			renderAppsGrid(filtered);
+			setOjoStatus(`Aplicaciones filtradas: ${filtered.length}/${ghostState.appsList.length}`);
+		});
+	}
+
+	document.querySelectorAll('.ojo-tab-btn').forEach((btn) => {
+		btn.addEventListener('click', () => {
+			setOjoScreen(btn.getAttribute('data-ojo-screen') || 'search');
+		});
+	});
+}
 
 let searchTimeout;
 let currentFilter = 'all';
@@ -610,6 +1212,8 @@ window.openScript = openScript;
 
 api.getStorageDir();
 cargarScripts();
+cargarMotoresFantasma();
+bindGhostEvents();
 
 
 function toggleTerminal() {
@@ -667,7 +1271,8 @@ window.copiarTerminal = copiarTerminal;
 
 // Theming & Settings Logic
 function openSettings() {
-    document.getElementById('settings-modal').classList.add('hidden');
+	const modal = document.getElementById('settings-modal');
+	if (modal) modal.classList.add('active');
 }
 
 // ==========================================
@@ -677,28 +1282,30 @@ let ojoDatabase = [];
 let ojoIndexing = false;
 let ojoIndexed = false;
 
-function abrirOjoDeDios() {
+function abrirOjoDeDios(screen = 'search') {
     const modal = document.getElementById('modal-ojo-dios');
     if (modal) {
         modal.classList.add('active');
-        const input = document.getElementById('ojo-input');
-        if (input) input.focus();
+		cargarMotoresFantasma();
+		setOjoScreen(screen);
         
         if (!ojoIndexed && !ojoIndexing) {
             ojoIndexing = true;
-            document.getElementById('ojo-status').textContent = "Mapeando el disco duro hacia la memoria RAM... (Iniciando)";
+			setOjoStatus('Mapeando el disco hacia memoria RAM para busqueda total...');
             
             api.scanGlobalFiles((results) => {
                 ojoDatabase = results;
                 ojoIndexed = true;
                 ojoIndexing = false;
-                document.getElementById('ojo-status').textContent = `Índice listo: ${ojoDatabase.length.toLocaleString()} archivos inyectados en RAM.`;
-                filtrarOjoDeDios();
+				setOjoStatus(`Indice local listo: ${ojoDatabase.length.toLocaleString()} rutas en RAM.`);
+				if (ghostState.activeScreen === 'search') {
+					filtrarOjoDeDios();
+				}
             }, (count) => {
                 // Progress update
-                document.getElementById('ojo-status').textContent = `Indexando a ultra-velocidad: ${count.toLocaleString()} archivos encontrados...`;
+				setOjoStatus(`Indexando RAM: ${count.toLocaleString()} rutas...`);
             });
-        } else {
+		} else if (ghostState.activeScreen === 'search') {
             filtrarOjoDeDios();
         }
     }
@@ -717,90 +1324,25 @@ document.addEventListener('keydown', (e) => {
 });
 
 const ojoInput = document.getElementById('ojo-input');
-if (ojoInput) {
-    ojoInput.addEventListener('input', filtrarOjoDeDios);
-}
+
 
 function filtrarOjoDeDios() {
     const input = document.getElementById('ojo-input');
-    const ul = document.getElementById('ojo-results');
+	const ul = document.getElementById('ojo-results');
     if (!input || !ul) return;
     
     const query = input.value.trim().toLowerCase();
-    ul.innerHTML = '';
-    
-    if (query.length < 2) return;
-    if (!ojoIndexed) return;
-    
-    const parts = query.split(' ');
-    let matches = [];
-    
-    for (let i = 0; i < ojoDatabase.length; i++) {
-        const itemLine = ojoDatabase[i]; // ej: "FILE|C:\Users\foo\bar.txt"
-        
-        // Extraer nombre del archivo velozmente
-        const lastSlash = Math.max(itemLine.lastIndexOf('\\'), itemLine.lastIndexOf('/'));
-        const name = lastSlash !== -1 ? itemLine.substring(lastSlash + 1) : itemLine;
-        const lowerName = name.toLowerCase();
-        
-        if (parts.every(p => lowerName.includes(p))) {
-            matches.push({ line: itemLine, name: name });
-            if (matches.length >= 100) break; // Límite por rendimiento visual y DOM
-        }
-    }
-    
-    if (matches.length === 0) {
-        ul.innerHTML = '<li style="color:#888; padding: 20px; text-align:center;">Ningún archivo coincide con tu búsqueda (Ojo de Dios).</li>';
-        return;
-    }
-    
-    const iconMap = {
-        'DIR': '📁',
-        'FILE': '📄'
-    };
-    
-    const fragment = document.createDocumentFragment();
-    matches.forEach(m => {
-        const typeMatch = m.line.substring(0, 4); // "DIR|" o "FILE|"
-        const type = typeMatch.startsWith('DIR') ? 'DIR' : 'FILE';
-        const fullPath = type === 'DIR' ? m.line.substring(4) : m.line.substring(5);
-        
-        const li = document.createElement('li');
-        li.style.cssText = `
-            background: rgba(255, 255, 255, 0.03); border-radius: 8px; padding: 10px 15px; 
-            display: flex; align-items: center; cursor: pointer; border: 1px solid transparent; transition: 0.1s;
-        `;
-        li.onmouseenter = () => { li.style.background = 'rgba(10, 132, 255, 0.15)'; li.style.borderColor = 'rgba(10, 132, 255, 0.3)'; };
-        li.onmouseleave = () => { li.style.background = 'rgba(255, 255, 255, 0.03)'; li.style.borderColor = 'transparent'; };
-        
-        // Match words for highlighting
-        let displayName = m.name;
-        parts.forEach(p => {
-            const regex = new RegExp(`(${escapeRegExp(p)})`, 'gi');
-            displayName = displayName.replace(regex, '<span style="color:#FF9500;">$1</span>');
-        });
-
-        li.innerHTML = `
-            <div style="font-size: 20px; margin-right: 15px;">${iconMap[type] || '📄'}</div>
-            <div style="flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
-                <div style="color: white; font-weight: 500; font-size: 14px;">${displayName}</div>
-                <div style="color: #888; font-size: 11px;">${fullPath}</div>
-            </div>
-        `;
-        li.onclick = () => {
-            api.showGlobalItemInFolder(fullPath);
-            cerrarOjoDeDios();
-        };
-        fragment.appendChild(li);
-    });
-    ul.appendChild(fragment);
+	ul.innerHTML = '';
+	if (query.length < 2) return;
+	ejecutarBusquedaFantasma(query);
 }
 
 function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
 }
 function closeSettings() {
-    document.getElementById('settings-modal').classList.remove('active');
+	const modal = document.getElementById('settings-modal');
+	if (modal) modal.classList.remove('active');
 }
 window.openSettings = openSettings;
 window.closeSettings = closeSettings;
@@ -811,6 +1353,8 @@ function changeTheme() {
     localStorage.setItem('nexus_theme', theme);
 }
 window.changeTheme = changeTheme;
+window.abrirOjoDeDios = abrirOjoDeDios;
+window.cerrarOjoDeDios = cerrarOjoDeDios;
 
 // Init Theme on Load
 const savedTheme = localStorage.getItem('nexus_theme') || 'dark';

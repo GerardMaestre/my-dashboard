@@ -1,6 +1,7 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
-const { spawn, execSync } = require('child_process');
+const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { spawn, execSync, exec } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
 // =========================================================
 // ARRANQUE NORMAL DEL DASHBOARD (Doble clic en el icono)
