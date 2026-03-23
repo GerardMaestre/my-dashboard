@@ -10,10 +10,44 @@ import re
 if sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
 
-if not ctypes.windll.shell32.IsUserAnAdmin():
-    print("[!] Escalando a Administrador para falsificar MAC...")
-    ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
-    sys.exit()
+import atexit, tempfile, time
+def _horus_cleanup():
+    if "HORUS_LOG_FILE" in os.environ:
+        try: open(os.environ["HORUS_LOG_FILE"] + ".done", "w").close()
+        except: pass
+atexit.register(_horus_cleanup)
+
+if "--horus-log" in sys.argv:
+    idx = sys.argv.index("--horus-log")
+    log_file = sys.argv[idx + 1]
+    sys.stdout = open(log_file, "w", encoding="utf-8")
+    sys.stderr = sys.stdout
+    del sys.argv[idx:idx+2]
+    os.environ["HORUS_LOG_FILE"] = log_file
+elif not ctypes.windll.shell32.IsUserAnAdmin():
+    print("[!] Solicitando permisos de Administrador para Spoofing (Acepta el escudo amarillo abajo)...", flush=True)
+    log_file = os.path.join(tempfile.gettempdir(), f"horus_admin_{os.getpid()}.log")
+    open(log_file, "w").close()
+    params = f'"{os.path.abspath(__file__)}" ' + " ".join(f'"{a}"' for a in sys.argv[1:]) + f' --horus-log "{log_file}"'
+    if ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, params, None, 0) <= 32:
+        print("[X] Elevación UAC rechazada.", flush=True); sys.exit(1)
+    
+    print("[*] Privilegios obtenidos. Ejecutando falsificación de red en modo oculto...", flush=True)
+    done_file = log_file + ".done"
+    with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+        while True:
+            line = f.readline()
+            if not line:
+                if os.path.exists(done_file):
+                    res = f.read()
+                    if res: print(res, end="", flush=True)
+                    break
+                time.sleep(0.1)
+                continue
+            print(line, end="", flush=True)
+    try: os.remove(log_file); os.remove(done_file)
+    except: pass
+    sys.exit(0)
 
 print("="*65)
 print("        ⚡ HORUS ENGINE - PROTOCOLO FANTASMA ⚡       ")

@@ -433,7 +433,8 @@ function openScript(fileName) {
 function logTerminal(mensaje, tipo) {
 	const span = document.createElement('span');
 	span.className = `log-line log-${tipo}`;
-	span.innerText = mensaje;
+	// Limpiar códigos ANSI de la consola de Python/CMD
+	span.textContent = String(mensaje).replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
 	terminal.appendChild(span);
 	
 	// Limitar el registro a 1000 lineas para evitar sobrecarga de memoria

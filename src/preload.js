@@ -21,9 +21,10 @@ const pythonExePath = path.join(pythonEnvPath, 'python.exe');
 // Autoinstalador silencioso de Python Portable
 function ensureStandaloneEnvironment() {
     const pipPath = path.join(pythonEnvPath, 'Scripts', 'pip.exe');
+    const pyZipPath = path.join(pythonEnvPath, 'python311.zip');
     
-    // Si ya existe python Y pip, estamos listos.
-    if (fs.existsSync(pythonExePath) && fs.existsSync(pipPath)) return;
+    // Si ya existe python, su núcleo comprimido Y pip, estamos listos.
+    if (fs.existsSync(pythonExePath) && fs.existsSync(pyZipPath) && fs.existsSync(pipPath)) return;
     
     try {
         if (fs.existsSync(pythonEnvPath)) {
@@ -111,12 +112,24 @@ function runInternal(fileName, args) {
 	const info = getScriptInfo(fileName);
 	let child = null;
 
+	// Clonar entorno y purgar variables Python globales que envenenan el entorno portable
+	const envBlock = Object.assign({}, process.env);
+	delete envBlock.PYTHONHOME;
+	delete envBlock.PYTHONPATH;
+
+	const spawnOptions = { 
+		windowsHide: true, 
+		detached: false, 
+		shell: false, 
+		creationFlags: 0x08000000, 
+		env: envBlock 
+	};
 	if (info.isCmdScript) {
-		child = spawn(info.cmd, ['/c', filePath, ...args], { windowsHide: true });
+		child = spawn(info.cmd, ['/c', filePath, ...args], spawnOptions);
 	} else if (info.cmd === fileName) {
-		child = spawn(filePath, args, { windowsHide: true });
+		child = spawn(filePath, args, spawnOptions);
 	} else {
-		child = spawn(info.cmd, [filePath, ...args], { windowsHide: true });
+		child = spawn(info.cmd, [filePath, ...args], spawnOptions);
 	}
 
 	activeProcesses.set(fileName, child);
@@ -157,7 +170,16 @@ function runExternal(fileName, args) {
 		command = [info.cmd, quoteCmdArg(filePath), ...args.map(quoteCmdArg)].join(' ');
 	}
 
-	spawn('cmd.exe', ['/c', 'start', 'cmd.exe', '/k', command], { windowsHide: false, windowsVerbatimArguments: true, detached: true });
+	const envBlock = Object.assign({}, process.env);
+	delete envBlock.PYTHONHOME;
+	delete envBlock.PYTHONPATH;
+
+	spawn('cmd.exe', ['/c', 'start', 'cmd.exe', '/k', command], { 
+		windowsHide: false, 
+		windowsVerbatimArguments: true, 
+		detached: true,
+		env: envBlock
+	});
 	return null;
 }
 

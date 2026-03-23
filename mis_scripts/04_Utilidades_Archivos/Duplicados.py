@@ -11,15 +11,34 @@ if sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
 
 # Configuración
-if len(sys.argv) > 1 and not sys.argv[1].startswith("--"):
-    RUTA_ESCANEO = sys.argv[1]
+argumentos = [arg for arg in sys.argv[1:] if not arg.startswith("--")]
+
+if len(argumentos) >= 1:
+    # Al unir los argumentos, soportamos rutas con espacios sin necesidad de comillas.
+    RUTA_ESCANEO = " ".join(argumentos).strip('"').strip("'")
+    if not os.path.exists(RUTA_ESCANEO):
+        print(f"[X] ERROR: La ruta especificada no existe: {RUTA_ESCANEO}")
+        sys.exit(1)
+        
+    # Bloqueo de seguridad: Evitar escanear carpetas del sistema
+    ruta_abs = os.path.abspath(RUTA_ESCANEO).lower()
+    rutas_prohibidas = [
+        "c:\\windows", 
+        "c:\\program files", 
+        "c:\\program files (x86)", 
+        "c:\\programdata"
+    ]
+    if ruta_abs == "c:\\" or any(ruta_abs.startswith(p) for p in rutas_prohibidas):
+        print(f"\n[!] AVISO DE SEGURIDAD (HORUS ENGINE) [!]")
+        print(f"[X] Está TERMINANTEMENTE PROHIBIDO escanear carpetas del sistema: {RUTA_ESCANEO}")
+        print("[X] Windows utiliza miles de archivos duplicados (Librerías DLL) a propósito.")
+        print("[X] Si el cazador de duplicados los aísla, romperás Windows o tus aplicaciones.")
+        print("[X] Usa esta herramienta SÓLO en carpetas personales (Documentos, Fotos, Descargas, Discos Externos).\n")
+        sys.exit(1)
 else:
     RUTA_ESCANEO = os.path.join(Path.home(), "Downloads")
 
-if len(sys.argv) > 2:
-    RUTA_PAPELERA = sys.argv[2]
-else:
-    RUTA_PAPELERA = os.path.join(RUTA_ESCANEO, "DUPLICADOS_A_BORRAR")
+RUTA_PAPELERA = os.path.join(RUTA_ESCANEO, "DUPLICADOS_A_BORRAR")
 
 def hash_archivo(ruta):
     """Crea una huella digital única (hash) del archivo para compararlo."""
