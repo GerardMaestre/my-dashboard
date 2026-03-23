@@ -5,6 +5,7 @@ import os
 import sys
 import json
 import subprocess
+import threading
 from pathlib import Path
 
 if hasattr(sys.stdout, 'reconfigure'):
@@ -32,10 +33,10 @@ CONFIG_FILE = os.path.join(HORUS_DIR, "macros_config.json")
 
 # Macros por defecto si es la primera vez
 default_macros = {
-    "//correo": "test@gmail.com",
-    "//HORUS": "⚡ HORUS ENGINE ACTIVADO ⚡",
-    "//atencion": "Hola, gracias por contactar. En un momento te atiendo.",
-    "//gg": "Good Game Well Played! :)"
+    "/correo": "test@gmail.com",
+    "/HORUS": "⚡ HORUS ENGINE ACTIVADO ⚡",
+    "/atencion": "Hola, gracias por contactar. En un momento te atiendo.",
+    "/gg": "Good Game Well Played! :)"
 }
 
 if not os.path.exists(CONFIG_FILE):
@@ -46,6 +47,19 @@ else:
     with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
         try:
             macros = json.load(f)
+            # Migración automática si el usuario venía de la versión con "//"
+            migrated = False
+            new_macros = {}
+            for k, v in macros.items():
+                if k.startswith('//'):
+                    new_macros['/' + k[2:]] = v
+                    migrated = True
+                else:
+                    new_macros[k] = v
+            macros = new_macros
+            if migrated:
+                with open(CONFIG_FILE, 'w', encoding='utf-8') as fw:
+                    json.dump(macros, fw, indent=4, ensure_ascii=False)
         except:
             macros = default_macros
 
@@ -97,10 +111,20 @@ print("[!] Minimízala o escóndela.")
 print("    Si quieres apagar las macros, simplemente cierra el HORUS o detén este script.")
 print("\n[Modo Silencioso Activado...]")
 
+# Watchdog para cerrar automáticamente si se pierde conexión con el HORUS (EOF pipe)
+def _watchdog():
+    try:
+        sys.stdin.read()
+    except Exception:
+        pass
+    os._exit(0)
+
+threading.Thread(target=_watchdog, daemon=True).start()
+
 try:
     # Bloquea el hilo eternamente esperando que presiones la tecla final o cierres
     keyboard.wait()
 except KeyboardInterrupt:
     print("\n[*] Apagando inyector...")
-    sys.exit()
+    os._exit(0)
 

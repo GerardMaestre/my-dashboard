@@ -166,7 +166,9 @@ function killProcessTree(fileName) {
 	if (!child) return false;
 
 	if (process.platform === 'win32') {
-		execFile('taskkill', ['/pid', String(child.pid), '/T', '/F'], () => {});
+		execFile('taskkill', ['/pid', String(child.pid), '/T', '/F'], (err) => {
+			if (err) child.kill('SIGKILL');
+		});
 	} else {
 		child.kill('SIGKILL');
 	}
@@ -214,10 +216,10 @@ const api = {
 			if (!fs.existsSync(configPath)) {
 				try {
 					const default_macros = {
-						"//correo": "test@gmail.com",
-						"//HORUS": "⚡ HORUS ENGINE ACTIVADO ⚡",
-						"//atencion": "Hola, gracias por contactar. En un momento te atiendo.",
-						"//gg": "Good Game Well Played! :)"
+						"/correo": "test@gmail.com",
+						"/HORUS": "⚡ HORUS ENGINE ACTIVADO ⚡",
+						"/atencion": "Hola, gracias por contactar. En un momento te atiendo.",
+						"/gg": "Good Game Well Played! :)"
 					};
 					fs.mkdirSync(appDataNexus, { recursive: true });
 					fs.writeFileSync(configPath, JSON.stringify(default_macros, null, 4), 'utf8');
