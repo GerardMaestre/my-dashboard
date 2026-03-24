@@ -155,8 +155,8 @@
     <div id="toast-container" class="toast-container"></div>
 
     <!-- MODAL OJO DE DIOS -->
-    <div id="modal-ojo-dios" class="modal-overlay" onclick="if(event.target===this) cerrarOjoDeDios()" style="z-index: 10000; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px);">
-        <div class="modal-content mac-window" style="width: 90vw; max-width: 1200px; height: 86vh; background: rgba(30, 30, 30, 0.90); border: 1px solid rgba(255,255,255,0.1); padding: 0; display: flex; flex-direction: column; opacity: 1; transform: scale(1);">
+<div id="modal-ojo-dios" class="modal-overlay" onclick="if(event.target===this) cerrarOjoDeDios()" style="z-index: 10000; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px);">
+        <div class="modal-content mac-window" style="width: calc(100vw - 40px); max-width: none; height: calc(100vh - 40px); background: rgba(30, 30, 30, 0.90); border: 1px solid rgba(255,255,255,0.1); padding: 0; display: flex; flex-direction: column; opacity: 1; transform: scale(1); border-radius: 12px;">
             <div style="padding: 20px; display: flex; flex-direction: column; gap: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); -webkit-app-region: drag;">
                 <div style="display: flex; justify-content: space-between; align-items: center; -webkit-app-region: no-drag;">
                     <h2 style="margin: 0; font-size: 20px; font-weight: 500; display: flex; align-items: center; gap: 10px;">
@@ -194,7 +194,6 @@
                         </div>
                         <div id="ojo-disk-breadcrumb" class="disk-breadcrumb" style="flex-shrink: 0; margin-bottom: 12px;"></div>
                         
-                        <!-- Panel de carga -->
                         <div id="ojo-disk-loading" style="display: none; flex: 1; min-height: 0; margin-bottom: 15px; align-items: center; justify-content: center; flex-direction: column; gap: 15px;">
                             <div style="width: 300px; height: 10px; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; position: relative;">
                                 <div style="width: 50%; height: 100%; background: linear-gradient(90deg, #0A84FF, #5b5bd6); border-radius: 10px; animation: scanProgress 1.5s infinite ease-in-out alternate;"></div>
@@ -203,7 +202,6 @@
                         </div>
 
                         <div id="ojo-disk-content" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
-                            <!-- Panel dividido superior -->
                             <div style="display: flex; gap: 15px; flex: 1; max-height: 150px; min-height: 100px; margin-bottom: 15px;">
                                 <div style="flex: 7; min-width: 0; display: flex; flex-direction: column; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
                                     <div style="display: flex; padding: 6px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">
@@ -228,7 +226,7 @@
                                 <div style="padding: 4px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">Treemap Visual</div>
                                 <div id="ojo-disk-treemap" class="disk-treemap" style="flex: 1; padding: 0px; overflow: hidden; position: relative;"></div>
                             </div>
-
+                        </div>
                     </div>
                 </div>
 
