@@ -44,6 +44,7 @@ pids/
 # Native/build artifacts
 build/Release/
 *.tsbuildinfo
+native_modules/**/target/
 
 # Electron scripts bundled locally
 mis_scripts/**/ffmpeg.exe

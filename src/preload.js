@@ -13,7 +13,10 @@ const outputListeners = new Set();
 const exitListeners = new Set();
 const forceExternalScripts = new Set(['07_Herramientas_Pro/Desinstalador_Root.bat']);
 
-const appDataNexus = path.join(process.env.APPDATA || process.env.USERPROFILE, 'HorusEngine');
+const portableBaseDir = process.env.PORTABLE_EXECUTABLE_DIR || '';
+const appDataNexus = portableBaseDir
+	? path.join(portableBaseDir, 'HorusData')
+	: path.join(process.env.APPDATA || process.env.USERPROFILE, 'HorusEngine');
 const pythonEnvPath = isPackaged 
 	? path.join(appDataNexus, 'env_python') 
 	: path.join(storageDir, 'env_python');
@@ -24,6 +27,11 @@ const toolCandidates = {
 		path.join(storageDir, 'tools', 'es.exe'),
 		path.join(process.cwd(), 'tools', 'es.exe'),
 		'Everything\\es.exe'
+	],
+	mft: [
+		path.join(storageDir, 'tools', 'mft_reader.exe'),
+		path.join(process.cwd(), 'tools', 'mft_reader.exe'),
+		path.join(__dirname, '..', 'native_modules', 'mft_reader', 'target', 'release', 'mft_reader.exe')
 	],
 	wiztree: [
 		path.join(storageDir, 'tools', 'WizTree64.exe'),
@@ -172,6 +180,17 @@ function safeJsonParse(payload, fallback = []) {
 	}
 }
 
+function safeJsonObject(payload, fallback = null) {
+	if (!payload) return fallback;
+	try {
+		const parsed = JSON.parse(payload);
+		if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+		return fallback;
+	} catch {
+		return fallback;
+	}
+}
+
 function escapePsSingleQuoted(value) {
 	return String(value || '').replace(/'/g, "''");
 }
@@ -246,6 +265,37 @@ async function ghostSearchFiles(query, limit = 120) {
 
 async function ghostScanDisk(rootPath = 'C:\\') {
 	const base = String(rootPath || 'C:\\');
+	const mftPath = findExistingTool(toolCandidates.mft);
+	if (mftPath) {
+		try {
+			const { stdout } = await new Promise((resolve, reject) => {
+				execFile(
+					mftPath,
+					['scan', '--root', base, '--format', 'json'],
+					{ windowsHide: true, timeout: 180000, maxBuffer: 1024 * 1024 * 64 },
+					(err, out, errOut) => {
+						if (err) {
+							reject(new Error((errOut || err.message || '').trim() || 'mft scan failed'));
+							return;
+						}
+						resolve({ stdout: out || '' });
+					}
+				);
+			});
+
+			const parsed = safeJsonObject(stdout, null);
+			if (parsed && Array.isArray(parsed.items)) {
+				return {
+					engine: 'mft',
+					items: parsed.items,
+					extensions: Array.isArray(parsed.extensions) ? parsed.extensions : []
+				};
+			}
+		} catch {
+			// Continue with fallback.
+		}
+	}
+
 	const wiztreePath = findExistingTool(toolCandidates.wiztree);
 	if (wiztreePath) {
 		try {
@@ -702,6 +752,20 @@ const api = {
 		ensureStorageDir();
 		return storageDir;
 	},
+	getRuntimePaths: async () => ({
+		storageDir,
+		appDataNexus,
+		portableBaseDir,
+		env: {
+			USERPROFILE: process.env.USERPROFILE || '',
+			APPDATA: process.env.APPDATA || '',
+			LOCALAPPDATA: process.env.LOCALAPPDATA || '',
+			PROGRAMFILES: process.env.ProgramFiles || 'C:\\Program Files',
+			PROGRAMFILES_X86: process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)',
+			SYSTEMROOT: process.env.SystemRoot || 'C:\\Windows',
+			WINDIR: process.env.WinDir || process.env.SystemRoot || 'C:\\Windows'
+		}
+	}),
 	listScripts: async () => {
 		ensureStorageDir();
 		try {
@@ -873,6 +937,7 @@ const api = {
 	windowControl: (action) => ipcRenderer.send('window-control', action),
 	getGhostEngineStatus: async () => ({
 		everythingAvailable: !!findExistingTool(toolCandidates.es),
+		mftAvailable: !!findExistingTool(toolCandidates.mft),
 		wiztreeAvailable: !!findExistingTool(toolCandidates.wiztree),
 		geekAvailable: !!findExistingTool(toolCandidates.geek)
 	}),

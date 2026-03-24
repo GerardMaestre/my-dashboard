@@ -199,29 +199,37 @@
                             <div style="width: 300px; height: 10px; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; position: relative;">
                                 <div style="width: 50%; height: 100%; background: linear-gradient(90deg, #0A84FF, #5b5bd6); border-radius: 10px; animation: scanProgress 1.5s infinite ease-in-out alternate;"></div>
                             </div>
-                            <div style="color: #0A84FF; font-size: 14px; font-weight: 500; text-shadow: 0 0 10px rgba(10,132,255,0.3);">Analizando MFT con WizTree Engine... (Por favor, espera)</div>
+                            <div style="color: #0A84FF; font-size: 14px; font-weight: 500; text-shadow: 0 0 10px rgba(10,132,255,0.3);">Analizando estructura de disco con motor hibrido MFT/WizTree... (Por favor, espera)</div>
                         </div>
 
                         <div id="ojo-disk-content" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
-                            <!-- Panel dividido como WizTree -->
+                            <!-- Panel dividido superior -->
                             <div style="display: flex; gap: 15px; flex: 1; min-height: 0; margin-bottom: 15px;">
-                                <!-- Panel izquierdo (Listado de carpetas/archivos) -->
-                                <div style="flex: 2; display: flex; flex-direction: column; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
-                                    <div style="padding: 8px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">Listado (Top Mayores)</div>
-                                    <div id="ojo-disk-results" class="disk-bar-list" style="flex: 1; overflow-y: auto; padding: 10px;"></div>
+                                <!-- Panel izquierdo (Tree View) -->
+                                <div style="flex: 7; min-width: 0; display: flex; flex-direction: column; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
+                                    <div style="display: flex; padding: 6px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">
+                                        <div style="flex: 5;">Nombre</div>
+                                        <div style="flex: 2; text-align: center;">% de Padre</div>
+                                        <div style="flex: 2; text-align: right;">Tamaño</div>
+                                    </div>
+                                    <div id="ojo-disk-results" style="flex: 1; position: relative; overflow-y: auto;"></div>
                                 </div>
-
+                                
                                 <!-- Panel derecho (Extensiones) -->
-                                <div style="flex: 1; display: flex; flex-direction: column; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
-                                    <div style="padding: 8px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">Top Extensiones</div>
-                                    <div id="ojo-disk-extensions" class="disk-bar-list" style="flex: 1; overflow-y: auto; padding: 10px;"></div>
+                                <div style="flex: 3; min-width: 0; display: flex; flex-direction: column; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
+                                    <div style="display: flex; padding: 6px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">
+                                        <div style="flex: 4;">Extensión</div>
+                                        <div style="flex: 2; text-align: right;">%</div>
+                                        <div style="flex: 3; text-align: right;">Tamaño</div>
+                                    </div>
+                                    <div id="ojo-disk-extensions" style="flex: 1; overflow-y: auto; overflow-x: hidden;"></div>
                                 </div>
                             </div>
 
                             <!-- Treemap inferior -->
                             <div style="flex: 1; min-height: 150px; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; display: flex; flex-direction: column;">
-                                <div style="padding: 8px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">Treemap Visual</div>
-                                <div id="ojo-disk-treemap" class="disk-treemap" style="flex: 1; padding: 10px; overflow-y: auto;"></div>
+                                <div style="padding: 4px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">Treemap Visual</div>
+                                <div id="ojo-disk-treemap" class="disk-treemap" style="flex: 1; padding: 10px; overflow: hidden;"></div>
                             </div>
                         </div>
 

@@ -7,7 +7,10 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder"
+    "build": "electron-builder",
+    "build:portable": "electron-builder --win portable",
+    "build:mft": "cargo build --manifest-path native_modules/mft_reader/Cargo.toml --release",
+    "run:mft:test": "native_modules\\mft_reader\\target\\release\\mft_reader.exe scan --root C:\\ --format json"
   },
   "build": {
     "appId": "com.horus.engine",
@@ -17,7 +20,7 @@
       "output": "../dist"
     },
     "win": {
-      "target": ["nsis", "zip"],
+      "target": ["nsis", "zip", "portable"],
       "icon": "assets/icon.ico"
     },
     "nsis": {
