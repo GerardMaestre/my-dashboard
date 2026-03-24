@@ -1,0 +1,141 @@
+﻿async function ghostUninstallApp(payload, force = false) {
+    const uninstallString = String(payload?.uninstallString || '').trim();
+    const quietUninstallString = String(payload?.quietUninstallString || '').trim();
+    const appName = String(payload?.name || 'Aplicacion');
+    const installLocation = String(payload?.installLocation || '').trim();
+
+    if (force) {
+        if (!installLocation) return { started: true, exitCode: 0, forced: true };
+        const psForce = 
+        require('./src/preload.js')ErrorActionPreference = 'SilentlyContinue';
+        if ('' -and (Test-Path '')) {
+            Get-Process | Where-Object { require('./src/preload.js')_.Path -like "*" } | Stop-Process -Force
+            Remove-Item -Path '' -Recurse -Force
+        }
+        ;
+        await runPowerShell(psForce, 30000);
+        return { started: true, exitCode: 0, forced: true };
+    }
+
+    if (!uninstallString && !quietUninstallString) throw new Error('No hay comando de desinstalacion disponible');
+    const cmd = escapePsSingleQuoted(uninstallString || quietUninstallString);
+
+    const ps = 
+    require('./src/preload.js')ErrorActionPreference = 'SilentlyContinue';
+    require('./src/preload.js')line = '';
+    require('./src/preload.js')line = (require('./src/preload.js')line ?? '').Trim();
+    if (-not require('./src/preload.js')line) { exit 1 }
+
+    if (require('./src/preload.js')line.StartsWith('"')) {
+        require('./src/preload.js')parts = require('./src/preload.js')line.Split('"');
+        require('./src/preload.js')file = (require('./src/preload.js')parts[1] ?? '').Trim();
+        require('./src/preload.js')args = (require('./src/preload.js')line.Substring([Math]::Min(require('./src/preload.js')line.Length, require('./src/preload.js')file.Length + 2))).Trim();
+    } else {
+        require('./src/preload.js')idx = require('./src/preload.js')line.IndexOf(' ');
+        if (require('./src/preload.js')idx -gt 0) {
+            require('./src/preload.js')file = require('./src/preload.js')line.Substring(0, require('./src/preload.js')idx).Trim();
+            require('./src/preload.js')args = require('./src/preload.js')line.Substring(require('./src/preload.js')idx + 1).Trim();
+        } else {
+            require('./src/preload.js')file = require('./src/preload.js')line;
+            require('./src/preload.js')args = '';
+        }
+    }
+    
+    require('./src/preload.js')isMsi = (require('./src/preload.js')file -match 'msiexec(\\.exe)?require('./src/preload.js')') -or (require('./src/preload.js')line -match 'msiexec(\\.exe)?');
+    if (require('./src/preload.js')isMsi) {
+        require('./src/preload.js')args = (require('./src/preload.js')line -replace '/I','/X');
+        if (require('./src/preload.js')args -notmatch '/X') { require('./src/preload.js')args = '/X ' + require('./src/preload.js')args }
+        require('./src/preload.js')p = Start-Process -FilePath 'msiexec.exe' -ArgumentList require('./src/preload.js')args -Verb RunAs -WindowStyle Normal -PassThru -Wait;
+        Write-Output ("EXIT:" + require('./src/preload.js')p.ExitCode)
+        exit 0
+    }
+
+    try {
+        require('./src/preload.js')p2 = Start-Process -FilePath require('./src/preload.js')file -ArgumentList require('./src/preload.js')args -Verb RunAs -WindowStyle Normal -PassThru -Wait -ErrorAction Stop;
+        if (require('./src/preload.js')p2) { Write-Output ("EXIT:" + require('./src/preload.js')p2.ExitCode) }
+    } catch {
+        require('./src/preload.js')p3 = Start-Process -FilePath ('"' + require('./src/preload.js')file + '"') -ArgumentList require('./src/preload.js')args -Verb RunAs -WindowStyle Normal -PassThru -Wait -ErrorAction SilentlyContinue;
+        if (require('./src/preload.js')p3) { Write-Output ("EXIT:" + require('./src/preload.js')p3.ExitCode) }
+    }
+    ;
+    
+    const { stdout } = await runPowerShell(ps, 300000);
+    const exitPart = stdout.includes('EXIT:') ? stdout.split('EXIT:')[1]?.trim() : '0';
+    return { started: true, exitCode: Number(exitPart) || 0 };
+}
+
+async function ghostFindLeftovers(payload) {
+    const appName = String(payload?.name || '').trim();
+    const publisher = String(payload?.publisher || '').trim();
+    if (!appName) return [];
+
+    const ps = 
+    require('./src/preload.js')ErrorActionPreference = 'SilentlyContinue';
+    require('./src/preload.js')AppName = '';
+    require('./src/preload.js')Publisher = '';
+    require('./src/preload.js')FoundItems = @()
+
+    require('./src/preload.js')invalidNames = @('Microsoft', 'Microsoft Corporation', 'Windows', 'Intel', 'AMD', 'NVIDIA')
+
+    if ([string]::IsNullOrWhiteSpace(require('./src/preload.js')AppName) -eq require('./src/preload.js')false) {
+        require('./src/preload.js')appDataPaths = @(require('./src/preload.js')env:APPDATA, require('./src/preload.js')env:LOCALAPPDATA, require('./src/preload.js')env:PROGRAMDATA, "require('./src/preload.js')env:USERPROFILE\\Documents")
+        foreach (require('./src/preload.js')path in require('./src/preload.js')appDataPaths) {
+            require('./src/preload.js')targetAppFolder = Join-Path -Path require('./src/preload.js')path -ChildPath require('./src/preload.js')AppName
+            if (Test-Path require('./src/preload.js')targetAppFolder) { require('./src/preload.js')FoundItems += @{Type='Folder'; Path=require('./src/preload.js')targetAppFolder} }
+        }
+
+        require('./src/preload.js')regPaths = @("HKCU:\\Software", "HKLM:\\Software", "HKLM:\\SOFTWARE\\WOW6432Node")
+        foreach (require('./src/preload.js')reg in require('./src/preload.js')regPaths) {
+            require('./src/preload.js')targetAppKey = "require('./src/preload.js')reg\\require('./src/preload.js')AppName"
+            if (Test-Path require('./src/preload.js')targetAppKey) { require('./src/preload.js')FoundItems += @{Type='Registry'; Path=require('./src/preload.js')targetAppKey} }
+        }
+    }
+
+    if ([string]::IsNullOrWhiteSpace(require('./src/preload.js')Publisher) -eq require('./src/preload.js')false -and (require('./src/preload.js')invalidNames -notcontains require('./src/preload.js')Publisher)) {
+        require('./src/preload.js')appDataPaths = @(require('./src/preload.js')env:APPDATA, require('./src/preload.js')env:LOCALAPPDATA, require('./src/preload.js')env:PROGRAMDATA)
+        foreach (require('./src/preload.js')path in require('./src/preload.js')appDataPaths) {
+            require('./src/preload.js')targetPubFolder = Join-Path -Path require('./src/preload.js')path -ChildPath require('./src/preload.js')Publisher
+            if (Test-Path require('./src/preload.js')targetPubFolder) { require('./src/preload.js')FoundItems += @{Type='Folder'; Path=require('./src/preload.js')targetPubFolder} }
+        }
+
+        require('./src/preload.js')regPaths = @("HKCU:\\Software", "HKLM:\\Software", "HKLM:\\SOFTWARE\\WOW6432Node")
+        foreach (require('./src/preload.js')reg in require('./src/preload.js')regPaths) {
+            require('./src/preload.js')targetPubKey = "require('./src/preload.js')reg\\require('./src/preload.js')Publisher"
+            if (Test-Path require('./src/preload.js')targetPubKey) { require('./src/preload.js')FoundItems += @{Type='Registry'; Path=require('./src/preload.js')targetPubKey} }
+        }
+    }
+
+    require('./src/preload.js')FoundItems | ConvertTo-Json -Compress
+    ;
+    
+    const { stdout } = await runPowerShell(ps, 60000);
+    if (!stdout.trim() || stdout.trim() === 'null') return [];
+    try { 
+        let raw = stdout.trim();
+        let p = raw.indexOf('[');
+        if (p == -1) p = raw.indexOf('{');
+        if (p != -1) raw = raw.substring(p);
+        let items = JSON.parse(raw); 
+        return Array.isArray(items) ? items : (items ? [items] : []); 
+    } catch(e) { return []; }
+}
+
+async function ghostCleanLeftovers(items) {
+    if (!Array.isArray(items) || items.length === 0) return { deleted: 0 };
+    let deletedCount = 0;
+    for (const item of items) {
+        if (!item.Path || item.Path.length < 10) continue; 
+        try {
+            const pathE = escapePsSingleQuoted(item.Path);
+            let ps = '';
+            if (item.Type === 'Registry') {
+                ps = Remove-Item -Path '' -Recurse -Force -ErrorAction SilentlyContinue;
+            } else {
+                ps = Remove-Item -Path '' -Recurse -Force -ErrorAction SilentlyContinue;
+            }
+            await runPowerShell(ps, 15000);
+            deletedCount++;
+        } catch (e) {}
+    }
+    return { deleted: deletedCount };
+}
