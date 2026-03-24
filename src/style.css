@@ -887,3 +887,142 @@ input:checked + .slider:before { transform: translateX(12px); }
     border-radius: 2px;
     margin-right: 8px;
 }
+
+/* Contenedor principal del Treemap */
+.wiz-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: #121212; /* Fondo oscuro base */
+    overflow: hidden;
+    border-radius: 6px;
+}
+
+/* Reglas generales para cualquier bloque */
+.wiz-node {
+    position: absolute;
+    box-sizing: border-box;
+    overflow: hidden;
+    transition: filter 0.2s ease;
+}
+
+.wiz-node:hover {
+    filter: brightness(1.3);
+    z-index: 9999 !important; /* Para que resalte al pasar el ratón */
+}
+
+/* Estilo para las Carpetas (Gris elegante) */
+.wiz-folder {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(30, 30, 30, 0.6);
+}
+
+.wiz-folder-header {
+    background: rgba(10, 10, 10, 0.6);
+    color: #a0a0a0;
+    font-size: 11px;
+    font-family: 'Segoe UI', sans-serif;
+    padding-left: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.8);
+}
+
+/* Estilo para los Archivos (Cojín 3D) */
+.wiz-file {
+    border: 1px solid rgba(0, 0, 0, 0.5);
+    box-shadow: inset 1px 1px 3px rgba(255,255,255,0.25), inset -1px -1px 3px rgba(0,0,0,0.5);
+}
+
+/* Texto de los archivos */
+.wiz-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    color: #ffffff;
+    font-size: 10px;
+    font-family: 'Segoe UI', sans-serif;
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0px 1px 3px rgba(0,0,0,0.9);
+    pointer-events: none;
+}
+
+/* Contenedor principal estilo macOS */
+.wiz-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: #1c1c1e; /* Fondo oscuro suave de macOS */
+    overflow: hidden;
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+    /* Tipografía nativa de Apple / Windows limpia */
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+}
+
+.wiz-node {
+    position: absolute;
+    box-sizing: border-box;
+    border-radius: 6px; /* Bordes orgánicos */
+    transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease, filter 0.2s;
+}
+
+/* 📂 CARPETAS: Estilo "Finder" (Glassmorphism sutil) */
+.wiz-folder {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid rgba(255, 255, 255, 0.12); /* Ligero reflejo superior */
+}
+
+.wiz-folder-header {
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    padding-left: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* 📄 ARCHIVOS: Degradados limpios y modernos */
+.wiz-file {
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    box-shadow: inset 0 1px 1px rgba(255,255,255,0.2), 0 2px 6px rgba(0,0,0,0.15);
+    cursor: default;
+}
+
+/* Animación fluida "flotante" al pasar el ratón */
+.wiz-file:hover {
+    transform: scale(1.03) translateY(-2px);
+    z-index: 99999 !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.3);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    filter: brightness(1.15);
+}
+
+/* 🏷️ TEXTOS: Ultra legibles y elegantes */
+.wiz-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 85%;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0px 2px 4px rgba(0,0,0,0.5); /* Sombra difuminada para lectura */
+    pointer-events: none;
+}

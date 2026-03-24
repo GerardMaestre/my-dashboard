@@ -942,96 +942,24 @@ function renderEscaneoDisco(payload) {
 	}
 
 	if (treemap) {
-		// 1. Leer tamaño REAL del DOM para evitar deformaciones,
-		// PERO si el renderizado ocurre en background oscuro (pre-warming c:\) su valor será 0.
-        // En ese caso usamos un aspect ratio panorámico simulado (1200x360).
-		const treemapRect = treemap.getBoundingClientRect();
-		const boxW = treemapRect.width > 200 ? treemapRect.width : 1200; 
-		const boxH = treemapRect.height > 100 ? treemapRect.height : 360; 
+        treemap.innerHTML = ''; 
+        const rect = treemap.getBoundingClientRect();
+		const boxW = Math.max(rect.width, 100); 
+		const boxH = Math.max(rect.height, 100);
 
-		treemap.style.minHeight = '360px'; 
-		treemap.style.position = 'relative';
-
-		let mapItems = items.filter(i => i.sizeBytes > 0).sort((a, b) => b.sizeBytes - a.sizeBytes).slice(0, 180);
+        treemap.style.position = 'relative';
+		treemap.style.height = '100%';
+        
+        let mapItems = items.filter(i => i.sizeBytes > 0).sort((a, b) => b.sizeBytes - a.sizeBytes).slice(0, 250);
 		
 		const tmFragment = document.createDocumentFragment();
 		const layout = getSquarifiedLayout(mapItems, 0, 0, boxW, boxH, 1);
-
-		layout.forEach((rect, idx) => {
-            const { item, x, y, w, h, depth, hue, isParent } = rect;
-            const tile = document.createElement('button');
-            tile.className = 'disk-tile';
-            const pct = Math.max(0.1, Number(item.percent || 1));
-            
-            tile.style.position = 'absolute';
-            tile.style.left = `${(x / boxW) * 100}%`;
-            tile.style.top = `${(y / boxH) * 100}%`;
-            tile.style.width = `${(w / boxW) * 100}%`;
-            tile.style.height = `${(h / boxH) * 100}%`;
-            tile.style.margin = '0';
-            tile.style.zIndex = depth;
-            tile.style.boxSizing = 'border-box';
-            
-            let varianceStr = item.name || '';
-            let variance = 0;
-            for(let j=0; j<varianceStr.length; j++) variance += varianceStr.charCodeAt(j);
-            let lightness = depth === 1 ? 40 : (30 + (variance % 25)); 
-            let saturation = depth === 1 ? 80 : (65 + (variance % 25)); 
-            
-            if (isParent) {
-                tile.style.background = `rgba(0, 0, 0, 0.45)`;
-                tile.style.border = `1px solid hsla(${hue}, 80%, 50%, 0.8)`;
-                tile.style.boxShadow = 'none';
-            } else {
-                tile.style.border = '1px solid rgba(0,0,0,0.6)';
-                tile.style.boxShadow = 'inset 2px 2px 4px rgba(255,255,255,0.15), inset -2px -2px 4px rgba(0,0,0,0.4)';
-                tile.style.background = `radial-gradient(circle at 30% 30%, hsla(${hue},${saturation}%,${lightness + 12}%,1) 0%, hsla(${hue},${saturation}%,${lightness - 8}%,1) 120%)`;
-            }
-            
-            tile.title = `${item.name || item.fullPath}\n${formatBytes(item.sizeBytes, 1)} • ${pct}%`;
-            tile.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (!item.fullPath) return;
-                ejecutarEscaneoFantasma(item.fullPath, true);
-            });
-            tmFragment.appendChild(tile);
-            
-            // --- CORRECCIÓN DE TEXTOS SOLAPADOS Y Z-INDEX ---
-            // Solo dibujamos el texto si es un padre con espacio reservado, o si es un archivo lo suficientemente grande
-            let hasHeader = (isParent && depth <= 4 && h > 35);
-            let isLeafAndBig = (!isParent && w > 40 && h > 15 && depth <= 5);
-
-            if (hasHeader || isLeafAndBig) {
-                const label = document.createElement('div');
-                label.className = 'disk-tile-label';
-                
-                label.style.position = 'absolute';
-                label.style.left = `${(x / boxW) * 100}%`;
-                label.style.top = `${(y / boxH) * 100}%`;
-                label.style.width = `${(w / boxW) * 100}%`;
-                // Obligamos a que el texto siempre flote por encima de todas las cajas
-                label.style.zIndex = depth + 1000;
-                
-                let hHeaderLimit = isParent ? Math.min(h, 18) : h;
-                label.style.height = `${(hHeaderLimit / boxH) * 100}%`;
-                
-                let displayName = item.name || item.fullPath || 'item';
-                if (item.isDir && !displayName.endsWith('\\')) displayName += '\\';
-                
-                let rawBytesStr = formatBytes(item.sizeBytes, 1);
-                if (!rawBytesStr.includes('.') && rawBytesStr.includes('GB')) rawBytesStr = rawBytesStr.replace(' GB', '.0 GB');
-                if (!rawBytesStr.includes('.') && rawBytesStr.includes('MB')) rawBytesStr = rawBytesStr.replace(' MB', '.0 MB');
-
-                let boldness = isParent ? '700' : '600';
-                let colorText = isParent ? '#fff' : 'rgba(255,255,255,0.9)';
-                
-                // Formateo seguro para forzar ellipsis y no ensanchar la UI
-                label.innerHTML = `<span style="font-weight:${boldness}; color:${colorText}; font-size:10px; line-height:1.1; display:block; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${displayName} (${rawBytesStr})</span>`;
-                tmFragment.appendChild(label);
-            }
-        });
-		treemap.appendChild(tmFragment);
-	}
+        rootContainer.className = 'wiz-container'; // Aplicamos tu clase base
+        
+        tmFragment.appendChild(rootContainer);
+        buildTreemapDOM(items, rootContainer, boxW, boxH, 1, null);
+        treemap.appendChild(tmFragment);
+    }
 
 	const fragment = document.createDocumentFragment();
 	items.slice(0, 220).forEach((item) => {
@@ -1567,81 +1495,61 @@ window.changeTheme = changeTheme;
 window.abrirOjoDeDios = abrirOjoDeDios;
 window.cerrarOjoDeDios = cerrarOjoDeDios;
 
-function getSquarifiedLayout(items, offsetX, offsetY, width, height, currentDepth = 1, parentHue = null) {
+function getSquarifiedLayout(items, x, y, width, height, depth = 1, parentHue = null) {
     let result = [];
-    if (items.length === 0 || width < 10 || height < 10 || currentDepth > 5) return result;
-    
-    let totalSize = items.reduce((sum, item) => sum + item.sizeBytes, 0);
+    if (items.length === 0 || width < 5 || height < 5 || depth > 6) return result;
+
+    let totalSize = items.reduce((sum, item) => sum + Math.max(0, item.sizeBytes || 0), 0);
     if (totalSize === 0) return result;
-    
-    let totalArea = width * height;
-    let nodes = items.map(item => ({ item, area: (item.sizeBytes / totalSize) * totalArea }));
-    
-    let row = [];
-    let bounds = { x: offsetX, y: offsetY, w: width, h: height };
-    
-    function worstRatio(r, w) {
-        if (r.length === 0) return Infinity;
-        let sumArea = r.reduce((s, node) => s + node.area, 0);
-        let maxArea = Math.max(...r.map(n => n.area));
-        let minArea = Math.min(...r.map(n => n.area));
-        let w2 = w * w;
-        let sum2 = sumArea * sumArea;
-        return Math.max((w2 * maxArea) / sum2, sum2 / (w2 * minArea));
-    }
-    
-    function layoutRow(r, shortestSide, b) {
-        let sumArea = r.reduce((s, node) => s + node.area, 0);
-        if (b.w <= 0 || b.h <= 0) return;
 
-        let rowWidth = b.w >= b.h ? sumArea / b.h : b.w;
-        let rowHeight = b.w >= b.h ? b.h : sumArea / b.w;
-        
-        let currentX = b.x;
-        let currentY = b.y;
-        
-        r.forEach((node, nodeIdx) => {
-            let nodeW, nodeH;
-            if (b.w >= b.h) {
-                nodeH = rowWidth > 0 ? node.area / rowWidth : 0;
-                nodeW = rowWidth;
-            } else {
-                nodeW = rowHeight > 0 ? node.area / rowHeight : 0;
-                nodeH = rowHeight;
-            }
-            
-            const isParent = node.item.children && node.item.children.length > 0 && nodeW > 15 && nodeH > 15;
-            const rootHues = [20, 200, 120, 280, 45, 170, 310, 80, 230, 350, 100, 250];
-            let myHue = currentDepth === 1 ? rootHues[nodeIdx % rootHues.length] : parentHue;
-            
-            result.push({ item: node.item, x: currentX, y: currentY, w: nodeW, h: nodeH, depth: currentDepth, hue: myHue, isParent });
-            
-            if (isParent) {
-                // AÑADIDO: Padding para crear el marco visual y que los hijos no pisen el borde
-                let header = (currentDepth <= 4 && nodeH > 35) ? 18 : 2; 
-                let padX = 2;
-                let padBottom = 2;
+    let nodes = items.map(item => ({ item, area: (Math.max(0, item.sizeBytes) / totalSize) * (width * height) }))
+                     .filter(n => n.area > 0);
 
-                if (nodeW > padX * 2 && nodeH > header + padBottom) {
-                    let childBoxes = getSquarifiedLayout(
-                        node.item.children, 
-                        currentX + padX, 
-                        currentY + header, 
-                        nodeW - (padX * 2), 
-                        nodeH - header - padBottom, 
-                        currentDepth + 1,
-                        myHue
-                    );
-                    result = result.concat(childBoxes);
-                }
+    let bounds = { x: x, y: y, w: width, h: height };
+
+    function layoutRow(row, w, b) {
+        let rowArea = row.reduce((sum, n) => sum + n.area, 0);
+        let rowWidth = b.w >= b.h ? rowArea / b.h : b.w;
+        let rowHeight = b.w >= b.h ? b.h : rowArea / b.w;
+        
+        let cx = b.x;
+        let cy = b.y;
+        
+        for (let node of row) {
+            let nw = Math.max(0, b.w >= b.h ? rowWidth : node.area / rowHeight);
+            let nh = Math.max(0, b.w >= b.h ? node.area / rowWidth : rowHeight);
+            
+            let isParent = node.item.children && node.item.children.length > 0;
+            
+            // Asignamos color basado en la extensión si es archivo (Estilo WizTree)
+            let hue = parentHue;
+            if (!isParent) {
+                let ext = (node.item.name || '').split('.').pop().toLowerCase();
+                let hash = 0;
+                for (let i = 0; i < ext.length; i++) hash = ext.charCodeAt(i) + ((hash << 5) - hash);
+                hue = Math.abs(hash) % 360;
+            } else if (depth === 1) {
+                hue = Math.floor(Math.random() * 360);
             }
             
-            if (b.w >= b.h) {
-                currentY += nodeH;
-            } else {
-                currentX += nodeW;
+            let header = (isParent && depth <= 4 && nh > 25 && nw > 30) ? 18 : 0;
+            let pad = isParent ? 2 : 0; // Margen interno de carpeta
+            
+            result.push({ item: node.item, x: cx, y: cy, w: nw, h: nh, depth, hue, isParent, header });
+            
+            if (isParent && nw - (pad*2) > 5 && nh - header - (pad*2) > 5) {
+                result = result.concat(getSquarifiedLayout(
+                    node.item.children, 
+                    cx + pad, 
+                    cy + header + pad, 
+                    nw - (pad * 2), 
+                    nh - header - (pad * 2), 
+                    depth + 1, 
+                    hue
+                ));
             }
-        });
+            if (b.w >= b.h) cy += nh; else cx += nw;
+        }
         
         if (b.w >= b.h) {
             b.x += rowWidth;
@@ -1651,28 +1559,28 @@ function getSquarifiedLayout(items, offsetX, offsetY, width, height, currentDept
             b.h = Math.max(0, b.h - rowHeight);
         }
     }
-    
+
+    let row = [];
     for (let i = 0; i < nodes.length; i++) {
         let node = nodes[i];
-        let shortestSide = Math.max(1, Math.min(bounds.w, bounds.h));
+        if (row.length === 0) { row.push(node); continue; }
         
-        if (row.length === 0) {
-            row.push(node);
-        } else {
-            let currentWorst = worstRatio(row, shortestSide);
-            let nextWorst = worstRatio([...row, node], shortestSide);
-            
-            if (nextWorst <= currentWorst) {
-                row.push(node);
-            } else {
-                layoutRow(row, shortestSide, bounds);
-                row = [node];
-            }
-        }
+        let w = Math.max(bounds.w, bounds.h);
+        let rowArea = row.reduce((sum, n) => sum + n.area, 0);
+        let rowMax = Math.max(...row.map(n => n.area));
+        let rowMin = Math.min(...row.map(n => n.area));
+        
+        let nextRowArea = rowArea + node.area;
+        let nextRowMax = Math.max(rowMax, node.area);
+        let nextRowMin = Math.min(rowMin, node.area);
+        
+        let currentWorst = Math.max((w*w*rowMax)/(rowArea*rowArea), (rowArea*rowArea)/(w*w*rowMin));
+        let nextWorst = Math.max((w*w*nextRowMax)/(nextRowArea*nextRowArea), (nextRowArea*nextRowArea)/(w*w*nextRowMin));
+        
+        if (nextWorst <= currentWorst) row.push(node);
+        else { layoutRow(row, w, bounds); row = [node]; }
     }
-    if (row.length > 0) {
-        layoutRow(row, Math.max(1, Math.min(bounds.w, bounds.h)), bounds);
-    }
+    if (row.length > 0) layoutRow(row, Math.max(bounds.w, bounds.h), bounds);
     
     return result;
 }
@@ -1682,4 +1590,168 @@ const savedTheme = localStorage.getItem('nexus_theme') || 'dark';
 document.documentElement.setAttribute('data-theme', savedTheme);
 if(document.getElementById('theme-selector')) {
     document.getElementById('theme-selector').value = savedTheme;
+}
+
+// 1. Motor Matemático Squarify (Limpio y sin errores de flotantes)
+function squarifyLevel(items, width, height) {
+    let result = [];
+    let totalValue = items.reduce((sum, item) => sum + Math.max(0, item.sizeBytes || 0), 0);
+    if (totalValue === 0 || width <= 0 || height <= 0) return result;
+
+    let scale = (width * height) / totalValue;
+    let nodes = items.map(item => ({ item, area: Math.max(0, item.sizeBytes) * scale })).filter(n => n.area > 0);
+    
+    let x = 0, y = 0, w = width, h = height;
+
+    function worst(row, w2) {
+        let sum = 0, min = Infinity, max = 0;
+        for (let i = 0; i < row.length; i++) {
+            let area = row[i].area;
+            sum += area;
+            if (area < min) min = area;
+            if (area > max) max = area;
+        }
+        if (sum === 0) return Infinity;
+        let sumSquare = sum * sum;
+        return Math.max((w2 * max) / sumSquare, sumSquare / (w2 * min));
+    }
+
+    let row = [];
+    for (let i = 0; i < nodes.length; i++) {
+        let node = nodes[i];
+        let w2 = Math.min(w, h) ** 2;
+        
+        if (row.length === 0) {
+            row.push(node);
+            continue;
+        }
+        
+        if (worst(row, w2) >= worst([...row, node], w2)) {
+            row.push(node);
+        } else {
+            layoutRow(row);
+            row = [node];
+        }
+    }
+    if (row.length) layoutRow(row);
+
+    function layoutRow(r) {
+        let sumArea = r.reduce((acc, n) => acc + n.area, 0);
+        let currentX = x, currentY = y;
+        let isHorizontal = w >= h; 
+        
+        let rectW = isHorizontal ? sumArea / h : w;
+        let rectH = isHorizontal ? h : sumArea / w;
+        
+        if (isHorizontal) { x += rectW; w -= rectW; } 
+        else { y += rectH; h -= rectH; }
+
+        for (let i = 0; i < r.length; i++) {
+            let node = r[i];
+            let nw = isHorizontal ? rectW : node.area / rectH;
+            let nh = isHorizontal ? node.area / rectW : rectH;
+            
+            result.push({
+                item: node.item,
+                xPct: (currentX / width) * 100,
+                yPct: (currentY / height) * 100,
+                wPct: (nw / width) * 100,
+                hPct: (nh / height) * 100,
+                wPx: nw, hPx: nh
+            });
+            
+            if (isHorizontal) currentY += nh; else currentX += nw;
+        }
+    }
+    return result;
+}
+
+// 2. Constructor del DOM Anidado Estilo WizTree
+// Constructor del DOM Anidado (Estilo Limpio)
+function buildTreemapDOM(items, container, widthPx, heightPx, depth = 1, parentHue = null) {
+    if (depth > 6 || widthPx < 3 || heightPx < 3 || !items || items.length === 0) return;
+    
+    let sortedItems = items.filter(i => i.sizeBytes > 0).sort((a, b) => b.sizeBytes - a.sizeBytes);
+    // Reducimos la cantidad máxima de elementos renderizados para evitar saturación visual
+    if (depth === 1) sortedItems = sortedItems.slice(0, 150); 
+
+    let layout = squarifyLevel(sortedItems, widthPx, heightPx);
+    
+    layout.forEach(rect => {
+        const { item, xPct, yPct, wPct, hPct, wPx, hPx } = rect;
+        
+        // --- UMBRAL ANTI-COLAPSO CRÍTICO ---
+        // Si el bloque es microscópico (< 2px), lo ignoramos para no generar ruido negro en pantalla
+        if (wPx < 3 || hPx < 3) return; 
+
+        const isParent = item.children && item.children.length > 0;
+        
+        let hue = parentHue;
+        if (!isParent) {
+            let ext = (item.name || '').split('.').pop().toLowerCase();
+            let hash = 0;
+            for (let i = 0; i < ext.length; i++) hash = ext.charCodeAt(i) + ((hash << 5) - hash);
+            hue = Math.abs(hash) % 360;
+        } else if (depth === 1) {
+            hue = Math.floor(Math.random() * 360);
+        }
+
+        const div = document.createElement('div');
+        div.className = isParent ? 'wiz-node wiz-folder' : 'wiz-node wiz-file';
+        div.style.left = `${xPct}%`;
+        div.style.top = `${yPct}%`;
+        div.style.width = `${wPct}%`;
+        div.style.height = `${hPct}%`;
+        div.style.zIndex = depth;
+        
+        div.title = `${item.name || item.fullPath}\n${formatBytes(item.sizeBytes, 1)}`;
+        div.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (item.fullPath && typeof ejecutarEscaneoFantasma === 'function') ejecutarEscaneoFantasma(item.fullPath, true);
+        });
+
+        if (isParent) {
+            // Cabecera un poco más alta para que respire
+            let headerHeight = (depth <= 4 && hPx > 35 && wPx > 45) ? 20 : 0;
+            
+            if (headerHeight > 0) {
+                const title = document.createElement('div');
+                title.className = 'wiz-folder-header';
+                title.style.height = `${headerHeight}px`;
+                title.style.lineHeight = `${headerHeight}px`;
+                title.innerText = item.name || item.fullPath;
+                div.appendChild(title);
+            }
+
+            // PADDING AUMENTADO: Da esa separación limpia estilo Apple entre carpetas
+            let pad = (wPx > 25 && hPx > 25) ? 4 : 1; 
+            let childAreaW = wPx - (pad * 2);
+            let childAreaH = hPx - headerHeight - (pad * 2);
+
+            if (childAreaW > 6 && childAreaH > 6) {
+                const childContainer = document.createElement('div');
+                childContainer.style.position = 'absolute';
+                childContainer.style.left = `${pad}px`;
+                childContainer.style.top = `${headerHeight + pad}px`;
+                childContainer.style.width = `calc(100% - ${pad * 2}px)`;
+                childContainer.style.height = `calc(100% - ${headerHeight + (pad * 2)}px)`;
+                div.appendChild(childContainer);
+
+                buildTreemapDOM(item.children, childContainer, childAreaW, childAreaH, depth + 1, hue);
+            }
+        } else {
+            // ESTILO MAC: Degradado Lineal suave (en lugar del foco 3D agresivo)
+            // Saturation 65% y Lightness controlada para tonos pastel vibrantes pero elegantes
+            div.style.background = `linear-gradient(135deg, hsl(${hue}, 65%, 60%), hsl(${hue}, 70%, 40%))`;
+
+            // TEXTO MINIMALISTA: Solo se imprime si la caja es realmente grande y cómoda de leer
+            if (wPx > 55 && hPx > 25) {
+                const label = document.createElement('div');
+                label.className = 'wiz-label';
+                label.innerText = item.name || 'file';
+                div.appendChild(label);
+            }
+        }
+        container.appendChild(div);
+    });
 }
