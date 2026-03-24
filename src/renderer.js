@@ -942,97 +942,94 @@ function renderEscaneoDisco(payload) {
 	}
 
 	if (treemap) {
-		// Asumimos un aspect ratio base (e.g. panorámico) para las matemáticas proporcionales de Squarify.
-		// Luego lo convertiremos a porcentajes para que siempre llene el 100% del contenedor sin importar su verdadero clientWidth
-		const boxW = 1200; 
-		const boxH = 360; 
-		treemap.style.minHeight = '360px'; // Requisito CSS
+		// 1. Leer tamaño REAL del DOM para evitar deformaciones,
+		// PERO si el renderizado ocurre en background oscuro (pre-warming c:\) su valor será 0.
+        // En ese caso usamos un aspect ratio panorámico simulado (1200x360).
+		const treemapRect = treemap.getBoundingClientRect();
+		const boxW = treemapRect.width > 200 ? treemapRect.width : 1200; 
+		const boxH = treemapRect.height > 100 ? treemapRect.height : 360; 
+
+		treemap.style.minHeight = '360px'; 
 		treemap.style.position = 'relative';
 
-		// Filtrar items irrelevantes y ordenarlos de mayor a menor
 		let mapItems = items.filter(i => i.sizeBytes > 0).sort((a, b) => b.sizeBytes - a.sizeBytes).slice(0, 180);
 		
 		const tmFragment = document.createDocumentFragment();
 		const layout = getSquarifiedLayout(mapItems, 0, 0, boxW, boxH, 1);
 
 		layout.forEach((rect, idx) => {
-			const { item, x, y, w, h, depth, hue, isParent } = rect;
-			const tile = document.createElement('button');
-			tile.className = 'disk-tile';
-			const pct = Math.max(0.1, Number(item.percent || 1));
-			
-			tile.style.position = 'absolute';
-			tile.style.left = `${(x / boxW) * 100}%`;
-			tile.style.top = `${(y / boxH) * 100}%`;
-			tile.style.width = `${(w / boxW) * 100}%`;
-			tile.style.height = `${(h / boxH) * 100}%`;
-			tile.style.margin = '0';
-			
-			// Los padres están en el fondo, los hojas están encima
-			tile.style.zIndex = depth;
-			tile.style.boxSizing = 'border-box';
-			
-			// Color calculation
-			let varianceStr = item.name || '';
-			let variance = 0;
-			for(let j=0; j<varianceStr.length; j++) variance += varianceStr.charCodeAt(j);
-			let lightness = depth === 1 ? 40 : (30 + (variance % 25)); 
-			let saturation = depth === 1 ? 80 : (65 + (variance % 25)); 
-			
-			if (isParent) {
-				// PADRE: Fondo semi-transparente oscuro, con un borde del color de su familia
-				tile.style.background = `rgba(0, 0, 0, 0.45)`;
-				// Usa el hue de la familia para el borde, asumiendo su grupo cromático
-				tile.style.border = `1px solid hsla(${hue}, 80%, 50%, 0.8)`;
-				tile.style.boxShadow = 'none'; // Sin cushion
-			} else {
-				// HOJA (Leaf): Bloque final con Cushion (Pillow) 3D effect
-				tile.style.border = '1px solid rgba(0,0,0,0.6)';
-				tile.style.boxShadow = 'inset 2px 2px 4px rgba(255,255,255,0.15), inset -2px -2px 4px rgba(0,0,0,0.4)';
-				tile.style.background = `radial-gradient(circle at 30% 30%, hsla(${hue},${saturation}%,${lightness + 12}%,1) 0%, hsla(${hue},${saturation}%,${lightness - 8}%,1) 120%)`;
-			}
-			
-			tile.title = `${item.name || item.fullPath}\n${formatBytes(item.sizeBytes, 1)} • ${pct}%`;
-			tile.addEventListener('click', (e) => {
-				e.stopPropagation(); // Evita que el click pase al padre cuando clickeas un hijo profundamente anidado
-				if (!item.fullPath) return;
-				ejecutarEscaneoFantasma(item.fullPath, true);
-			});
-			tmFragment.appendChild(tile);
-			
-			// El texto del root/padre es dibujado pero SIN pasar a otras cajas.
-			// Los padres tienen toda su caja negra semi-transparente y la palabra "Flota".
-			if (w > 40 && h > 15 && depth <= 5) {
-				const label = document.createElement('div');
-				label.className = 'disk-tile-label';
-				
-				label.style.position = 'absolute';
-				label.style.left = `${(x / boxW) * 100}%`;
-				label.style.top = `${(y / boxH) * 100}%`;
-				label.style.width = `${(w / boxW) * 100}%`;
-				
-				// Definir la altura del label explícitamente a 18 unidades relativas o max la altura de la caja si es menor.
-				// Esto evita que ocupe todo el alto del contenedor padre y bloquea posibles interacciones en la parte baja,
-				// aunque tiene pointer-events: none, es mejor para depuración.
-				let hHeaderLimit = isParent ? Math.min(h, 18) : h;
-				label.style.height = `${(hHeaderLimit / boxH) * 100}%`;
-				
-				// Omitir nombre si no existe. Unir al estilo de WizTree en una sola línea.
-				let displayName = item.name || item.fullPath || 'item';
-				if (item.isDir && !displayName.endsWith('\\')) displayName += '\\';
-				
-				let rawBytesStr = formatBytes(item.sizeBytes, 1);
-				if (!rawBytesStr.includes('.') && rawBytesStr.includes('GB')) rawBytesStr = rawBytesStr.replace(' GB', '.0 GB');
-				if (!rawBytesStr.includes('.') && rawBytesStr.includes('MB')) rawBytesStr = rawBytesStr.replace(' MB', '.0 MB');
+            const { item, x, y, w, h, depth, hue, isParent } = rect;
+            const tile = document.createElement('button');
+            tile.className = 'disk-tile';
+            const pct = Math.max(0.1, Number(item.percent || 1));
+            
+            tile.style.position = 'absolute';
+            tile.style.left = `${(x / boxW) * 100}%`;
+            tile.style.top = `${(y / boxH) * 100}%`;
+            tile.style.width = `${(w / boxW) * 100}%`;
+            tile.style.height = `${(h / boxH) * 100}%`;
+            tile.style.margin = '0';
+            tile.style.zIndex = depth;
+            tile.style.boxSizing = 'border-box';
+            
+            let varianceStr = item.name || '';
+            let variance = 0;
+            for(let j=0; j<varianceStr.length; j++) variance += varianceStr.charCodeAt(j);
+            let lightness = depth === 1 ? 40 : (30 + (variance % 25)); 
+            let saturation = depth === 1 ? 80 : (65 + (variance % 25)); 
+            
+            if (isParent) {
+                tile.style.background = `rgba(0, 0, 0, 0.45)`;
+                tile.style.border = `1px solid hsla(${hue}, 80%, 50%, 0.8)`;
+                tile.style.boxShadow = 'none';
+            } else {
+                tile.style.border = '1px solid rgba(0,0,0,0.6)';
+                tile.style.boxShadow = 'inset 2px 2px 4px rgba(255,255,255,0.15), inset -2px -2px 4px rgba(0,0,0,0.4)';
+                tile.style.background = `radial-gradient(circle at 30% 30%, hsla(${hue},${saturation}%,${lightness + 12}%,1) 0%, hsla(${hue},${saturation}%,${lightness - 8}%,1) 120%)`;
+            }
+            
+            tile.title = `${item.name || item.fullPath}\n${formatBytes(item.sizeBytes, 1)} • ${pct}%`;
+            tile.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!item.fullPath) return;
+                ejecutarEscaneoFantasma(item.fullPath, true);
+            });
+            tmFragment.appendChild(tile);
+            
+            // --- CORRECCIÓN DE TEXTOS SOLAPADOS Y Z-INDEX ---
+            // Solo dibujamos el texto si es un padre con espacio reservado, o si es un archivo lo suficientemente grande
+            let hasHeader = (isParent && depth <= 4 && h > 35);
+            let isLeafAndBig = (!isParent && w > 40 && h > 15 && depth <= 5);
 
-				// Dependiendo de si es padre o hoja, estilizamos el texto
-				let boldness = isParent ? '700' : '600';
-				let colorText = isParent ? '#fff' : 'rgba(255,255,255,0.9)';
-				// Si es Padre dibujamos con texto truncado simple WizTree-like
-				label.innerHTML = `<span class="disk-tile-name" style="font-weight:${boldness}; color:${colorText}">${displayName} (${rawBytesStr})</span>`;
-				tmFragment.appendChild(label);
-			}
-		});
+            if (hasHeader || isLeafAndBig) {
+                const label = document.createElement('div');
+                label.className = 'disk-tile-label';
+                
+                label.style.position = 'absolute';
+                label.style.left = `${(x / boxW) * 100}%`;
+                label.style.top = `${(y / boxH) * 100}%`;
+                label.style.width = `${(w / boxW) * 100}%`;
+                // Obligamos a que el texto siempre flote por encima de todas las cajas
+                label.style.zIndex = depth + 1000;
+                
+                let hHeaderLimit = isParent ? Math.min(h, 18) : h;
+                label.style.height = `${(hHeaderLimit / boxH) * 100}%`;
+                
+                let displayName = item.name || item.fullPath || 'item';
+                if (item.isDir && !displayName.endsWith('\\')) displayName += '\\';
+                
+                let rawBytesStr = formatBytes(item.sizeBytes, 1);
+                if (!rawBytesStr.includes('.') && rawBytesStr.includes('GB')) rawBytesStr = rawBytesStr.replace(' GB', '.0 GB');
+                if (!rawBytesStr.includes('.') && rawBytesStr.includes('MB')) rawBytesStr = rawBytesStr.replace(' MB', '.0 MB');
+
+                let boldness = isParent ? '700' : '600';
+                let colorText = isParent ? '#fff' : 'rgba(255,255,255,0.9)';
+                
+                // Formateo seguro para forzar ellipsis y no ensanchar la UI
+                label.innerHTML = `<span style="font-weight:${boldness}; color:${colorText}; font-size:10px; line-height:1.1; display:block; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${displayName} (${rawBytesStr})</span>`;
+                tmFragment.appendChild(label);
+            }
+        });
 		treemap.appendChild(tmFragment);
 	}
 
@@ -1119,7 +1116,12 @@ async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false) {
 		setOjoStatus(`Escaneando ${targetRoot}...`);
 		const payload = await api.escanearDisco(targetRoot);
 		if (scanSeq !== ghostState.diskScanSeq) return;
+		
+		if (loadingEl) loadingEl.style.display = 'none';
+		if (contentEl) contentEl.style.display = 'flex';
+		
 		renderEscaneoDisco(payload);
+		
 		ghostState.diskScanned = true;
 		setOjoStatus(`Mapa listo para ${targetRoot} (${(payload?.engine || 'native').toUpperCase()}).`);
 	} catch (err) {
@@ -1135,8 +1137,6 @@ async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false) {
 			btn.disabled = false;
 			btn.textContent = 'Raiz C:';
 		}
-		if (loadingEl) loadingEl.style.display = 'none';
-		if (contentEl) contentEl.style.display = 'flex';
 	}
 }
 
@@ -1567,7 +1567,6 @@ window.changeTheme = changeTheme;
 window.abrirOjoDeDios = abrirOjoDeDios;
 window.cerrarOjoDeDios = cerrarOjoDeDios;
 
-// Algoritmo de Treemap original recursivo
 function getSquarifiedLayout(items, offsetX, offsetY, width, height, currentDepth = 1, parentHue = null) {
     let result = [];
     if (items.length === 0 || width < 10 || height < 10 || currentDepth > 5) return result;
@@ -1593,7 +1592,7 @@ function getSquarifiedLayout(items, offsetX, offsetY, width, height, currentDept
     
     function layoutRow(r, shortestSide, b) {
         let sumArea = r.reduce((s, node) => s + node.area, 0);
-		if (b.w <= 0 || b.h <= 0) return;
+        if (b.w <= 0 || b.h <= 0) return;
 
         let rowWidth = b.w >= b.h ? sumArea / b.h : b.w;
         let rowHeight = b.w >= b.h ? b.h : sumArea / b.w;
@@ -1611,30 +1610,30 @@ function getSquarifiedLayout(items, offsetX, offsetY, width, height, currentDept
                 nodeH = rowHeight;
             }
             
-			// Solo es "padre" si realmente lo vamos a subdividir usando el algoritmo
-			const isParent = node.item.children && node.item.children.length > 0 && nodeW > 15 && nodeH > 15;
-			
-			// Si es el root (depth 1), usamos una paleta fija de doce colores para máxima distinción.
-			// Hues: Rojo(0), Naranja(30), AmarilloVerd(70), Verde(120), Esmeralda(160), Cyan(190), Azul(220), Indigo(260), Morado(290), Rosa(320)...
-			const rootHues = [20, 200, 120, 280, 45, 170, 310, 80, 230, 350, 100, 250];
-			let myHue = currentDepth === 1 ? rootHues[nodeIdx % rootHues.length] : parentHue;
-			
+            const isParent = node.item.children && node.item.children.length > 0 && nodeW > 15 && nodeH > 15;
+            const rootHues = [20, 200, 120, 280, 45, 170, 310, 80, 230, 350, 100, 250];
+            let myHue = currentDepth === 1 ? rootHues[nodeIdx % rootHues.length] : parentHue;
+            
             result.push({ item: node.item, x: currentX, y: currentY, w: nodeW, h: nodeH, depth: currentDepth, hue: myHue, isParent });
             
-            // Recursión para subdirectorios si tienen suficiente área visible
             if (isParent) {
-                // Reservar cabecera superior para el texto del padre
-                let header = (currentDepth <= 4 && nodeH > 35) ? 18 : 0; 
-                let childBoxes = getSquarifiedLayout(
-					node.item.children, 
-					currentX, 
-					currentY + header, 
-					nodeW, 
-					nodeH - header, 
-					currentDepth + 1,
-					myHue
-				);
-                result = result.concat(childBoxes);
+                // AÑADIDO: Padding para crear el marco visual y que los hijos no pisen el borde
+                let header = (currentDepth <= 4 && nodeH > 35) ? 18 : 2; 
+                let padX = 2;
+                let padBottom = 2;
+
+                if (nodeW > padX * 2 && nodeH > header + padBottom) {
+                    let childBoxes = getSquarifiedLayout(
+                        node.item.children, 
+                        currentX + padX, 
+                        currentY + header, 
+                        nodeW - (padX * 2), 
+                        nodeH - header - padBottom, 
+                        currentDepth + 1,
+                        myHue
+                    );
+                    result = result.concat(childBoxes);
+                }
             }
             
             if (b.w >= b.h) {
@@ -1646,10 +1645,10 @@ function getSquarifiedLayout(items, offsetX, offsetY, width, height, currentDept
         
         if (b.w >= b.h) {
             b.x += rowWidth;
-            b.w -= rowWidth;
+            b.w = Math.max(0, b.w - rowWidth);
         } else {
             b.y += rowHeight;
-            b.h -= rowHeight;
+            b.h = Math.max(0, b.h - rowHeight);
         }
     }
     
