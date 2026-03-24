@@ -1,11 +1,11 @@
 const terminal = document.getElementById('terminal');
-
+const autopilotTasks = {};
 const runningFiles = new Set();
-
+const silentRuns = new Set();
 let isFirstLoad = true;
 
-
-
+let autostartList = JSON.parse(localStorage.getItem('nexus_autostart') || '[]');
+let favoritesList = JSON.parse(localStorage.getItem('nexus_favorites') || '[]');
 
 const proModePolicy = {
 	'07_Herramientas_Pro/Analizador_Espacio.py': 'internal',
@@ -20,19 +20,115 @@ function modeLabel(mode) {
 	return mode === 'external' ? 'Visual externo' : 'Integrado';
 }
 
+const ghostState = {
+	engines: {
+		everythingAvailable: false,
+		wiztreeAvailable: false,
+		geekAvailable: false
+	},
+	searchTimer: null,
+	lastQuery: '',
+	activeScreen: 'search',
+	appsLoaded: false,
+	diskScanned: false,
+	listenersBound: false,
+	searchAppsCache: null,
+	searchSeq: 0,
+	diskPathStack: ['C:\\'],
+	diskScanSeq: 0,
+	appsList: []
+};
 
+function formatBytes(size) {
+	const bytes = Number(size || 0);
+	if (bytes <= 0) return '0 B';
+	const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+	let idx = 0;
+	let value = bytes;
+	while (value >= 1024 && idx < units.length - 1) {
+		value /= 1024;
+		idx += 1;
+	}
+	return `${value.toFixed(value >= 100 ? 0 : 1)} ${units[idx]}`;
+}
 
+function getFileIconFromPath(filePath) {
+	const lower = String(filePath || '').toLowerCase();
+	if (lower.endsWith('.exe')) return '🧩';
+	if (lower.endsWith('.pdf')) return '📕';
+	if (lower.endsWith('.zip') || lower.endsWith('.rar') || lower.endsWith('.7z')) return '🗜️';
+	if (lower.endsWith('.mp4') || lower.endsWith('.mkv') || lower.endsWith('.avi')) return '🎬';
+	if (lower.endsWith('.mp3') || lower.endsWith('.wav') || lower.endsWith('.flac')) return '🎵';
+	if (lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.webp')) return '🖼️';
+	if (lower.endsWith('.doc') || lower.endsWith('.docx')) return '📝';
+	if (lower.endsWith('.xls') || lower.endsWith('.xlsx') || lower.endsWith('.csv')) return '📊';
+	if (lower.endsWith('.js') || lower.endsWith('.ts') || lower.endsWith('.py') || lower.endsWith('.bat')) return '💻';
+	return '📄';
+}
 
+function getAppIcon(name) {
+	const n = String(name || '').toLowerCase();
+	if (n.includes('chrome')) return '🌐';
+	if (n.includes('firefox')) return '🦊';
+	if (n.includes('edge')) return '🔷';
+	if (n.includes('discord')) return '🎮';
+	if (n.includes('spotify')) return '🎧';
+	if (n.includes('steam')) return '🎲';
+	if (n.includes('nvidia')) return '🟩';
+	if (n.includes('adobe')) return '🅰️';
+	if (n.includes('microsoft')) return '🪟';
+	if (n.includes('visual studio') || n.includes('vscode')) return '🧠';
+	if (n.includes('java')) return '☕';
+	if (n.includes('python')) return '🐍';
+	return '🧩';
+}
 
+function buildFileUrl(winPath) {
+	const p = String(winPath || '').trim();
+	if (!p) return '';
+	const normalized = p.replace(/\\/g, '/');
+	if (/^[a-zA-Z]:\//.test(normalized)) {
+		return `file:///${encodeURI(normalized)}`;
+	}
+	return `file://${encodeURI(normalized)}`;
+}
 
+function extractIconPath(app) {
+	let raw = String(app?.displayIcon || '').trim();
 
+	if (!raw && app?.uninstallString) {
+		const match = app.uninstallString.match(/([a-zA-Z]:\\[^"*,]+\.(exe|ico))/i);
+		if (match) raw = match[1];
+	}
 
+	if (!raw && app?.installLocation) {
+		raw = app.installLocation;
+	}
 
+	if (!raw) return '';
 
+	raw = raw.replace(/,[\s\-]?\d+$/, '').trim();
+	raw = raw.replace(/"/g, '');
 
+	raw = raw.replace(/%ProgramFiles%/gi, 'C:\\Program Files')
+		.replace(/%ProgramFiles\(x86\)%/gi, 'C:\\Program Files (x86)')
+		.replace(/%AppData%/gi, 'C:\\Users\\gerar\\AppData\\Roaming')
+		.replace(/%LocalAppData%/gi, 'C:\\Users\\gerar\\AppData\\Local')
+		.replace(/%SystemRoot%/gi, 'C:\\Windows')
+		.replace(/%WinDir%/gi, 'C:\\Windows');
 
+	return raw;
+}
 
-
+function safeText(v) {
+	return String(v || '').replace(/[&<>"']/g, (ch) => ({
+		'&': '&amp;',
+		'<': '&lt;',
+		'>': '&gt;',
+		'"': '&quot;',
+		"'": '&#39;'
+	}[ch]));
+}
 
 function getAppIconMarkup(app, iconId) {
 	const fallback = getAppIcon(app?.name || '');
@@ -82,9 +178,13 @@ function toggleFavorite(fileName) {
 	cargarScripts(); // Re-render for sorting
 }
 
+function safeId(fileName) {
+	return encodeURIComponent(fileName).replace(/[^a-z0-9]/gi, '_');
+}
 
-
-
+function getElementId(fileName, prefix) {
+	return `${prefix}-${safeId(fileName)}`;
+}
 
 function windowControl(action) {
 	api.windowControl(action);
@@ -559,6 +659,9 @@ api.onProcessExit(({ fileName, code }) => {
 
 	silentRuns.delete(fileName);
 });
+let isDragging = false;
+let startY, startX, initialTop, initialLeft;
+
 window.addEventListener('error', (event) => {
 	setTimeout(() => {
 		if (typeof logTerminal === 'function') {
@@ -1519,9 +1622,48 @@ function filtrarOjoDeDios() {
 	ejecutarBusquedaFantasma(query);
 }
 
+function escapeRegExp(string) {
+	return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+}
 
+function highlightText(text, parts) {
+	// Devuelve nodos con resaltado seguro (sin inyectar HTML)
+	if (!parts || parts.length === 0) return document.createTextNode(text);
 
+	const escapedParts = parts
+		.map(p => String(p).trim())
+		.filter(Boolean)
+		.map(escapeRegExp);
 
+	if (escapedParts.length === 0) return document.createTextNode(text);
+
+	const regex = new RegExp(`(${escapedParts.join('|')})`, 'gi');
+	const fragment = document.createDocumentFragment();
+	let lastIndex = 0;
+	let match = null;
+
+	while ((match = regex.exec(text)) !== null) {
+		const start = match.index;
+		const matched = match[0];
+		if (start > lastIndex) {
+			fragment.appendChild(document.createTextNode(text.slice(lastIndex, start)));
+		}
+
+		const span = document.createElement('span');
+		span.style.color = '#FF9500';
+		span.textContent = matched;
+		fragment.appendChild(span);
+
+		lastIndex = start + matched.length;
+		if (matched.length === 0) regex.lastIndex++;
+	}
+
+	if (lastIndex < text.length) {
+		fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+	}
+
+	return fragment;
+}
 function closeSettings() {
 	const modal = document.getElementById('settings-modal');
 	if (modal) modal.classList.remove('active');
