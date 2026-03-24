@@ -13,6 +13,9 @@ const outputListeners = new Set();
 const exitListeners = new Set();
 const forceExternalScripts = new Set(['07_Herramientas_Pro/Desinstalador_Root.bat']);
 
+const diskScanCache = new Map();
+const inFlightScans = new Map();
+
 const portableBaseDir = process.env.PORTABLE_EXECUTABLE_DIR || '';
 const appDataNexus = portableBaseDir
 	? path.join(portableBaseDir, 'HorusData')
@@ -44,48 +47,61 @@ const toolCandidates = {
 	]
 };
 
-// Autoinstalador silencioso de Python Portable
+// Autoinstalador silencioso de Python Portable y herramientas
 function ensureStandaloneEnvironment() {
     const pipPath = path.join(pythonEnvPath, 'Scripts', 'pip.exe');
     const pyZipPath = path.join(pythonEnvPath, 'python311.zip');
     
-    // Si ya existe python, su núcleo comprimido Y pip, estamos listos.
-    if (fs.existsSync(pythonExePath) && fs.existsSync(pyZipPath) && fs.existsSync(pipPath)) return;
-    
-    try {
-        if (fs.existsSync(pythonEnvPath)) {
-            // Borrado forzado si el entorno existe pero está roto (sin pip)
-            try { fs.rmSync(pythonEnvPath, { recursive: true, force: true }); } catch (e) {}
-        }
-        
-        fs.mkdirSync(pythonEnvPath, { recursive: true });
-        const zipPath = path.join(pythonEnvPath, 'python.zip');
-        const getPipBase = path.join(pythonEnvPath, 'get-pip.py');
-        
-        // Pide a powershell descargar Python en modo sigiloso, activar site-packages e instalar pip
-        const psCommand = `
-        $ProgressPreference = 'SilentlyContinue';
-        Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.11.8/python-3.11.8-embed-amd64.zip" -OutFile "${zipPath}";
-        Expand-Archive -Path "${zipPath}" -DestinationPath "${pythonEnvPath}" -Force;
-        Remove-Item "${zipPath}";
-        $PthFile = Join-Path "${pythonEnvPath}" "python311._pth";
-        (Get-Content $PthFile) -replace '#import site', 'import site' | Set-Content $PthFile;
-        Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile "${getPipBase}";
-        & "${pythonExePath}" "${getPipBase}" --no-warn-script-location;
-        Remove-Item "${getPipBase}";
-        `;
-
-        execFile('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psCommand], { windowsHide: true }, (err) => {
-            if (!err && fs.existsSync(pipPath)) {
-                setTimeout(() => emitOutput({ fileName: 'Sistema', type: 'system', message: 'Entorno Python y Pip instalados correctamente' }), 2000);
-            } else {
+    // Instalar entorno Python
+    if (!fs.existsSync(pythonExePath) || !fs.existsSync(pyZipPath) || !fs.existsSync(pipPath)) {
+        try {
+            if (fs.existsSync(pythonEnvPath)) {
                 try { fs.rmSync(pythonEnvPath, { recursive: true, force: true }); } catch (e) {}
-                setTimeout(() => emitOutput({ fileName: 'Sistema', type: 'error', message: 'Fallo al instalar entorno Python (verifique su conexión)' }), 2000);
             }
-        });
-    } catch(e) {
-		// Si falla el instalador, al menos deja evidencia en consola para debug
-		console.error('[HorusEngine] Error instalando entorno Python:', e);
+            fs.mkdirSync(pythonEnvPath, { recursive: true });
+            const zipPath = path.join(pythonEnvPath, 'python.zip');
+            const getPipBase = path.join(pythonEnvPath, 'get-pip.py');
+            
+            const psCommand = `
+            $ProgressPreference = 'SilentlyContinue';
+            Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.11.8/python-3.11.8-embed-amd64.zip" -OutFile "${zipPath}";
+            Expand-Archive -Path "${zipPath}" -DestinationPath "${pythonEnvPath}" -Force;
+            Remove-Item "${zipPath}";
+            $PthFile = Join-Path "${pythonEnvPath}" "python311._pth";
+            (Get-Content $PthFile) -replace '#import site', 'import site' | Set-Content $PthFile;
+            Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile "${getPipBase}";
+            & "${pythonExePath}" "${getPipBase}" --no-warn-script-location;
+            Remove-Item "${getPipBase}";
+            `;
+
+            execFile('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psCommand], { windowsHide: true }, (err) => {
+                if (!err && fs.existsSync(pipPath)) {
+                    setTimeout(() => emitOutput({ fileName: 'Sistema', type: 'system', message: 'Entorno Python instalado correctamente' }), 2000);
+                }
+            });
+        } catch(e) {}
+    }
+
+    // Instalar WizTree Integrado
+    const toolsDir = path.join(storageDir, 'tools');
+    const wiztreeExePath = path.join(toolsDir, 'WizTree64.exe');
+    
+    if (!fs.existsSync(wiztreeExePath)) {
+        try {
+            if (!fs.existsSync(toolsDir)) fs.mkdirSync(toolsDir, { recursive: true });
+            const wizZip = path.join(toolsDir, 'wiztree.zip');
+            const psCommand = `
+            $ProgressPreference = 'SilentlyContinue';
+            Invoke-WebRequest -Uri "https://diskanalyzer.com/files/wiztree_4_21_portable.zip" -OutFile "${wizZip}";
+            Expand-Archive -Path "${wizZip}" -DestinationPath "${toolsDir}" -Force;
+            Remove-Item "${wizZip}";
+            `;
+            execFile('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psCommand], { windowsHide: true }, (err) => {
+               if (!err && fs.existsSync(wiztreeExePath)) {
+                   setTimeout(() => emitOutput({ fileName: 'Sistema', type: 'system', message: 'Motor WizTree instalado y activo' }), 2500);
+               }
+            });
+        } catch(e) {}
     }
 }
 
@@ -265,7 +281,21 @@ async function ghostSearchFiles(query, limit = 120) {
 
 async function ghostScanDisk(rootPath = 'C:\\') {
 	const base = String(rootPath || 'C:\\');
-	const mftPath = findExistingTool(toolCandidates.mft);
+	const normBase = (base.endsWith('\\') ? base : base + '\\').toLowerCase();
+
+	if (diskScanCache.has(normBase)) {
+		const cached = diskScanCache.get(normBase);
+		if (Date.now() - cached.timestamp < 10 * 60 * 1000) {
+			return cached.data;
+		}
+	}
+
+	if (inFlightScans.has(normBase)) {
+		return inFlightScans.get(normBase);
+	}
+
+	const scanPromise = (async () => {
+		const mftPath = findExistingTool(toolCandidates.mft);
 	if (mftPath) {
 		try {
 			const { stdout } = await new Promise((resolve, reject) => {
@@ -299,25 +329,51 @@ async function ghostScanDisk(rootPath = 'C:\\') {
 	const wiztreePath = findExistingTool(toolCandidates.wiztree);
 	if (wiztreePath) {
 		try {
-			const tempCsv = path.join(appDataNexus, 'wiztree-export.csv');
+			const driveMatch = base.match(/^([A-Za-z]):\\/);
+			const driveLetter = driveMatch ? driveMatch[1].toUpperCase() : 'C';
+			const tempCsv = path.join(appDataNexus, `wiztree-export-${driveLetter}.csv`);
 			fs.mkdirSync(appDataNexus, { recursive: true });
-			await new Promise((resolve, reject) => {
-				execFile(
-					wiztreePath,
-					[base, `/export=${tempCsv}`, '/admin=0'],
-					{ windowsHide: true, timeout: 120000 },
-					(err) => err ? reject(err) : resolve()
-				);
-			});
-			if (fs.existsSync(tempCsv)) {
+			
+			let needsScan = true;
+			try {
+				const stats = fs.statSync(tempCsv);
+				// Si el CSV tiene menos de 2 horas (7200000 ms), lo reutilizamos
+				if (Date.now() - stats.mtimeMs < 7200000) {
+					needsScan = false;
+				}
+			} catch (e) {}
+
+			if (needsScan) {
+				await new Promise((resolve) => {
+					// Exportamos SIEMPRE la raiz del disco para poder cachear y reusar el CSV
+					execFile(
+						wiztreePath,
+						[`${driveLetter}:\\`, `/export=${tempCsv}`, '/admin=0'],
+						{ windowsHide: true, timeout: 120000 },
+						() => resolve()
+					);
+				});
+			}
+
+			// Fallback: si tempCsv no se generó (ej. WizTree sin licencia CMD o versión antigua),
+			// intentamos usar el archivo legacy 'wiztree-export.csv' que ya sepamos que funciona.
+			let effectiveCsv = tempCsv;
+			if (!fs.existsSync(effectiveCsv)) {
+				const legacyCsv = path.join(appDataNexus, 'wiztree-export.csv');
+				if (fs.existsSync(legacyCsv)) {
+					effectiveCsv = legacyCsv;
+				}
+			}
+
+			if (fs.existsSync(effectiveCsv)) {
 				const itemsParse = [];
 				const extMap = new Map();
 				let totalFilesBytes = 0;
-				const normBase = (base.endsWith('\\') ? base : base + '\\').toLowerCase();
+				// normBase is already evaluated above
 
 				await new Promise((resolveParse, rejectParse) => {
 					const readline = require('readline');
-					const fileStream = fs.createReadStream(tempCsv, { encoding: 'utf8' });
+					const fileStream = fs.createReadStream(effectiveCsv, { encoding: 'utf8' });
 					const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
 					
 					let isFirstLine = true;
@@ -341,9 +397,18 @@ async function ghostScanDisk(rootPath = 'C:\\') {
 						if (fullPath && sizeBytes > 0) {
 							if (fullPathLower.startsWith(normBase) && fullPath.length > normBase.length) {
 								const subPath = fullPath.substring(normBase.length);
-								const slashIdx = subPath.indexOf('\\');
-								if (slashIdx === -1 || slashIdx === subPath.length - 1) {
-									itemsParse.push({ id: `wiz-${i}`, fullPath, sizeBytes, isDir });
+								
+								let cleanSub = subPath;
+								if (cleanSub.endsWith('\\')) cleanSub = cleanSub.slice(0, -1);
+								
+								let depth = 1;
+								for (let k = 0; k < cleanSub.length; k++) {
+									if (cleanSub[k] === '\\') depth++;
+								}
+								
+								// Solo guardamos hasta profundidad 5. Hijos de depth>1 deben tener > 500KB para no congelar IPC
+								if (depth === 1 || (depth <= 5 && sizeBytes > 500 * 1024)) {
+									itemsParse.push({ id: `wiz-${i}`, fullPath, fullPathLower, sizeBytes, isDir, depth });
 								}
 							}
 							
@@ -366,9 +431,62 @@ async function ghostScanDisk(rootPath = 'C:\\') {
 					rl.on('error', rejectParse);
 				});
 
-				const topItems = itemsParse.sort((a, b) => b.sizeBytes - a.sizeBytes).slice(0, 100);
-				const totalFoldersBytes = topItems.reduce((acc, cur) => acc + cur.sizeBytes, 0) || 1;
+				// === CONSTRUIR ARBOL DE TREEMAP ===
+				const directChildren = itemsParse.filter(i => i.depth === 1).sort((a,b) => b.sizeBytes - a.sizeBytes).slice(0, 100);
 				
+				// Normalizamos carpetas directas
+				const dpSet = new Set(directChildren.map(i => i.fullPath.toLowerCase().replace(/\\$/, '') + '\\'));
+				const dpArr = Array.from(dpSet); // OPTIMIZACION GRAVE: Guardar el array fuera del loop
+				
+				const validNested = itemsParse.filter(i => i.depth > 1 && dpArr.some(dp => i.fullPathLower.startsWith(dp)));
+				const allNodes = [...directChildren, ...validNested];
+				
+				const nodeMap = new Map();
+				allNodes.forEach(node => {
+					node.children = [];
+					nodeMap.set(node.fullPath.toLowerCase().replace(/\\$/, ''), node);
+				});
+				
+				let topItems = [];
+				allNodes.forEach(node => {
+					if (node.depth === 1) {
+						topItems.push(node);
+					} else {
+						let parentPath = node.fullPath.toLowerCase().replace(/\\$/, '');
+						let parentFound = false;
+						while (parentPath.includes('\\') && parentPath.length > normBase.length) {
+							parentPath = parentPath.substring(0, parentPath.lastIndexOf('\\'));
+							if (nodeMap.has(parentPath)) {
+								nodeMap.get(parentPath).children.push(node);
+								parentFound = true;
+								break;
+							}
+						}
+					}
+				});
+
+				const processNode = (node, parentSize) => {
+					let rawName = node.fullPath.replace(/\\$/, '');
+					node.name = rawName.substring(rawName.lastIndexOf('\\') + 1);
+					node.percent = Number(Math.max(0.1, (node.sizeBytes * 100) / (parentSize || 1)).toFixed(1));
+					if (node.children && node.children.length > 0) {
+						node.children.sort((a, b) => b.sizeBytes - a.sizeBytes);
+						node.children.forEach(child => processNode(child, node.sizeBytes));
+					}
+				};
+
+				try {
+					const totalFoldersBytes = topItems.reduce((acc, cur) => acc + cur.sizeBytes, 0) || 1;
+					topItems.forEach(child => processNode(child, totalFoldersBytes));
+					// resolveParse(topItems); // This line was likely intended for the promise above, but is out of scope here.
+				} catch (err) {
+					require('fs').writeFileSync('C:\\mis_scripts\\debug_crash.txt', String(err.stack || err.message));
+					// resolveParse({ error: err.message }); // This line was likely intended for the promise above, but is out of scope here.
+				}
+
+				const totalFoldersBytes = topItems.reduce((acc, cur) => acc + cur.sizeBytes, 0) || 1;
+				topItems.forEach(child => processNode(child, totalFoldersBytes));
+
 				const topExts = Array.from(extMap.entries())
 					.map(([ext, sizeBytes]) => ({ ext, sizeBytes, percent: Number(Math.max(0.1, (sizeBytes * 100) / (totalFilesBytes || 1)).toFixed(1)) }))
 					.sort((a, b) => b.sizeBytes - a.sizeBytes)
@@ -428,6 +546,15 @@ async function ghostScanDisk(rootPath = 'C:\\') {
 			};
 		})
 	};
+	})();
+	inFlightScans.set(normBase, scanPromise);
+	try {
+		const result = await scanPromise;
+		diskScanCache.set(normBase, { timestamp: Date.now(), data: result });
+		return result;
+	} finally {
+		inFlightScans.delete(normBase);
+	}
 }
 
 async function ghostListInstalledApps() {
@@ -844,11 +971,11 @@ const api = {
 			progressCallback(results.length);
 		};
 		
-		// Encontrar discos disponibles
-		execFile('wmic', ['logicaldisk', 'get', 'name'], (err, stdout) => {
+		// Encontrar discos disponibles (PowerShell en lugar de wmic deprecado)
+		execFile('powershell.exe', ['-NoProfile', '-Command', '(Get-CimInstance Win32_LogicalDisk).DeviceID -join ","'], { windowsHide: true }, (err, stdout) => {
 			let drives = ['C:'];
-			if (!err) {
-				const matches = stdout.match(/[A-Z]:/g);
+			if (!err && stdout) {
+				const matches = stdout.trim().match(/[A-Z]:/g);
 				if (matches) drives = matches;
 			}
 			
@@ -962,3 +1089,8 @@ try {
 } catch (err) {
 	console.error('[HorusEngine] No se pudo exponer api mediante contextBridge:', err);
 }
+
+// Pre-warm disk map scan silencioso para el disco C: (para que sea instantáneo la primera vez)
+setTimeout(() => {
+	ghostScanDisk('C:\\').catch(() => {});
+}, 8000);
