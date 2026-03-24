@@ -4,9 +4,15 @@ const fs = require('fs');
 const path = require('path');
 
 const isPackaged = __dirname.includes('app.asar');
-const storageDir = isPackaged
-	? path.join(process.resourcesPath, 'mis_scripts')
-	: path.join(__dirname, '..', 'mis_scripts');
+
+const resourcesBase = isPackaged 
+	? process.resourcesPath 
+	: path.join(__dirname, '..');
+
+const storageDir = path.join(resourcesBase, 'mis_scripts');
+const pythonEnvPath = path.join(resourcesBase, 'env_python');
+const toolsDir = path.join(resourcesBase, 'tools');
+const pythonExePath = path.join(pythonEnvPath, 'python.exe');
 
 const activeProcesses = new Map();
 const outputListeners = new Set();
@@ -20,30 +26,22 @@ const portableBaseDir = process.env.PORTABLE_EXECUTABLE_DIR || '';
 const appDataNexus = portableBaseDir
 	? path.join(portableBaseDir, 'HorusData')
 	: path.join(process.env.APPDATA || process.env.USERPROFILE, 'HorusEngine');
-const pythonEnvPath = isPackaged 
-	? path.join(appDataNexus, 'env_python') 
-	: path.join(storageDir, 'env_python');
-const pythonExePath = path.join(pythonEnvPath, 'python.exe');
 
 const toolCandidates = {
 	es: [
-		path.join(storageDir, 'tools', 'es.exe'),
-		path.join(process.cwd(), 'tools', 'es.exe'),
+		path.join(toolsDir, 'es.exe'),
 		'Everything\\es.exe'
 	],
 	mft: [
-		path.join(storageDir, 'tools', 'mft_reader.exe'),
-		path.join(process.cwd(), 'tools', 'mft_reader.exe'),
-		path.join(__dirname, '..', 'native_modules', 'mft_reader', 'target', 'release', 'mft_reader.exe')
+		path.join(toolsDir, 'mft_reader.exe'),
+		path.join(resourcesBase, 'native_modules', 'mft_reader', 'target', 'release', 'mft_reader.exe')
 	],
 	wiztree: [
-		path.join(storageDir, 'tools', 'WizTree64.exe'),
-		path.join(process.cwd(), 'tools', 'WizTree64.exe'),
+		path.join(toolsDir, 'WizTree64.exe'),
 		'C:\\Program Files\\WizTree\\WizTree64.exe'
 	],
 	geek: [
-		path.join(storageDir, 'tools', 'GeekUninstaller.exe'),
-		path.join(process.cwd(), 'tools', 'GeekUninstaller.exe')
+		path.join(toolsDir, 'GeekUninstaller.exe')
 	]
 };
 
@@ -83,7 +81,6 @@ function ensureStandaloneEnvironment() {
     }
 
     // Instalar WizTree Integrado
-    const toolsDir = path.join(storageDir, 'tools');
     const wiztreeExePath = path.join(toolsDir, 'WizTree64.exe');
     
     if (!fs.existsSync(wiztreeExePath)) {
@@ -141,11 +138,6 @@ function createSanitizedEnv(baseEnv = process.env) {
 	delete envBlock.PYTHONHOME;
 	delete envBlock.PYTHONPATH;
 	return envBlock;
-}
-
-function quoteCmdArg(arg) {
-	const escaped = String(arg).replace(/"/g, '\\"');
-	return `"${escaped}"`;
 }
 
 function findExistingTool(paths) {
