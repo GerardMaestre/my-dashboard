@@ -111,11 +111,11 @@ function extractIconPath(app) {
 	raw = raw.replace(/"/g, '');
 
 	raw = raw.replace(/%ProgramFiles%/gi, 'C:\\Program Files')
-			 .replace(/%ProgramFiles\(x86\)%/gi, 'C:\\Program Files (x86)')
-			 .replace(/%AppData%/gi, 'C:\\Users\\gerar\\AppData\\Roaming')
-			 .replace(/%LocalAppData%/gi, 'C:\\Users\\gerar\\AppData\\Local')
-			 .replace(/%SystemRoot%/gi, 'C:\\Windows')
-			 .replace(/%WinDir%/gi, 'C:\\Windows');
+		.replace(/%ProgramFiles\(x86\)%/gi, 'C:\\Program Files (x86)')
+		.replace(/%AppData%/gi, 'C:\\Users\\gerar\\AppData\\Roaming')
+		.replace(/%LocalAppData%/gi, 'C:\\Users\\gerar\\AppData\\Local')
+		.replace(/%SystemRoot%/gi, 'C:\\Windows')
+		.replace(/%WinDir%/gi, 'C:\\Windows');
 
 	return raw;
 }
@@ -153,7 +153,7 @@ async function loadRealAppIcon(app, iconId) {
 				const el = document.getElementById(iconId);
 				if (el) el.outerHTML = `<img class="app-icon-img" id="${iconId}" src="${base64}" alt="icon" loading="lazy">`;
 			}
-		} catch (e) {}
+		} catch (e) { }
 	}
 }
 
@@ -225,7 +225,7 @@ async function cargarScripts() {
 		logTerminal(`[Error] No se pudo leer mis_scripts: ${err}`, 'error');
 		return;
 	}
-	
+
 	// Ignore venv folders, non scripts, and explicitly hide .exe files from the UI
 	// Internal logic will still be able to call them, but they won't clutter the dashboard.
 	let validFiles = files.filter(
@@ -236,7 +236,7 @@ async function cargarScripts() {
 			!f.includes('__pycache__') &&
 			!f.toLowerCase().endsWith('.exe') &&
 			!f.toLowerCase().endsWith('.pyc') &&
-			!f.toLowerCase().endsWith('.md') && 
+			!f.toLowerCase().endsWith('.md') &&
 			!f.toLowerCase().endsWith('.txt')
 	);
 
@@ -251,7 +251,7 @@ async function cargarScripts() {
 	for (const file of validFiles) {
 		const parts = file.split('/');
 		const folder = parts.length > 1 ? parts.slice(0, -1).join('/') : 'Misceláneo';
-		
+
 		if (favoritesList.includes(file)) {
 			if (!groups['★ Destacados']) groups['★ Destacados'] = [];
 			groups['★ Destacados'].push(file);
@@ -302,7 +302,7 @@ async function cargarScripts() {
 			li.className = 'script-item';
 			li.setAttribute('data-name', file);
 			li.setAttribute('data-type', info.name);
-			
+
 			const divHeader = document.createElement('div');
 			divHeader.className = 'card-header';
 			const divTitleGroup = document.createElement('div');
@@ -315,7 +315,7 @@ async function cargarScripts() {
 			const spanName = document.createElement('span');
 			spanName.className = 'file-name';
 			spanName.title = file;
-			spanName.textContent = fileNameOnly; 
+			spanName.textContent = fileNameOnly;
 
 			divTitle.appendChild(dot);
 			divTitle.appendChild(spanName);
@@ -327,7 +327,7 @@ async function cargarScripts() {
 			divDesc.title = desc;
 			divDesc.textContent = desc;
 			divDesc.style.flex = 'none';
-            divDesc.style.padding = '0'; // We'll move padding to the container
+			divDesc.style.padding = '0'; // We'll move padding to the container
 
 			const divArgs = document.createElement('div');
 			divArgs.className = 'script-args-info';
@@ -360,20 +360,20 @@ async function cargarScripts() {
 			divInfoContainer.style.justifyContent = 'center';
 			divInfoContainer.style.overflow = 'hidden';
 			divInfoContainer.style.padding = '0 15px';
-			
+
 			divInfoContainer.appendChild(divDesc);
 			divInfoContainer.appendChild(divArgs);
 			divInfoContainer.appendChild(modeHint);
 
 			const isFavorite = favoritesList.includes(file);
-			
+
 			const btnFav = document.createElement('button');
 			btnFav.className = 'mac-icon-btn';
 			btnFav.onclick = () => toggleFavorite(file);
 			btnFav.style.marginRight = '10px';
-			btnFav.innerHTML = isFavorite ? 
-                `<svg viewBox="0 0 24 24" fill="var(--mac-blue)"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>` : 
-                `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z"/></svg>`;
+			btnFav.innerHTML = isFavorite ?
+				`<svg viewBox="0 0 24 24" fill="var(--mac-blue)"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>` :
+				`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z"/></svg>`;
 
 			const autostartRow = document.createElement('div');
 			autostartRow.className = 'autostart-row';
@@ -398,7 +398,7 @@ async function cargarScripts() {
 			const liveStatus = document.createElement('div');
 			liveStatus.id = `status-${key}`;
 			liveStatus.className = `live-status ${isAutoActive ? 'active' : ''}`;
-			liveStatus.innerHTML = `<div class="live-dot"></div><span><b id="countdown-${key}">--:--</b></span>`; 
+			liveStatus.innerHTML = `<div class="live-dot"></div><span><b id="countdown-${key}">--:--</b></span>`;
 
 			const cardActions = document.createElement('div');
 			cardActions.className = 'card-actions';
@@ -442,7 +442,7 @@ async function cargarScripts() {
 			fragment.appendChild(li);
 		}
 	}
-	
+
 	list.appendChild(fragment);
 
 	for (const file of pendingAutostarts) {
@@ -532,19 +532,19 @@ function cerrarAutopilot() {
 function iniciarAutopilot() {
 	const fileName = document.getElementById('sch-filename').innerText;
 	const timeInput = parseInt(document.getElementById('sch-time').value);
-	
+
 	if (!timeInput || timeInput <= 0) {
 		mostrarToast("Por favor, introduce un tiempo válido mayor a 0.", "error");
 		return;
 	}
-	
+
 	const ms = timeInput * parseInt(document.getElementById('sch-unit').value);
 
 	cerrarAutopilot();
-	
+
 	// Resetear valor para el siguiente uso
 	document.getElementById('sch-time').value = '15';
-	
+
 	logTerminal(`[AUTOPILOT] Bucle iniciado para ${fileName}`, 'system');
 	mostrarToast(`Autopilot activado para ${fileName}`, 'success');
 	ejecutar(fileName, true);
@@ -554,7 +554,7 @@ function iniciarAutopilot() {
 	}
 
 	autopilotTasks[fileName] = { timer: null, nextRun: Date.now() + ms }; // Initialize immediately
-	
+
 	const timer = setInterval(() => {
 		autopilotTasks[fileName].nextRun = Date.now() + ms;
 		if (!api.isRunning(fileName)) {
@@ -575,7 +575,7 @@ function iniciarAutopilot() {
 		btnRun.className = 'mac-action-btn stop';
 		btnRun.onclick = () => detenerAutopilot(fileName);
 	}
-	
+
 	// Actualizar timer inmediatamente para no mostrar --:-- el primer segundo
 	updateTimers();
 }
@@ -628,12 +628,12 @@ function logTerminal(mensaje, tipo) {
 	// Limpiar códigos ANSI de la consola de Python/CMD
 	span.textContent = String(mensaje).replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
 	terminal.appendChild(span);
-	
+
 	// Limitar el registro a 1000 lineas para evitar sobrecarga de memoria
 	if (terminal.childNodes.length > 1000) {
 		terminal.removeChild(terminal.firstChild);
 	}
-	
+
 	terminal.scrollTop = terminal.scrollHeight;
 }
 
@@ -689,7 +689,7 @@ document.addEventListener('keydown', (e) => {
 		e.preventDefault();
 		terminal.innerHTML = '<span class="log-system"> Sistema Nexus inicializado. Listo para operar.</span>';
 	}
-	
+
 	// F3 para buscar
 	if (e.key === 'F3' || (e.ctrlKey && e.key === 'f')) {
 		e.preventDefault();
@@ -698,34 +698,34 @@ document.addEventListener('keydown', (e) => {
 
 	// Navegación con Teclado
 	if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        const visibleItems = Array.from(document.querySelectorAll('.script-item:not(.hidden)'));
-        if (visibleItems.length === 0) return;
-        
-        if (e.key === 'ArrowDown') {
-            selectedIndex = (selectedIndex + 1) % visibleItems.length;
-        } else {
-            selectedIndex = (selectedIndex - 1 + visibleItems.length) % visibleItems.length;
-        }
-        
-        visibleItems.forEach((item, idx) => {
-            if (idx === selectedIndex) {
-                item.style.boxShadow = 'inset 0 0 0 2px var(--mac-blue)';
-                item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-            } else {
-                item.style.boxShadow = '';
-            }
-        });
-        e.preventDefault();
-    }
+		const visibleItems = Array.from(document.querySelectorAll('.script-item:not(.hidden)'));
+		if (visibleItems.length === 0) return;
+
+		if (e.key === 'ArrowDown') {
+			selectedIndex = (selectedIndex + 1) % visibleItems.length;
+		} else {
+			selectedIndex = (selectedIndex - 1 + visibleItems.length) % visibleItems.length;
+		}
+
+		visibleItems.forEach((item, idx) => {
+			if (idx === selectedIndex) {
+				item.style.boxShadow = 'inset 0 0 0 2px var(--mac-blue)';
+				item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+			} else {
+				item.style.boxShadow = '';
+			}
+		});
+		e.preventDefault();
+	}
 
 	if (e.key === 'Enter' && selectedIndex >= 0) {
-        const visibleItems = Array.from(document.querySelectorAll('.script-item:not(.hidden)'));
-        if (visibleItems[selectedIndex]) {
-            const fileName = visibleItems[selectedIndex].getAttribute('data-name');
-            ejecutar(fileName);
+		const visibleItems = Array.from(document.querySelectorAll('.script-item:not(.hidden)'));
+		if (visibleItems[selectedIndex]) {
+			const fileName = visibleItems[selectedIndex].getAttribute('data-name');
+			ejecutar(fileName);
 			e.preventDefault();
-        }
-    }
+		}
+	}
 });
 document.getElementById('btn-refresh').addEventListener('click', async () => {
 	await cargarScripts();
@@ -907,17 +907,22 @@ function buscarEnIndiceLocal(query, max = 120) {
 	return matches;
 }
 
+// =======================================================================
+// 1. FUNCIÓN PRINCIPAL: RENDERIZAR ESCANEO (Limpia y sin duplicados)
+// =======================================================================
 function renderEscaneoDisco(payload) {
 	const container = document.getElementById('ojo-disk-results');
 	const treemap = document.getElementById('ojo-disk-treemap');
 	const extensionsContainer = document.getElementById('ojo-disk-extensions');
 	const breadcrumb = document.getElementById('ojo-disk-breadcrumb');
+	
 	if (!container) return;
 	container.innerHTML = '';
 	if (treemap) treemap.innerHTML = '';
 	if (extensionsContainer) extensionsContainer.innerHTML = '';
 
 	const currentPath = ghostState.diskPathStack[ghostState.diskPathStack.length - 1] || 'C:\\';
+	
 	if (breadcrumb) {
 		breadcrumb.innerHTML = '';
 		ghostState.diskPathStack.forEach((p, idx) => {
@@ -941,26 +946,39 @@ function renderEscaneoDisco(payload) {
 		return;
 	}
 
+    // --- DIBUJADO DEL TREEMAP VISUAL ---
 	if (treemap) {
         treemap.innerHTML = ''; 
-        const rect = treemap.getBoundingClientRect();
-		const boxW = Math.max(rect.width, 100); 
-		const boxH = Math.max(rect.height, 100);
-
+        treemap.style.display = 'block'; 
         treemap.style.position = 'relative';
-		treemap.style.height = '100%';
+
+        const rect = treemap.getBoundingClientRect();
+        // Si el DOM colapsa por Flexbox, aseguramos un tamaño mínimo gigante
+        const boxW = Math.max(rect.width, 600); 
+        const boxH = Math.max(rect.height, 300);
         
-        let mapItems = items.filter(i => i.sizeBytes > 0).sort((a, b) => b.sizeBytes - a.sizeBytes).slice(0, 250);
-		
-		const tmFragment = document.createDocumentFragment();
-		const layout = getSquarifiedLayout(mapItems, 0, 0, boxW, boxH, 1);
-        rootContainer.className = 'wiz-container'; // Aplicamos tu clase base
+        let mapItems = items.filter(i => Number(i.sizeBytes) > 0).sort((a, b) => Number(b.sizeBytes) - Number(a.sizeBytes)).slice(0, 250);
         
-        tmFragment.appendChild(rootContainer);
-        buildTreemapDOM(items, rootContainer, boxW, boxH, 1, null);
-        treemap.appendChild(tmFragment);
+        const rootContainer = document.createElement('div');
+        rootContainer.className = 'wiz-container'; 
+        
+        // Píxeles forzados (Ignoramos bugs de CSS porcentual)
+        rootContainer.style.position = 'absolute';
+        rootContainer.style.top = '0px';
+        rootContainer.style.left = '0px';
+        rootContainer.style.width = `${boxW}px`;
+        rootContainer.style.height = `${boxH}px`;
+        
+        if (mapItems.length === 0) {
+            rootContainer.innerHTML = '<div style="color:red; padding: 20px;">Error: No hay items válidos para dibujar el Treemap.</div>';
+        } else {
+            buildTreemapDOM(mapItems, rootContainer, boxW, boxH, 1, null);
+        }
+        
+        treemap.appendChild(rootContainer);
     }
 
+    // --- DIBUJADO DE LAS LISTAS ---
 	const fragment = document.createDocumentFragment();
 	items.slice(0, 220).forEach((item) => {
 		const card = document.createElement('div');
@@ -1005,6 +1023,173 @@ function renderEscaneoDisco(payload) {
 	}
 }
 
+// =======================================================================
+// 2. MOTOR MATEMÁTICO: SQUARIFY (Blindado contra divisiones por cero)
+// =======================================================================
+function squarifyLevel(items, width, height) {
+    let result = [];
+    let totalValue = items.reduce((sum, item) => sum + Math.max(0, Number(item.sizeBytes) || 0), 0);
+    if (totalValue === 0 || width <= 0 || height <= 0) return result;
+
+    let scale = (width * height) / totalValue;
+    let nodes = items.map(item => ({ item, area: Math.max(0, Number(item.sizeBytes)) * scale })).filter(n => n.area > 0);
+    
+    let x = 0, y = 0, w = width, h = height;
+
+    function worst(row, w2) {
+        let sum = 0, min = Infinity, max = 0;
+        for (let i = 0; i < row.length; i++) {
+            let area = row[i].area;
+            sum += area;
+            if (area < min) min = area;
+            if (area > max) max = area;
+        }
+        if (sum === 0) return Infinity;
+        let sumSquare = sum * sum;
+        return Math.max((w2 * max) / sumSquare, sumSquare / (w2 * min));
+    }
+
+    let row = [];
+    for (let i = 0; i < nodes.length; i++) {
+        let node = nodes[i];
+        let w2 = Math.max(0.1, Math.min(w, h)) ** 2; 
+        
+        if (row.length === 0) {
+            row.push(node);
+            continue;
+        }
+        
+        if (worst(row, w2) >= worst([...row, node], w2)) {
+            row.push(node);
+        } else {
+            layoutRow(row);
+            row = [node];
+        }
+    }
+    if (row.length) layoutRow(row);
+
+    function layoutRow(r) {
+        let sumArea = r.reduce((acc, n) => acc + n.area, 0);
+        let currentX = x, currentY = y;
+        let isHorizontal = w >= h; 
+        
+        let safeW = Math.max(0.1, w);
+        let safeH = Math.max(0.1, h);
+
+        let rectW = isHorizontal ? sumArea / safeH : safeW;
+        let rectH = isHorizontal ? safeH : sumArea / safeW;
+        
+        if (isHorizontal) { 
+            x += rectW; 
+            w = Math.max(0, w - rectW); 
+        } else { 
+            y += rectH; 
+            h = Math.max(0, h - rectH); 
+        }
+
+        for (let i = 0; i < r.length; i++) {
+            let node = r[i];
+            let nw = isHorizontal ? rectW : node.area / Math.max(0.1, rectH);
+            let nh = isHorizontal ? node.area / Math.max(0.1, rectW) : rectH;
+            
+            result.push({
+                item: node.item,
+                xPx: currentX,
+                yPx: currentY,
+                wPx: nw, 
+                hPx: nh
+            });
+            
+            if (isHorizontal) currentY += nh; else currentX += nw;
+        }
+    }
+    return result;
+}
+
+// =======================================================================
+// 3. INYECTOR DOM: Estilo macOS (Anidado en Píxeles Absolutos)
+// =======================================================================
+function buildTreemapDOM(items, container, widthPx, heightPx, depth = 1, parentHue = null) {
+    if (depth > 6 || widthPx < 3 || heightPx < 3 || !items || items.length === 0) return;
+    
+    let sortedItems = items.filter(i => Number(i.sizeBytes) > 0).sort((a, b) => Number(b.sizeBytes) - Number(a.sizeBytes));
+    if (depth === 1) sortedItems = sortedItems.slice(0, 250); 
+
+    let layout = squarifyLevel(sortedItems, widthPx, heightPx);
+    
+    layout.forEach(rect => {
+        const { item, xPx, yPx, wPx, hPx } = rect;
+        
+        if (wPx < 3 || hPx < 3) return; // Filtramos la basura visual
+
+        const isParent = item.children && item.children.length > 0;
+        
+        let hue = parentHue;
+        if (!isParent) {
+            let ext = (item.name || '').split('.').pop().toLowerCase();
+            let hash = 0;
+            for (let i = 0; i < ext.length; i++) hash = ext.charCodeAt(i) + ((hash << 5) - hash);
+            hue = Math.abs(hash) % 360;
+        } else if (depth === 1) {
+            hue = Math.floor(Math.random() * 360);
+        }
+
+        const div = document.createElement('div');
+        div.className = isParent ? 'wiz-node wiz-folder' : 'wiz-node wiz-file';
+        // Inyectado de PÍXELES exactos
+        div.style.left = `${xPx}px`;
+        div.style.top = `${yPx}px`;
+        div.style.width = `${wPx}px`;
+        div.style.height = `${hPx}px`;
+        div.style.zIndex = depth;
+        
+        div.title = `${item.name || item.fullPath}\n${formatBytes(item.sizeBytes, 1)}`;
+        div.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (item.fullPath && typeof ejecutarEscaneoFantasma === 'function') ejecutarEscaneoFantasma(item.fullPath, true);
+        });
+
+        if (isParent) {
+            let headerHeight = (depth <= 4 && hPx > 35 && wPx > 45) ? 20 : 0;
+            
+            if (headerHeight > 0) {
+                const title = document.createElement('div');
+                title.className = 'wiz-folder-header';
+                title.style.height = `${headerHeight}px`;
+                title.style.lineHeight = `${headerHeight}px`;
+                title.innerText = item.name || item.fullPath;
+                div.appendChild(title);
+            }
+
+            let pad = (wPx > 25 && hPx > 25) ? 4 : 1; 
+            let childAreaW = wPx - (pad * 2);
+            let childAreaH = hPx - headerHeight - (pad * 2);
+
+            if (childAreaW > 6 && childAreaH > 6) {
+                const childContainer = document.createElement('div');
+                childContainer.style.position = 'absolute';
+                childContainer.style.left = `${pad}px`;
+                childContainer.style.top = `${headerHeight + pad}px`;
+                childContainer.style.width = `${childAreaW}px`; 
+                childContainer.style.height = `${childAreaH}px`; 
+                div.appendChild(childContainer);
+
+                buildTreemapDOM(item.children, childContainer, childAreaW, childAreaH, depth + 1, hue);
+            }
+        } else {
+            div.style.background = `linear-gradient(135deg, hsl(${hue}, 65%, 60%), hsl(${hue}, 70%, 40%))`;
+            if (wPx > 55 && hPx > 25) {
+                const label = document.createElement('div');
+                label.className = 'wiz-label';
+                label.innerText = item.name || 'file';
+                div.appendChild(label);
+            }
+        }
+        container.appendChild(div);
+    });
+}
+
+
 function navegarDiscoAIndice(idx) {
 	if (idx < 0 || idx >= ghostState.diskPathStack.length) return;
 	ghostState.diskPathStack = ghostState.diskPathStack.slice(0, idx + 1);
@@ -1032,7 +1217,7 @@ async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false) {
 	const btn = document.getElementById('ojo-btn-scan');
 	const loadingEl = document.getElementById('ojo-disk-loading');
 	const contentEl = document.getElementById('ojo-disk-content');
-	
+
 	if (btn) {
 		btn.disabled = true;
 		btn.textContent = 'Calculando...';
@@ -1044,17 +1229,17 @@ async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false) {
 		setOjoStatus(`Escaneando ${targetRoot}...`);
 		const payload = await api.escanearDisco(targetRoot);
 		if (scanSeq !== ghostState.diskScanSeq) return;
-		
+
 		if (loadingEl) loadingEl.style.display = 'none';
 		if (contentEl) contentEl.style.display = 'flex';
-		
+
 		renderEscaneoDisco(payload);
-		
+
 		ghostState.diskScanned = true;
 		setOjoStatus(`Mapa listo para ${targetRoot} (${(payload?.engine || 'native').toUpperCase()}).`);
 	} catch (err) {
 		console.error(err);
-		try { require('fs').writeFileSync('C:\\Users\\gerar\\Desktop\\mi-dashboard\\my-app\\frontend_crash.txt', String(err.stack || err.message)); } catch(e){}
+		try { require('fs').writeFileSync('C:\\Users\\gerar\\Desktop\\mi-dashboard\\my-app\\frontend_crash.txt', String(err.stack || err.message)); } catch (e) { }
 		logTerminal(`[ERROR] Ojo de Dios: Fallo al escanear: ${err.message}`);
 		const title = document.querySelector('.ojo-dios-subtitle');
 		if (title) {
@@ -1237,18 +1422,18 @@ function aplicarFiltros() {
 		const isRunning = runningFiles.has(fileName) || autopilotTasks[fileName];
 
 		const matchesSearch = terms.every(t => fileName.toLowerCase().includes(t));
-		
+
 		let matchesFilter = true;
 		if (currentFilter === 'py') matchesFilter = fileType === 'PY';
 		else if (currentFilter === 'bat') matchesFilter = fileType === 'BAT';
 		else if (currentFilter === 'active') matchesFilter = isRunning;
 
 		const show = matchesSearch && matchesFilter;
-		
+
 		if (show) {
 			item.classList.remove('hidden');
 			// Usamos setTimeout para que display block ocurra antes de la transicin de opacidad en CSS
-			item.style.display = ''; 
+			item.style.display = '';
 			found = true;
 		} else {
 			item.classList.add('hidden');
@@ -1280,17 +1465,17 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 	btn.addEventListener('click', (e) => {
 		const targetBtn = e.target.closest('.tab-btn');
 		if (!targetBtn) return;
-		
+
 		document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
 		targetBtn.classList.add('active');
-		
+
 		currentFilter = targetBtn.getAttribute('data-filter');
-		
+
 		const titleEl = document.getElementById('current-category-title');
 		if (titleEl) {
 			titleEl.textContent = targetBtn.textContent.trim();
 		}
-		
+
 		aplicarFiltros();
 	});
 });
@@ -1317,55 +1502,55 @@ bindGhostEvents();
 
 
 function toggleTerminal() {
-    const drawer = document.getElementById("terminal-drawer");
-    const icon = document.getElementById("btn-terminal-icon");
-    if (drawer.classList.contains("collapsed")) {
-        drawer.classList.remove("collapsed");
-        if(icon) icon.style.transform = "rotate(0deg)";
-    } else {
-        drawer.classList.add("collapsed");
-        if(icon) icon.style.transform = "rotate(180deg)";
-    }
+	const drawer = document.getElementById("terminal-drawer");
+	const icon = document.getElementById("btn-terminal-icon");
+	if (drawer.classList.contains("collapsed")) {
+		drawer.classList.remove("collapsed");
+		if (icon) icon.style.transform = "rotate(0deg)";
+	} else {
+		drawer.classList.add("collapsed");
+		if (icon) icon.style.transform = "rotate(180deg)";
+	}
 }
 window.toggleTerminal = toggleTerminal;
 
 function mostrarToast(mensaje, tipo = 'system') {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-    
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${tipo}`;
-    
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'display:flex;align-items:center;gap:10px;';
-    
-    const iconDiv = document.createElement('span');
-    if (tipo === 'success') iconDiv.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="var(--mac-green)"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
-    else if (tipo === 'error') iconDiv.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="var(--mac-red)"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
-    else iconDiv.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="var(--mac-blue)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>';
-    
-    const textSpan = document.createElement('span');
-    textSpan.textContent = mensaje; // textContent prevents XSS
-    
-    wrapper.appendChild(iconDiv);
-    wrapper.appendChild(textSpan);
-    toast.appendChild(wrapper);
-    container.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.classList.add('fadeOut');
-        setTimeout(() => toast.remove(), 300);
-    }, 3500);
+	const container = document.getElementById('toast-container');
+	if (!container) return;
+
+	const toast = document.createElement('div');
+	toast.className = `toast toast-${tipo}`;
+
+	const wrapper = document.createElement('div');
+	wrapper.style.cssText = 'display:flex;align-items:center;gap:10px;';
+
+	const iconDiv = document.createElement('span');
+	if (tipo === 'success') iconDiv.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="var(--mac-green)"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+	else if (tipo === 'error') iconDiv.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="var(--mac-red)"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
+	else iconDiv.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="var(--mac-blue)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>';
+
+	const textSpan = document.createElement('span');
+	textSpan.textContent = mensaje; // textContent prevents XSS
+
+	wrapper.appendChild(iconDiv);
+	wrapper.appendChild(textSpan);
+	toast.appendChild(wrapper);
+	container.appendChild(toast);
+
+	setTimeout(() => {
+		toast.classList.add('fadeOut');
+		setTimeout(() => toast.remove(), 300);
+	}, 3500);
 }
 window.mostrarToast = mostrarToast;
 
 function copiarTerminal() {
-    const text = Array.from(document.getElementById('terminal').childNodes).map(node => node.innerText).join('\n');
-    navigator.clipboard.writeText(text).then(() => {
-        mostrarToast('Log de consola copiado al portapapeles', 'success');
-    }).catch(() => {
-        mostrarToast('No se pudo copiar al portapapeles', 'error');
-    });
+	const text = Array.from(document.getElementById('terminal').childNodes).map(node => node.innerText).join('\n');
+	navigator.clipboard.writeText(text).then(() => {
+		mostrarToast('Log de consola copiado al portapapeles', 'success');
+	}).catch(() => {
+		mostrarToast('No se pudo copiar al portapapeles', 'error');
+	});
 }
 window.copiarTerminal = copiarTerminal;
 
@@ -1383,62 +1568,62 @@ let ojoIndexing = false;
 let ojoIndexed = false;
 
 function abrirOjoDeDios(screen = 'search') {
-    const modal = document.getElementById('modal-ojo-dios');
-    if (modal) {
-        modal.classList.add('active');
+	const modal = document.getElementById('modal-ojo-dios');
+	if (modal) {
+		modal.classList.add('active');
 		cargarMotoresFantasma();
 		setOjoScreen(screen);
-        
-        if (!ojoIndexed && !ojoIndexing) {
-            ojoIndexing = true;
+
+		if (!ojoIndexed && !ojoIndexing) {
+			ojoIndexing = true;
 			setOjoStatus('Mapeando el disco hacia memoria RAM para busqueda total...');
-            
-            api.scanGlobalFiles((results) => {
-                ojoDatabase = results;
-                ojoIndexed = true;
-                ojoIndexing = false;
+
+			api.scanGlobalFiles((results) => {
+				ojoDatabase = results;
+				ojoIndexed = true;
+				ojoIndexing = false;
 				setOjoStatus(`Indice local listo: ${ojoDatabase.length.toLocaleString()} rutas en RAM.`);
 				if (ghostState.activeScreen === 'search') {
 					filtrarOjoDeDios();
 				}
-            }, (count) => {
-                // Progress update
+			}, (count) => {
+				// Progress update
 				setOjoStatus(`Indexando RAM: ${count.toLocaleString()} rutas...`);
-            });
+			});
 		} else if (ghostState.activeScreen === 'search') {
-            filtrarOjoDeDios();
-        }
-    }
+			filtrarOjoDeDios();
+		}
+	}
 }
 
 function cerrarOjoDeDios() {
-    const modal = document.getElementById('modal-ojo-dios');
-    if (modal) modal.classList.remove('active');
+	const modal = document.getElementById('modal-ojo-dios');
+	if (modal) modal.classList.remove('active');
 }
 
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        cerrarOjoDeDios();
-        closeSettings();
-    }
+	if (e.key === 'Escape') {
+		cerrarOjoDeDios();
+		closeSettings();
+	}
 });
 
 // ojoInput binding handled inside bindGhostEvents()
 
 
 function filtrarOjoDeDios() {
-    const input = document.getElementById('ojo-input');
+	const input = document.getElementById('ojo-input');
 	const ul = document.getElementById('ojo-results');
-    if (!input || !ul) return;
-    
-    const query = input.value.trim().toLowerCase();
+	if (!input || !ul) return;
+
+	const query = input.value.trim().toLowerCase();
 	ul.innerHTML = '';
 	if (query.length < 2) return;
 	ejecutarBusquedaFantasma(query);
 }
 
 function escapeRegExp(string) {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+	return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
 }
 
 function highlightText(text, parts) {
@@ -1487,271 +1672,108 @@ window.openSettings = openSettings;
 window.closeSettings = closeSettings;
 
 function changeTheme() {
-    const theme = document.getElementById('theme-selector').value;
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('nexus_theme', theme);
+	const theme = document.getElementById('theme-selector').value;
+	document.documentElement.setAttribute('data-theme', theme);
+	localStorage.setItem('nexus_theme', theme);
 }
 window.changeTheme = changeTheme;
 window.abrirOjoDeDios = abrirOjoDeDios;
 window.cerrarOjoDeDios = cerrarOjoDeDios;
 
 function getSquarifiedLayout(items, x, y, width, height, depth = 1, parentHue = null) {
-    let result = [];
-    if (items.length === 0 || width < 5 || height < 5 || depth > 6) return result;
+	let result = [];
+	if (items.length === 0 || width < 5 || height < 5 || depth > 6) return result;
 
-    let totalSize = items.reduce((sum, item) => sum + Math.max(0, item.sizeBytes || 0), 0);
-    if (totalSize === 0) return result;
+	let totalSize = items.reduce((sum, item) => sum + Math.max(0, item.sizeBytes || 0), 0);
+	if (totalSize === 0) return result;
 
-    let nodes = items.map(item => ({ item, area: (Math.max(0, item.sizeBytes) / totalSize) * (width * height) }))
-                     .filter(n => n.area > 0);
+	let nodes = items.map(item => ({ item, area: (Math.max(0, item.sizeBytes) / totalSize) * (width * height) }))
+		.filter(n => n.area > 0);
 
-    let bounds = { x: x, y: y, w: width, h: height };
+	let bounds = { x: x, y: y, w: width, h: height };
 
-    function layoutRow(row, w, b) {
-        let rowArea = row.reduce((sum, n) => sum + n.area, 0);
-        let rowWidth = b.w >= b.h ? rowArea / b.h : b.w;
-        let rowHeight = b.w >= b.h ? b.h : rowArea / b.w;
-        
-        let cx = b.x;
-        let cy = b.y;
-        
-        for (let node of row) {
-            let nw = Math.max(0, b.w >= b.h ? rowWidth : node.area / rowHeight);
-            let nh = Math.max(0, b.w >= b.h ? node.area / rowWidth : rowHeight);
-            
-            let isParent = node.item.children && node.item.children.length > 0;
-            
-            // Asignamos color basado en la extensión si es archivo (Estilo WizTree)
-            let hue = parentHue;
-            if (!isParent) {
-                let ext = (node.item.name || '').split('.').pop().toLowerCase();
-                let hash = 0;
-                for (let i = 0; i < ext.length; i++) hash = ext.charCodeAt(i) + ((hash << 5) - hash);
-                hue = Math.abs(hash) % 360;
-            } else if (depth === 1) {
-                hue = Math.floor(Math.random() * 360);
-            }
-            
-            let header = (isParent && depth <= 4 && nh > 25 && nw > 30) ? 18 : 0;
-            let pad = isParent ? 2 : 0; // Margen interno de carpeta
-            
-            result.push({ item: node.item, x: cx, y: cy, w: nw, h: nh, depth, hue, isParent, header });
-            
-            if (isParent && nw - (pad*2) > 5 && nh - header - (pad*2) > 5) {
-                result = result.concat(getSquarifiedLayout(
-                    node.item.children, 
-                    cx + pad, 
-                    cy + header + pad, 
-                    nw - (pad * 2), 
-                    nh - header - (pad * 2), 
-                    depth + 1, 
-                    hue
-                ));
-            }
-            if (b.w >= b.h) cy += nh; else cx += nw;
-        }
-        
-        if (b.w >= b.h) {
-            b.x += rowWidth;
-            b.w = Math.max(0, b.w - rowWidth);
-        } else {
-            b.y += rowHeight;
-            b.h = Math.max(0, b.h - rowHeight);
-        }
-    }
+	function layoutRow(row, w, b) {
+		let rowArea = row.reduce((sum, n) => sum + n.area, 0);
+		let rowWidth = b.w >= b.h ? rowArea / b.h : b.w;
+		let rowHeight = b.w >= b.h ? b.h : rowArea / b.w;
 
-    let row = [];
-    for (let i = 0; i < nodes.length; i++) {
-        let node = nodes[i];
-        if (row.length === 0) { row.push(node); continue; }
-        
-        let w = Math.max(bounds.w, bounds.h);
-        let rowArea = row.reduce((sum, n) => sum + n.area, 0);
-        let rowMax = Math.max(...row.map(n => n.area));
-        let rowMin = Math.min(...row.map(n => n.area));
-        
-        let nextRowArea = rowArea + node.area;
-        let nextRowMax = Math.max(rowMax, node.area);
-        let nextRowMin = Math.min(rowMin, node.area);
-        
-        let currentWorst = Math.max((w*w*rowMax)/(rowArea*rowArea), (rowArea*rowArea)/(w*w*rowMin));
-        let nextWorst = Math.max((w*w*nextRowMax)/(nextRowArea*nextRowArea), (nextRowArea*nextRowArea)/(w*w*nextRowMin));
-        
-        if (nextWorst <= currentWorst) row.push(node);
-        else { layoutRow(row, w, bounds); row = [node]; }
-    }
-    if (row.length > 0) layoutRow(row, Math.max(bounds.w, bounds.h), bounds);
-    
-    return result;
+		let cx = b.x;
+		let cy = b.y;
+
+		for (let node of row) {
+			let nw = Math.max(0, b.w >= b.h ? rowWidth : node.area / rowHeight);
+			let nh = Math.max(0, b.w >= b.h ? node.area / rowWidth : rowHeight);
+
+			let isParent = node.item.children && node.item.children.length > 0;
+
+			// Asignamos color basado en la extensión si es archivo (Estilo WizTree)
+			let hue = parentHue;
+			if (!isParent) {
+				let ext = (node.item.name || '').split('.').pop().toLowerCase();
+				let hash = 0;
+				for (let i = 0; i < ext.length; i++) hash = ext.charCodeAt(i) + ((hash << 5) - hash);
+				hue = Math.abs(hash) % 360;
+			} else if (depth === 1) {
+				hue = Math.floor(Math.random() * 360);
+			}
+
+			let header = (isParent && depth <= 4 && nh > 25 && nw > 30) ? 18 : 0;
+			let pad = isParent ? 2 : 0; // Margen interno de carpeta
+
+			result.push({ item: node.item, x: cx, y: cy, w: nw, h: nh, depth, hue, isParent, header });
+
+			if (isParent && nw - (pad * 2) > 5 && nh - header - (pad * 2) > 5) {
+				result = result.concat(getSquarifiedLayout(
+					node.item.children,
+					cx + pad,
+					cy + header + pad,
+					nw - (pad * 2),
+					nh - header - (pad * 2),
+					depth + 1,
+					hue
+				));
+			}
+			if (b.w >= b.h) cy += nh; else cx += nw;
+		}
+
+		if (b.w >= b.h) {
+			b.x += rowWidth;
+			b.w = Math.max(0, b.w - rowWidth);
+		} else {
+			b.y += rowHeight;
+			b.h = Math.max(0, b.h - rowHeight);
+		}
+	}
+
+	let row = [];
+	for (let i = 0; i < nodes.length; i++) {
+		let node = nodes[i];
+		if (row.length === 0) { row.push(node); continue; }
+
+		let w = Math.max(bounds.w, bounds.h);
+		let rowArea = row.reduce((sum, n) => sum + n.area, 0);
+		let rowMax = Math.max(...row.map(n => n.area));
+		let rowMin = Math.min(...row.map(n => n.area));
+
+		let nextRowArea = rowArea + node.area;
+		let nextRowMax = Math.max(rowMax, node.area);
+		let nextRowMin = Math.min(rowMin, node.area);
+
+		let currentWorst = Math.max((w * w * rowMax) / (rowArea * rowArea), (rowArea * rowArea) / (w * w * rowMin));
+		let nextWorst = Math.max((w * w * nextRowMax) / (nextRowArea * nextRowArea), (nextRowArea * nextRowArea) / (w * w * nextRowMin));
+
+		if (nextWorst <= currentWorst) row.push(node);
+		else { layoutRow(row, w, bounds); row = [node]; }
+	}
+	if (row.length > 0) layoutRow(row, Math.max(bounds.w, bounds.h), bounds);
+
+	return result;
 }
 
 // Init Theme on Load
 const savedTheme = localStorage.getItem('nexus_theme') || 'dark';
 document.documentElement.setAttribute('data-theme', savedTheme);
-if(document.getElementById('theme-selector')) {
-    document.getElementById('theme-selector').value = savedTheme;
+if (document.getElementById('theme-selector')) {
+	document.getElementById('theme-selector').value = savedTheme;
 }
 
-// 1. Motor Matemático Squarify (Limpio y sin errores de flotantes)
-function squarifyLevel(items, width, height) {
-    let result = [];
-    let totalValue = items.reduce((sum, item) => sum + Math.max(0, item.sizeBytes || 0), 0);
-    if (totalValue === 0 || width <= 0 || height <= 0) return result;
-
-    let scale = (width * height) / totalValue;
-    let nodes = items.map(item => ({ item, area: Math.max(0, item.sizeBytes) * scale })).filter(n => n.area > 0);
-    
-    let x = 0, y = 0, w = width, h = height;
-
-    function worst(row, w2) {
-        let sum = 0, min = Infinity, max = 0;
-        for (let i = 0; i < row.length; i++) {
-            let area = row[i].area;
-            sum += area;
-            if (area < min) min = area;
-            if (area > max) max = area;
-        }
-        if (sum === 0) return Infinity;
-        let sumSquare = sum * sum;
-        return Math.max((w2 * max) / sumSquare, sumSquare / (w2 * min));
-    }
-
-    let row = [];
-    for (let i = 0; i < nodes.length; i++) {
-        let node = nodes[i];
-        let w2 = Math.min(w, h) ** 2;
-        
-        if (row.length === 0) {
-            row.push(node);
-            continue;
-        }
-        
-        if (worst(row, w2) >= worst([...row, node], w2)) {
-            row.push(node);
-        } else {
-            layoutRow(row);
-            row = [node];
-        }
-    }
-    if (row.length) layoutRow(row);
-
-    function layoutRow(r) {
-        let sumArea = r.reduce((acc, n) => acc + n.area, 0);
-        let currentX = x, currentY = y;
-        let isHorizontal = w >= h; 
-        
-        let rectW = isHorizontal ? sumArea / h : w;
-        let rectH = isHorizontal ? h : sumArea / w;
-        
-        if (isHorizontal) { x += rectW; w -= rectW; } 
-        else { y += rectH; h -= rectH; }
-
-        for (let i = 0; i < r.length; i++) {
-            let node = r[i];
-            let nw = isHorizontal ? rectW : node.area / rectH;
-            let nh = isHorizontal ? node.area / rectW : rectH;
-            
-            result.push({
-                item: node.item,
-                xPct: (currentX / width) * 100,
-                yPct: (currentY / height) * 100,
-                wPct: (nw / width) * 100,
-                hPct: (nh / height) * 100,
-                wPx: nw, hPx: nh
-            });
-            
-            if (isHorizontal) currentY += nh; else currentX += nw;
-        }
-    }
-    return result;
-}
-
-// 2. Constructor del DOM Anidado Estilo WizTree
-// Constructor del DOM Anidado (Estilo Limpio)
-function buildTreemapDOM(items, container, widthPx, heightPx, depth = 1, parentHue = null) {
-    if (depth > 6 || widthPx < 3 || heightPx < 3 || !items || items.length === 0) return;
-    
-    let sortedItems = items.filter(i => i.sizeBytes > 0).sort((a, b) => b.sizeBytes - a.sizeBytes);
-    // Reducimos la cantidad máxima de elementos renderizados para evitar saturación visual
-    if (depth === 1) sortedItems = sortedItems.slice(0, 150); 
-
-    let layout = squarifyLevel(sortedItems, widthPx, heightPx);
-    
-    layout.forEach(rect => {
-        const { item, xPct, yPct, wPct, hPct, wPx, hPx } = rect;
-        
-        // --- UMBRAL ANTI-COLAPSO CRÍTICO ---
-        // Si el bloque es microscópico (< 2px), lo ignoramos para no generar ruido negro en pantalla
-        if (wPx < 3 || hPx < 3) return; 
-
-        const isParent = item.children && item.children.length > 0;
-        
-        let hue = parentHue;
-        if (!isParent) {
-            let ext = (item.name || '').split('.').pop().toLowerCase();
-            let hash = 0;
-            for (let i = 0; i < ext.length; i++) hash = ext.charCodeAt(i) + ((hash << 5) - hash);
-            hue = Math.abs(hash) % 360;
-        } else if (depth === 1) {
-            hue = Math.floor(Math.random() * 360);
-        }
-
-        const div = document.createElement('div');
-        div.className = isParent ? 'wiz-node wiz-folder' : 'wiz-node wiz-file';
-        div.style.left = `${xPct}%`;
-        div.style.top = `${yPct}%`;
-        div.style.width = `${wPct}%`;
-        div.style.height = `${hPct}%`;
-        div.style.zIndex = depth;
-        
-        div.title = `${item.name || item.fullPath}\n${formatBytes(item.sizeBytes, 1)}`;
-        div.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (item.fullPath && typeof ejecutarEscaneoFantasma === 'function') ejecutarEscaneoFantasma(item.fullPath, true);
-        });
-
-        if (isParent) {
-            // Cabecera un poco más alta para que respire
-            let headerHeight = (depth <= 4 && hPx > 35 && wPx > 45) ? 20 : 0;
-            
-            if (headerHeight > 0) {
-                const title = document.createElement('div');
-                title.className = 'wiz-folder-header';
-                title.style.height = `${headerHeight}px`;
-                title.style.lineHeight = `${headerHeight}px`;
-                title.innerText = item.name || item.fullPath;
-                div.appendChild(title);
-            }
-
-            // PADDING AUMENTADO: Da esa separación limpia estilo Apple entre carpetas
-            let pad = (wPx > 25 && hPx > 25) ? 4 : 1; 
-            let childAreaW = wPx - (pad * 2);
-            let childAreaH = hPx - headerHeight - (pad * 2);
-
-            if (childAreaW > 6 && childAreaH > 6) {
-                const childContainer = document.createElement('div');
-                childContainer.style.position = 'absolute';
-                childContainer.style.left = `${pad}px`;
-                childContainer.style.top = `${headerHeight + pad}px`;
-                childContainer.style.width = `calc(100% - ${pad * 2}px)`;
-                childContainer.style.height = `calc(100% - ${headerHeight + (pad * 2)}px)`;
-                div.appendChild(childContainer);
-
-                buildTreemapDOM(item.children, childContainer, childAreaW, childAreaH, depth + 1, hue);
-            }
-        } else {
-            // ESTILO MAC: Degradado Lineal suave (en lugar del foco 3D agresivo)
-            // Saturation 65% y Lightness controlada para tonos pastel vibrantes pero elegantes
-            div.style.background = `linear-gradient(135deg, hsl(${hue}, 65%, 60%), hsl(${hue}, 70%, 40%))`;
-
-            // TEXTO MINIMALISTA: Solo se imprime si la caja es realmente grande y cómoda de leer
-            if (wPx > 55 && hPx > 25) {
-                const label = document.createElement('div');
-                label.className = 'wiz-label';
-                label.innerText = item.name || 'file';
-                div.appendChild(label);
-            }
-        }
-        container.appendChild(div);
-    });
-}

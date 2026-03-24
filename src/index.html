@@ -204,8 +204,7 @@
 
                         <div id="ojo-disk-content" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
                             <!-- Panel dividido superior -->
-                            <div style="display: flex; gap: 15px; flex: 1; min-height: 0; margin-bottom: 15px;">
-                                <!-- Panel izquierdo (Tree View) -->
+                            <div style="display: flex; gap: 15px; flex: 1; max-height: 150px; min-height: 100px; margin-bottom: 15px;">
                                 <div style="flex: 7; min-width: 0; display: flex; flex-direction: column; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
                                     <div style="display: flex; padding: 6px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">
                                         <div style="flex: 5;">Nombre</div>
@@ -215,7 +214,6 @@
                                     <div id="ojo-disk-results" style="flex: 1; position: relative; overflow-y: auto;"></div>
                                 </div>
                                 
-                                <!-- Panel derecho (Extensiones) -->
                                 <div style="flex: 3; min-width: 0; display: flex; flex-direction: column; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
                                     <div style="display: flex; padding: 6px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">
                                         <div style="flex: 4;">Extensión</div>
@@ -226,12 +224,10 @@
                                 </div>
                             </div>
 
-                            <!-- Treemap inferior -->
-                            <div style="flex: 2; min-height: 250px; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; display: flex; flex-direction: column;">
+                            <div style="flex: 10; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; display: flex; flex-direction: column;">
                                 <div style="padding: 4px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">Treemap Visual</div>
-                                <div id="ojo-disk-treemap" class="disk-treemap" style="flex: 1; padding: 10px; overflow: hidden;"></div>
+                                <div id="ojo-disk-treemap" class="disk-treemap" style="flex: 1; padding: 0px; overflow: hidden; position: relative;"></div>
                             </div>
-                        </div>
 
                     </div>
                 </div>

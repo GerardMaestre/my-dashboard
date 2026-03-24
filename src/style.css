@@ -893,9 +893,11 @@ input:checked + .slider:before { transform: translateX(12px); }
     position: relative;
     width: 100%;
     height: 100%;
-    background: #121212; /* Fondo oscuro base */
+    background: #1c1c1e;
     overflow: hidden;
-    border-radius: 6px;
+    border-radius: 0px; /* <--- CRÍTICO: Lo ponemos a 0 para que llene las esquinas */
+    /* La sombra ya no hace falta si toca los bordes, pero puedes dejarla si quieres */
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
 }
 
 /* Reglas generales para cualquier bloque */
