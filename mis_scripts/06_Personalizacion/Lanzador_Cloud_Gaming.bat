@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 chcp 65001 >nul
 :: DESC: Automatiza entorno Cloud Gaming. Con menu interactivo o parametros directos.
 :: ARGS: host | client 
@@ -16,7 +16,7 @@ type nul > "%LOGF%"
 echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\getadmin.vbs"
 echo UAC.ShellExecute "cmd.exe", "/c """"%~s0"" --horus-elevated %* > ""%LOGF%"" 2>&1 & echo 1 > ""%LOGF%.done"" """, "", "runas", 0 >> "%temp%\getadmin.vbs"
 "%temp%\getadmin.vbs" & del "%temp%\getadmin.vbs"
-powershell -Command "$log='%LOGF%'; $done='%LOGF%.done'; $fs=$null; while($null -eq $fs -and -not (Test-Path $done)){try{$fs=New-Object System.IO.FileStream $log,'Open','Read','ReadWrite'}catch{Start-Sleep -m 50}}; if($fs){$sr=New-Object System.IO.StreamReader $fs; while(-not (Test-Path $done)){while(-not $sr.EndOfStream){Write-Host $sr.ReadLine()}; Start-Sleep -m 50}; while(-not $sr.EndOfStream){Write-Host $sr.ReadLine()}; $sr.Close(); $fs.Close()}; Remove-Item $log -ea 0; Remove-Item $done -ea 0"
+powershell -Command "='%LOGF%'; $done='%LOGF%.done'; $fs=$null; while($null -eq $fs -and -not (Test-Path $done)){try{$fs=New-Object System.IO.FileStream $log,'Open','Read','ReadWrite'}catch{Start-Sleep -m 50}}; if($fs){$sr=New-Object System.IO.StreamReader $fs; while(-not (Test-Path $done)){while(-not $sr.EndOfStream){Write-Host $sr.ReadLine()}; Start-Sleep -m 50}; while(-not $sr.EndOfStream){Write-Host $sr.ReadLine()}; $sr.Close(); $fs.Close()}; Remove-Item $log -ea 0; Remove-Item $done -ea 0"
 exit /B
 :HorusPayload
 
@@ -29,7 +29,7 @@ if /I "%~1"=="client" set choice=2& goto mode_selected
 if "%~1"=="2" set choice=2& goto mode_selected
 
 echo ===================================================
-echo     âš¡ HORUS ENGINE - ORQUESTADOR CLOUD GAMING âš¡    
+echo     ⚡ HORUS ENGINE - ORQUESTADOR CLOUD GAMING ⚡
 echo ===================================================
 echo.
 echo Selecciona el rol de este PC:
@@ -70,13 +70,13 @@ goto :eof
 :: ==========================
 :host
 echo.
-echo [*] MODO HOST SELECCIONADO. 
+echo [*] MODO HOST SELECCIONADO.
 echo [*] Escaneando dependencias (Tailscale y Sunshine)...
 call :instalar_tailscale
 
 if not exist "C:\Program Files\Sunshine\sunshine.exe" (
     if not exist "C:\Program Files\Sunshine\tools\sunshine.exe" (
-        echo [!] Sunshine NO instalado. Descargando silenciosamente con reparacion forzada...
+        echo [!] Sunshine NO instalado. Descargando silenciosamente...
         winget install --id LizardByte.Sunshine -e --force --silent --accept-package-agreements --accept-source-agreements
         echo [*] Esperando 5 segundos a que inicie el servicio Sunshine...
         timeout /t 5 /nobreak >nul
@@ -106,7 +106,6 @@ if "%ERRORLEVEL%"=="0" (
 timeout /t 2 /nobreak >nul
 echo [*] Optimizando prioridad de CPU para cero Input Lag...
 powershell -Command "$p = Get-Process -Name 'sunshine' -ErrorAction SilentlyContinue; if ($p) { $p.PriorityClass = 'High' }"
-
 echo.
 echo [V] HOST ONLINE Y LISTO.
 pause
@@ -117,14 +116,14 @@ exit
 :: ==========================
 :client
 echo.
-echo [*] MODO CLIENTE SELECCIONADO. 
+echo [*] MODO CLIENTE SELECCIONADO.
 echo [*] Escaneando dependencias (Tailscale y Moonlight)...
 call :instalar_tailscale
 
 :: Validar si Moonlight existe
 set "moonlight_path=C:\Program Files\Moonlight Game Streaming\Moonlight.exe"
 if not exist "%moonlight_path%" (
-    echo [!] Moonlight NO instalado. Descargando silenciosamente con reparacion forzada...
+    echo [!] Moonlight NO instalado. Descargando silenciosamente...
     winget install --id MoonlightGameStreamingProject.Moonlight -e --force --silent --accept-package-agreements --accept-source-agreements
     echo [*] Esperando 5 segundos a que Windows reconozca el programa...
     timeout /t 5 /nobreak >nul
@@ -141,7 +140,7 @@ if exist "%moonlight_path%" (
 )
 
 echo.
-echo [V] CLIENTE LISTO. 
+echo [V] CLIENTE LISTO.
 echo Recuerda agregar a Moonlight la IP que te mostro tu PC Host.
 pause
 exit
