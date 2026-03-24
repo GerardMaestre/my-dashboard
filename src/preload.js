@@ -10,8 +10,8 @@ const resourcesBase = isPackaged
 	: path.join(__dirname, '..');
 
 const storageDir = path.join(resourcesBase, 'mis_scripts');
-const pythonEnvPath = path.join(resourcesBase, 'env_python');
-const toolsDir = path.join(resourcesBase, 'tools');
+const pythonEnvPath = path.join(storageDir, 'env_python');
+const toolsDir = path.join(storageDir, 'tools');
 const pythonExePath = path.join(pythonEnvPath, 'python.exe');
 
 const activeProcesses = new Map();

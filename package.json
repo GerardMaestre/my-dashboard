@@ -35,16 +35,6 @@
         "filter": ["**/*"]
       },
       {
-        "from": "tools",
-        "to": "tools",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "env_python",
-        "to": "env_python",
-        "filter": ["**/*"]
-      },
-      {
         "from": "native_modules",
         "to": "native_modules",
         "filter": ["mft_reader/target/release/mft_reader.exe"]
