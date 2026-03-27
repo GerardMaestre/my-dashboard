@@ -82,7 +82,7 @@ def run():
     print(f"\n[*] Analizando enlace: {url}")
     print(f"[*] Destino: {downloads_path}")
     
-    cmd = [yt_dlp_exe]
+    cmd = [yt_dlp_exe, "--no-playlist"]
     
     if os.path.exists(ffmpeg_exe):
         cmd.extend(["--ffmpeg-location", ffmpeg_exe])
@@ -93,7 +93,7 @@ def run():
         cmd.extend([
             "-x", 
             "--audio-format", "mp3", 
-            "--audio-quality", "0", 
+            "--audio-quality", "320K", 
             # Eliminado --embed-thumbnail para evitar problemas con reproductores en Windows que lo tratan como video
             "--force-overwrites",
             "-o", f"{downloads_path}/%(title)s_Audio.%(ext)s",
