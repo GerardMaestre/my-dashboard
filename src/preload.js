@@ -278,9 +278,19 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 	const normBase = (base.endsWith('\\') ? base : base + '\\').toLowerCase();
 	if (!scanProgressListeners.has(normBase)) scanProgressListeners.set(normBase, new Set());
 	if (onProgress) scanProgressListeners.get(normBase).add(onProgress);
+	let lastProgressPercent = 0;
+	let lastProgressPhase = '';
 	const emitProgress = (data) => {
 		const listeners = scanProgressListeners.get(normBase);
 		if (listeners) for (const cb of listeners) try { cb(data); } catch(e) {}
+	};
+	const emitOverallProgress = (phase, percent, extra = null) => {
+		const normalized = Math.max(0, Math.min(100, Number(percent) || 0));
+		const monotonic = Math.max(lastProgressPercent, normalized);
+		if (monotonic === lastProgressPercent && phase === lastProgressPhase) return;
+		lastProgressPercent = monotonic;
+		lastProgressPhase = phase;
+		emitProgress({ phase, percent: monotonic, ...(extra || {}) });
 	};
 	const detachProgressListener = () => {
 		if (!onProgress) return;
@@ -290,13 +300,13 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 		if (listeners.size === 0) scanProgressListeners.delete(normBase);
 	};
 
-	emitProgress({ phase: 'init', percent: 5 });
+	emitOverallProgress('init', 2);
 
 	try {
 		if (diskScanCache.has(normBase)) {
 			const cached = diskScanCache.get(normBase);
 			if (Date.now() - cached.timestamp < 10 * 60 * 1000) {
-				emitProgress({ phase: 'cached', percent: 100 });
+				emitOverallProgress('cached', 100);
 				return cached.data;
 			}
 		}
@@ -309,7 +319,7 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 		const mftPath = findExistingTool(toolCandidates.mft);
 	if (mftPath) {
 		try {
-			emitProgress({ phase: 'mft', percent: 30 });
+			emitOverallProgress('mft', 12);
 			const { stdout } = await new Promise((resolve, reject) => {
 				execFile(
 					mftPath,
@@ -327,7 +337,7 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 
 			const parsed = safeJsonObject(stdout, null);
 			if (parsed && Array.isArray(parsed.items)) {
-				emitProgress({ phase: 'finalize', percent: 97 });
+				emitOverallProgress('finalize', 99);
 				return {
 					engine: 'mft',
 					items: parsed.items,
@@ -342,7 +352,7 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 	const wiztreePath = findExistingTool(toolCandidates.wiztree);
 	if (wiztreePath) {
 		try {
-			emitProgress({ phase: 'scan', percent: 15 });
+			emitOverallProgress('scan', 8);
 			const driveMatch = base.match(/^([A-Za-z]):\\/);
 			const driveLetter = driveMatch ? driveMatch[1].toUpperCase() : 'C';
 			const tempCsv = path.join(appDataNexus, `wiztree-export-${driveLetter}.csv`);
@@ -367,7 +377,9 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 						() => resolve()
 					);
 				});
-				emitProgress({ phase: 'scan', percent: 28 });
+				emitOverallProgress('scan', 22);
+			} else {
+				emitOverallProgress('scan', 18);
 			}
 
 			// Fallback: si tempCsv no se generó (ej. WizTree sin licencia CMD o versión antigua),
@@ -395,10 +407,11 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 					const fileStream = fs.createReadStream(effectiveCsv, { encoding: 'utf8', highWaterMark: 64 * 1024 });
 					fileStream.on('data', chunk => {
 						bytesRead += Buffer.byteLength(chunk, 'utf8');
-						const percent = Math.min(95, 25 + Math.round((bytesRead / totalSize) * 68));
+						const ratio = Math.max(0, Math.min(1, bytesRead / totalSize));
+						const percent = 22 + (ratio * 70); // 22..92 durante parseo real de CSV
 						if (percent > lastPercent) {
 							lastPercent = percent;
-							emitProgress({ phase: 'parsing', percent });
+							emitOverallProgress('parsing', percent);
 						}
 					});
 					const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
@@ -519,7 +532,7 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 					.sort((a, b) => b.sizeBytes - a.sizeBytes)
 					.slice(0, 50);
 
-				emitProgress({ phase: 'finalize', percent: 98 });
+				emitOverallProgress('finalize', 98);
 				return {
 					engine: 'wiztree',
 					items: topItems.map((item) => ({
@@ -536,7 +549,7 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 	}
 
 	const root = escapePsSingleQuoted(base);
-	emitProgress({ phase: 'scan', percent: 40 });
+	emitOverallProgress('scan', 16);
 	const ps = `
 	$ErrorActionPreference = 'SilentlyContinue';
 	$root='${root}';
@@ -562,7 +575,7 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 	const { stdout } = await runPowerShell(ps, 180000);
 	const rows = safeJsonParse(stdout, []);
 	const total = rows.reduce((acc, cur) => acc + Number(cur.SizeBytes || 0), 0) || 1;
-	emitProgress({ phase: 'finalize', percent: 98 });
+	emitOverallProgress('finalize', 98);
 	return {
 		engine: 'native',
 		items: rows.map((item, idx) => {
@@ -581,7 +594,7 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 		try {
 			const result = await scanPromise;
 			diskScanCache.set(normBase, { timestamp: Date.now(), data: result });
-			emitProgress({ phase: 'done', percent: 100 });
+			emitOverallProgress('done', 100);
 			return result;
 		} finally {
 			inFlightScans.delete(normBase);

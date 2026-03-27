@@ -1269,7 +1269,6 @@ async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false) {
 	const btn = document.getElementById('ojo-btn-scan');
 	const loadingEl = document.getElementById('ojo-disk-loading');
 	const contentEl = document.getElementById('ojo-disk-content');
-	let progressTicker = null;
 	let loadingBarProgress = null;
 
 	if (btn) {
@@ -1283,54 +1282,41 @@ async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false) {
 		setOjoStatus(`Escaneando ${targetRoot}...`);
 		loadingBarProgress = loadingEl ? loadingEl.querySelector('div > div') : null;
 		const loadingText = loadingEl ? loadingEl.querySelector('div:last-child') : null;
-		let progressCurrent = 0;
-		let progressTarget = 6;
+		let progressValue = 0;
 
 		if (loadingBarProgress) {
 			loadingBarProgress.style.animation = 'none';
 			loadingBarProgress.style.width = '0%';
-			loadingBarProgress.style.transition = 'width 0.12s linear';
-
-			progressTicker = setInterval(() => {
-				const delta = progressTarget - progressCurrent;
-				if (delta <= 0.05) return;
-				progressCurrent += Math.max(0.35, delta * 0.28);
-				if (progressCurrent > 100) progressCurrent = 100;
-				loadingBarProgress.style.width = `${progressCurrent.toFixed(1)}%`;
-			}, 66);
+			loadingBarProgress.style.transition = 'width 0.18s linear';
 		}
 
 		if (loadingText) {
-			loadingText.innerText = 'Preparando escaneo de disco...';
+			loadingText.innerText = 'Iniciando escaneo de disco... 0%';
 		}
 
 		const payload = await api.escanearDisco(targetRoot, (progress) => {
 			const phase = String(progress && progress.phase ? progress.phase : 'scan');
 			const raw = Math.max(0, Math.min(100, Number(progress && progress.percent ? progress.percent : 0)));
+			progressValue = Math.max(progressValue, raw);
 
-			let mapped = raw;
-			if (phase === 'init') mapped = Math.max(4, Math.min(10, raw || 6));
-			else if (phase === 'scan') mapped = Math.max(8, Math.min(35, raw || 20));
-			else if (phase === 'mft') mapped = Math.max(15, Math.min(60, raw || 45));
-			else if (phase === 'parsing') mapped = 25 + (raw * 0.7); // 25-95
-			else if (phase === 'finalize') mapped = Math.max(92, Math.min(98, raw || 96));
-			else if (phase === 'cached') mapped = 100;
-			else if (phase === 'done') mapped = 100;
-
-			progressTarget = Math.max(progressTarget, Math.min(100, mapped));
+			if (loadingBarProgress) {
+				loadingBarProgress.style.width = `${progressValue.toFixed(1)}%`;
+			}
 
 			if (loadingText) {
 				const txt = phase === 'cached'
-					? 'Usando cache local del escaneo...'
-					: (phase === 'parsing' ? 'Parseando CSV y construyendo arbol...' : 'Analizando estructura MFT/WizTree...');
-				loadingText.innerText = `${txt} ${Math.round(progressTarget)}%`;
+					? 'Usando cache del escaneo...'
+					: (phase === 'parsing'
+						? 'Leyendo y parseando archivos...'
+						: (phase === 'finalize' ? 'Finalizando mapa de disco...' : 'Analizando estructura del disco...'));
+				loadingText.innerText = `${txt} ${Math.round(progressValue)}%`;
 			}
 		});
 		if (scanSeq !== ghostState.diskScanSeq) return;
 
-		progressTarget = 100;
+		progressValue = 100;
 		if (loadingBarProgress) {
-			loadingBarProgress.style.width = '100%';
+			loadingBarProgress.style.width = `${progressValue}%`;
 		}
 
 		if (loadingEl) loadingEl.style.display = 'none';
@@ -1349,10 +1335,6 @@ async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false) {
 			title.innerHTML = `<span style="color:var(--accent-red);">Fallo en escaneo de disco: ${err.message}. Reintente.</span>`;
 		}
 	} finally {
-		if (progressTicker) {
-			clearInterval(progressTicker);
-			progressTicker = null;
-		}
 		if (loadingBarProgress) loadingBarProgress.style.transition = 'width 0.2s ease-out';
 		if (btn) {
 			btn.disabled = false;
