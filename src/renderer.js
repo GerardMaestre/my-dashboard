@@ -1124,8 +1124,19 @@ function buildTreemapDOM(itemsOrRects, container, widthPx, heightPx, depth = 1, 
     if (depth > 6 || widthPx < 3 || heightPx < 3 || !itemsOrRects || itemsOrRects.length === 0) return; 
 
     let layout;
-    if (isPrecalcCoords) {
-        layout = itemsOrRects;
+	if (isPrecalcCoords) {
+		// Acepta tanto el formato antiguo ({ item, xPx, yPx, wPx, hPx })
+		// como el del worker ({ node, x, y, w, h }).
+		layout = itemsOrRects
+			.map(rect => {
+				const item = rect?.item || rect?.node || null;
+				const xPx = Number.isFinite(Number(rect?.xPx)) ? Number(rect.xPx) : Number(rect?.x || 0);
+				const yPx = Number.isFinite(Number(rect?.yPx)) ? Number(rect.yPx) : Number(rect?.y || 0);
+				const wPx = Number.isFinite(Number(rect?.wPx)) ? Number(rect.wPx) : Number(rect?.w || 0);
+				const hPx = Number.isFinite(Number(rect?.hPx)) ? Number(rect.hPx) : Number(rect?.h || 0);
+				return { item, xPx, yPx, wPx, hPx };
+			})
+			.filter(rect => rect.item && rect.wPx > 0 && rect.hPx > 0);
     } else {
         let sortedItems = itemsOrRects.filter(i => Number(i.sizeBytes) > 0).sort((a, b) => Number(b.sizeBytes) - Number(a.sizeBytes));
         if (depth === 1) sortedItems = sortedItems.slice(0, 250);
