@@ -1121,10 +1121,7 @@ function squarifyLevel(items, width, height) {
 // 3. INYECTOR DOM: Estilo macOS (Anidado en Píxeles Absolutos)
 // =======================================================================
 function buildTreemapDOM(itemsOrRects, container, widthPx, heightPx, depth = 1, parentHue = null, isPrecalcCoords = false) {
-    if (depth > 6 || widthPx < 3 || heightPx < 3 || !items || items.length === 0) return;
-    
-    let sortedItems = items.filter(i => Number(i.sizeBytes) > 0).sort((a, b) => Number(b.sizeBytes) - Number(a.sizeBytes));
-    if (depth === 1) sortedItems = sortedItems.slice(0, 250); 
+    if (depth > 6 || widthPx < 3 || heightPx < 3 || !itemsOrRects || itemsOrRects.length === 0) return; 
 
     let layout;
     if (isPrecalcCoords) {
