@@ -972,7 +972,12 @@ function renderEscaneoDisco(payload) {
         if (mapItems.length === 0) {
             rootContainer.innerHTML = '<div style="color:red; padding: 20px;">Error: No hay items válidos para dibujar el Treemap.</div>';
         } else {
-            buildTreemapDOM(mapItems, rootContainer, boxW, boxH, 1, null);
+            const worker = getTreemapWorker();
+		worker.onmessage = (e) => {
+			const { rects } = e.data;
+			if (rects) buildTreemapDOM(rects, rootContainer, boxW, boxH, 1, null, true);
+		};
+		worker.postMessage({ id: "main", items: mapItems, width: boxW, height: boxH });
         }
         
         treemap.appendChild(rootContainer);
@@ -1109,13 +1114,20 @@ function squarifyLevel(items, width, height) {
 // =======================================================================
 // 3. INYECTOR DOM: Estilo macOS (Anidado en Píxeles Absolutos)
 // =======================================================================
-function buildTreemapDOM(items, container, widthPx, heightPx, depth = 1, parentHue = null) {
+function buildTreemapDOM(itemsOrRects, container, widthPx, heightPx, depth = 1, parentHue = null, isPrecalcCoords = false) {
     if (depth > 6 || widthPx < 3 || heightPx < 3 || !items || items.length === 0) return;
     
     let sortedItems = items.filter(i => Number(i.sizeBytes) > 0).sort((a, b) => Number(b.sizeBytes) - Number(a.sizeBytes));
     if (depth === 1) sortedItems = sortedItems.slice(0, 250); 
 
-    let layout = squarifyLevel(sortedItems, widthPx, heightPx);
+    let layout;
+    if (isPrecalcCoords) {
+        layout = itemsOrRects;
+    } else {
+        let sortedItems = itemsOrRects.filter(i => Number(i.sizeBytes) > 0).sort((a, b) => Number(b.sizeBytes) - Number(a.sizeBytes));
+        if (depth === 1) sortedItems = sortedItems.slice(0, 250);
+        layout = squarifyLevel(sortedItems, widthPx, heightPx);
+    }
     
     layout.forEach(rect => {
         const { item, xPx, yPx, wPx, hPx } = rect;
@@ -1227,7 +1239,18 @@ async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false) {
 
 	try {
 		setOjoStatus(`Escaneando ${targetRoot}...`);
-		const payload = await api.escanearDisco(targetRoot);
+		const loadingBarProgress = loadingEl ? loadingEl.querySelector('div > div') : null;
+		const loadingText = loadingEl ? loadingEl.querySelector('div:last-child') : null;
+		if (loadingBarProgress) {
+			loadingBarProgress.style.animation = 'none';
+			loadingBarProgress.style.width = '0%';
+			loadingBarProgress.style.transition = 'width 0.2s ease-out';
+		}
+
+		const payload = await api.escanearDisco(targetRoot, (progress) => {
+			if (loadingBarProgress) loadingBarProgress.style.width = `${progress.percent}%`;
+			if (loadingText) loadingText.innerText = `Analizando estructura MFT/WizTree... ${progress.percent}%`;
+		});
 		if (scanSeq !== ghostState.diskScanSeq) return;
 
 		if (loadingEl) loadingEl.style.display = 'none';
