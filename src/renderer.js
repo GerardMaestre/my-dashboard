@@ -964,6 +964,7 @@ function renderEscaneoDisco(payload) {
         const boxH = Math.max(rect.height, 300);
         
         let mapItems = items.filter(i => Number(i.sizeBytes) > 0).sort((a, b) => Number(b.sizeBytes) - Number(a.sizeBytes)).slice(0, 250);
+		const rootItemById = new Map(mapItems.map((item) => [String(item.id || ''), item]));
         
         const rootContainer = document.createElement('div');
         rootContainer.className = 'wiz-container'; 
@@ -979,11 +980,36 @@ function renderEscaneoDisco(payload) {
             rootContainer.innerHTML = '<div style="color:red; padding: 20px;">Error: No hay items válidos para dibujar el Treemap.</div>';
         } else {
             const worker = getTreemapWorker();
-		worker.onmessage = (e) => {
-			const { rects } = e.data;
-			if (rects) buildTreemapDOM(rects, rootContainer, boxW, boxH, 1, null, true);
-		};
-		worker.postMessage({ id: "main", items: mapItems, width: boxW, height: boxH });
+			worker.onmessage = (e) => {
+				const data = e.data || {};
+				if (data.id !== 'main') return;
+				if (data.error) {
+					rootContainer.innerHTML = `<div style="color:#ff7676; padding: 20px;">Treemap worker fallo: ${safeText(data.error)}</div>`;
+					return;
+				}
+
+				const rects = Array.isArray(data.rects) ? data.rects : [];
+				if (!rects.length) {
+					rootContainer.innerHTML = '<div style="color:#999; padding: 20px;">No hay datos suficientes para dibujar el Treemap.</div>';
+					return;
+				}
+
+				const normalizedRects = rects.map((r) => {
+					const node = r && r.node ? r.node : null;
+					const nodeId = String(node && node.id ? node.id : '');
+					const sourceItem = rootItemById.get(nodeId) || (node && node.sourceItem) || node;
+					return {
+						item: sourceItem,
+						xPx: Number(r && Number.isFinite(Number(r.xPx)) ? r.xPx : (r && r.x) || 0),
+						yPx: Number(r && Number.isFinite(Number(r.yPx)) ? r.yPx : (r && r.y) || 0),
+						wPx: Number(r && Number.isFinite(Number(r.wPx)) ? r.wPx : (r && r.w) || 0),
+						hPx: Number(r && Number.isFinite(Number(r.hPx)) ? r.hPx : (r && r.h) || 0)
+					};
+				});
+
+				buildTreemapDOM(normalizedRects, rootContainer, boxW, boxH, 1, null, true);
+			};
+			worker.postMessage({ id: 'main', items: mapItems, width: boxW, height: boxH });
         }
         
         treemap.appendChild(rootContainer);
@@ -1243,6 +1269,8 @@ async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false) {
 	const btn = document.getElementById('ojo-btn-scan');
 	const loadingEl = document.getElementById('ojo-disk-loading');
 	const contentEl = document.getElementById('ojo-disk-content');
+	let progressTicker = null;
+	let loadingBarProgress = null;
 
 	if (btn) {
 		btn.disabled = true;
@@ -1253,19 +1281,57 @@ async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false) {
 
 	try {
 		setOjoStatus(`Escaneando ${targetRoot}...`);
-		const loadingBarProgress = loadingEl ? loadingEl.querySelector('div > div') : null;
+		loadingBarProgress = loadingEl ? loadingEl.querySelector('div > div') : null;
 		const loadingText = loadingEl ? loadingEl.querySelector('div:last-child') : null;
+		let progressCurrent = 0;
+		let progressTarget = 6;
+
 		if (loadingBarProgress) {
 			loadingBarProgress.style.animation = 'none';
 			loadingBarProgress.style.width = '0%';
-			loadingBarProgress.style.transition = 'width 0.2s ease-out';
+			loadingBarProgress.style.transition = 'width 0.12s linear';
+
+			progressTicker = setInterval(() => {
+				const delta = progressTarget - progressCurrent;
+				if (delta <= 0.05) return;
+				progressCurrent += Math.max(0.35, delta * 0.28);
+				if (progressCurrent > 100) progressCurrent = 100;
+				loadingBarProgress.style.width = `${progressCurrent.toFixed(1)}%`;
+			}, 66);
+		}
+
+		if (loadingText) {
+			loadingText.innerText = 'Preparando escaneo de disco...';
 		}
 
 		const payload = await api.escanearDisco(targetRoot, (progress) => {
-			if (loadingBarProgress) loadingBarProgress.style.width = `${progress.percent}%`;
-			if (loadingText) loadingText.innerText = `Analizando estructura MFT/WizTree... ${progress.percent}%`;
+			const phase = String(progress && progress.phase ? progress.phase : 'scan');
+			const raw = Math.max(0, Math.min(100, Number(progress && progress.percent ? progress.percent : 0)));
+
+			let mapped = raw;
+			if (phase === 'init') mapped = Math.max(4, Math.min(10, raw || 6));
+			else if (phase === 'scan') mapped = Math.max(8, Math.min(35, raw || 20));
+			else if (phase === 'mft') mapped = Math.max(15, Math.min(60, raw || 45));
+			else if (phase === 'parsing') mapped = 25 + (raw * 0.7); // 25-95
+			else if (phase === 'finalize') mapped = Math.max(92, Math.min(98, raw || 96));
+			else if (phase === 'cached') mapped = 100;
+			else if (phase === 'done') mapped = 100;
+
+			progressTarget = Math.max(progressTarget, Math.min(100, mapped));
+
+			if (loadingText) {
+				const txt = phase === 'cached'
+					? 'Usando cache local del escaneo...'
+					: (phase === 'parsing' ? 'Parseando CSV y construyendo arbol...' : 'Analizando estructura MFT/WizTree...');
+				loadingText.innerText = `${txt} ${Math.round(progressTarget)}%`;
+			}
 		});
 		if (scanSeq !== ghostState.diskScanSeq) return;
+
+		progressTarget = 100;
+		if (loadingBarProgress) {
+			loadingBarProgress.style.width = '100%';
+		}
 
 		if (loadingEl) loadingEl.style.display = 'none';
 		if (contentEl) contentEl.style.display = 'flex';
@@ -1283,6 +1349,11 @@ async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false) {
 			title.innerHTML = `<span style="color:var(--accent-red);">Fallo en escaneo de disco: ${err.message}. Reintente.</span>`;
 		}
 	} finally {
+		if (progressTicker) {
+			clearInterval(progressTicker);
+			progressTicker = null;
+		}
+		if (loadingBarProgress) loadingBarProgress.style.transition = 'width 0.2s ease-out';
 		if (btn) {
 			btn.disabled = false;
 			btn.textContent = 'Raiz C:';
