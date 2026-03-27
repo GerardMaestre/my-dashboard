@@ -1227,7 +1227,18 @@ async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false) {
 
 	try {
 		setOjoStatus(`Escaneando ${targetRoot}...`);
-		const payload = await api.escanearDisco(targetRoot);
+		const loadingBarProgress = loadingEl ? loadingEl.querySelector('div > div') : null;
+		const loadingText = loadingEl ? loadingEl.querySelector('div:last-child') : null;
+		if (loadingBarProgress) {
+			loadingBarProgress.style.animation = 'none';
+			loadingBarProgress.style.width = '0%';
+			loadingBarProgress.style.transition = 'width 0.2s ease-out';
+		}
+
+		const payload = await api.escanearDisco(targetRoot, (progress) => {
+			if (loadingBarProgress) loadingBarProgress.style.width = `${progress.percent}%`;
+			if (loadingText) loadingText.innerText = `Analizando estructura MFT/WizTree... ${progress.percent}%`;
+		});
 		if (scanSeq !== ghostState.diskScanSeq) return;
 
 		if (loadingEl) loadingEl.style.display = 'none';

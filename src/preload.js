@@ -271,9 +271,17 @@ async function ghostSearchFiles(query, limit = 120) {
 	})).filter((x) => x.fullPath);
 }
 
-async function ghostScanDisk(rootPath = 'C:\\') {
+const scanProgressListeners = new Map();
+async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
+
 	const base = String(rootPath || 'C:\\');
 	const normBase = (base.endsWith('\\') ? base : base + '\\').toLowerCase();
+	if (!scanProgressListeners.has(normBase)) scanProgressListeners.set(normBase, new Set());
+	if (onProgress) scanProgressListeners.get(normBase).add(onProgress);
+	const emitProgress = (data) => {
+		const listeners = scanProgressListeners.get(normBase);
+		if (listeners) for (const cb of listeners) try { cb(data); } catch(e) {}
+	};
 
 	if (diskScanCache.has(normBase)) {
 		const cached = diskScanCache.get(normBase);
@@ -365,7 +373,19 @@ async function ghostScanDisk(rootPath = 'C:\\') {
 
 				await new Promise((resolveParse, rejectParse) => {
 					const readline = require('readline');
-					const fileStream = fs.createReadStream(effectiveCsv, { encoding: 'utf8' });
+					const stat = fs.statSync(effectiveCsv);
+					const totalSize = Math.max(1, stat.size);
+					let bytesRead = 0;
+					let lastPercent = -1;
+					const fileStream = fs.createReadStream(effectiveCsv, { encoding: 'utf8', highWaterMark: 64 * 1024 });
+					fileStream.on('data', chunk => {
+						bytesRead += Buffer.byteLength(chunk, 'utf8');
+						const percent = Math.min(99, Math.round((bytesRead / totalSize) * 100));
+						if (percent > lastPercent) {
+							lastPercent = percent;
+							emitProgress({ phase: 'parsing', percent });
+						}
+					});
 					const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
 					
 					let isFirstLine = true;
@@ -1063,8 +1083,8 @@ const api = {
 		const items = await ghostSearchFiles(query, limit);
 		return items;
 	},
-	escanearDisco: async (rootPath = 'C:\\') => {
-		return await ghostScanDisk(rootPath);
+	escanearDisco: async (rootPath = 'C:\\', onProgress) => {
+		return await ghostScanDisk(rootPath, onProgress);
 	},
 	listarAppsInstaladas: async () => {
 		return await ghostListInstalledApps();
