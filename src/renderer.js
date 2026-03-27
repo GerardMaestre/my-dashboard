@@ -1,3 +1,9 @@
+let treemapComputeWorker = null;
+function getTreemapWorker() {
+	if (!treemapComputeWorker) treemapComputeWorker = new Worker("./workers/treemapWorker.js");
+	return treemapComputeWorker;
+}
+
 ﻿const terminal = document.getElementById('terminal');
 const autopilotTasks = {};
 const runningFiles = new Set();
