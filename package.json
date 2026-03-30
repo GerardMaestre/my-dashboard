@@ -20,7 +20,11 @@
       "output": "../dist"
     },
     "win": {
-      "target": ["nsis", "zip", "portable"],
+      "target": [
+        "nsis",
+        "zip",
+        "portable"
+      ],
       "icon": "assets/icon.ico"
     },
     "nsis": {
@@ -32,20 +36,21 @@
       {
         "from": "mis_scripts",
         "to": "mis_scripts",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "native_modules",
         "to": "native_modules",
-        "filter": ["mft_reader/target/release/mft_reader.exe"]
+        "filter": [
+          "mft_reader/target/release/mft_reader.exe"
+        ]
       }
     ]
   },
   "devDependencies": {
     "electron": "^29.0.0",
     "electron-builder": "^24.13.3"
-  },
-  "dependencies": {
-    "electron-squirrel-startup": "^1.0.1"
   }
 }

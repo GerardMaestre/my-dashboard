@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <title>Horus Engine</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-    <!-- BARRA SUPERIOR ESTILO MACOS (AHORA INTEGRADA EN EL SIDEBAR / CONTENIDO) -->
-    <!-- PANTALLA DE CARGA INICIAL -->
     <div id="splash-screen" class="splash-screen">
         <div class="splash-content">
             <svg class="splash-spinner" viewBox="0 0 50 50">
@@ -17,46 +17,59 @@
         </div>
     </div>
 
-    <!-- FONDO FLUIDO ESTILO APPLE -->
     <div class="mac-wallpaper"></div>
 
     <div class="mac-window">
-        <!-- BARRA LATERAL (SIDEBAR) -->
         <aside class="mac-sidebar">
             <div class="mac-traffic-lights">
                 <button class="mac-btn close" onclick="windowControl('close')" title="Cerrar"></button>
                 <button class="mac-btn minimize" onclick="windowControl('minimize')" title="Minimizar"></button>
                 <button class="mac-btn maximize" onclick="windowControl('maximize')" title="Maximizar"></button>
             </div>
-            
+
             <div class="sidebar-header" style="-webkit-app-region: drag; padding-top: 5px;">
                 <div class="logo" style="-webkit-app-region: no-drag;">
                     <svg viewBox="0 0 24 24" fill="currentColor" class="logo-icon" width="24" height="24">
-                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                        <path
+                            d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
                     </svg>
                     Horus
                 </div>
             </div>
             <div class="sidebar-search">
-                <svg class="search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                <svg class="search-icon" viewBox="0 0 24 24">
+                    <path
+                        d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                </svg>
                 <input type="text" id="search-input" class="mac-input-search" placeholder="Buscar">
             </div>
 
             <nav class="sidebar-nav category-tabs">
                 <button class="sidebar-item tab-btn active" data-filter="all">
-                    <span class="icon-container" style="background:var(--mac-blue);"><svg viewBox="0 0 24 24" fill="white"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg></span>
+                    <span class="icon-container" style="background:var(--mac-blue);"><svg viewBox="0 0 24 24"
+                            fill="white">
+                            <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z" />
+                        </svg></span>
                     Todos
                 </button>
                 <button class="sidebar-item tab-btn" data-filter="py">
-                    <span class="icon-container" style="background:#5dade2;"><svg viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg></span>
+                    <span class="icon-container" style="background:#5dade2;"><svg viewBox="0 0 24 24" fill="white">
+                            <path d="M8 5v14l11-7z" />
+                        </svg></span>
                     Python
                 </button>
                 <button class="sidebar-item tab-btn" data-filter="bat">
-                    <span class="icon-container" style="background:#e6af00;"><svg viewBox="0 0 24 24" fill="white"><path d="M3 3h18v18H3V3zm16 16V5H5v14h14zm-8-2h6v-2h-6v2zm-4-4h10v-2H7v2zm0-4h10V7H7v2z"/></svg></span>
+                    <span class="icon-container" style="background:#e6af00;"><svg viewBox="0 0 24 24" fill="white">
+                            <path d="M3 3h18v18H3V3zm16 16V5H5v14h14zm-8-2h6v-2h-6v2zm-4-4h10v-2H7v2zm0-4h10V7H7v2z" />
+                        </svg></span>
                     Batch
                 </button>
                 <button class="sidebar-item tab-btn" data-filter="active">
-                    <span class="icon-container" style="background:var(--mac-green);"><svg viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg></span>
+                    <span class="icon-container" style="background:var(--mac-green);"><svg viewBox="0 0 24 24"
+                            fill="white">
+                            <path
+                                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" />
+                        </svg></span>
                     Activos
                 </button>
                 <div class="sidebar-divider" style="margin-top: 8px; margin-bottom: 8px;"></div>
@@ -78,24 +91,28 @@
             <div class="sidebar-bottom">
                 <div class="sidebar-divider"></div>
                 <button id="btn-settings" class="sidebar-item" title="Configuración" onclick="openSettings()">
-                    <span class="icon-container" style="background:#8E8E93;"><svg viewBox="0 0 24 24" fill="white"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.73 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .43-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.49-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></span>
+                    <span class="icon-container" style="background:#8E8E93;"><svg viewBox="0 0 24 24" fill="white">
+                            <path
+                                d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.73 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .43-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.49-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
+                        </svg></span>
                     Configuración global
                 </button>
             </div>
             <div class="sidebar-drag-region"></div>
         </aside>
 
-        <!-- ÁREA DE CONTENIDO (MAIN PANE) -->
         <main class="mac-content">
             <header class="content-header">
                 <div class="content-title-drag">
-                    <!-- Título dinámico según categoría, empezando por Todos -->
                     <h2 id="current-category-title" class="mac-main-title">Todos</h2>
                 </div>
-                
+
                 <div class="content-actions">
                     <button id="btn-refresh" class="mac-icon-btn-top" title="Recargar Recursos">
-                        <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                        <svg viewBox="0 0 24 24">
+                            <path
+                                d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                        </svg>
                     </button>
                 </div>
             </header>
@@ -114,29 +131,40 @@
                     <div class="mac-group-row">
                         <div class="mac-group-label">Parámetros Globales</div>
                         <div class="mac-group-control">
-                            <input type="text" id="script-args" class="mac-input-clean" placeholder="Añade argumentos...">
+                            <input type="text" id="script-args" class="mac-input-clean"
+                                placeholder="Añade argumentos...">
                         </div>
                     </div>
                 </div>
 
-                <!-- PANEL PRINCIPAL (LISTA DE SCRIPTS) -->
                 <ul id="script-list" class="mac-grouped-list">
-                    <!-- Tarjetas inyectadas por JS -->
                 </ul>
             </div> <!-- CLOSE content-scrollable -->
-            
+
             <!-- TERMINAL INFERIOR (CAJÓN) Moviéndolo dentro de mac-content -->
             <footer class="terminal-drawer mac-glass" id="terminal-drawer">
                 <div class="drawer-header" id="terminal-toggle" onclick="toggleTerminal()">
-                    <div class="drawer-title" style="display:flex;align-items:center;gap:10px;font-weight:600;font-size:13px;color:var(--mac-blue);">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                    <div class="drawer-title"
+                        style="display:flex;align-items:center;gap:10px;font-weight:600;font-size:13px;color:var(--mac-blue);">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="4 17 10 11 4 5"></polyline>
+                            <line x1="12" y1="19" x2="20" y2="19"></line>
+                        </svg>
                         <span>Terminal de Sistema</span>
                     </div>
                     <div style="display:flex; gap:15px; align-items:center;">
-                        <button id="btn-copy" class="mac-btn-outline" style="font-size:11px; padding:4px 8px; z-index:101; position:relative;" onclick="event.stopPropagation(); copiarTerminal()">Copiar Logs</button>
-                        <button id="btn-clear" class="mac-btn-outline" style="font-size:11px; padding:4px 8px; z-index:101; position:relative;" onclick="event.stopPropagation();">Limpiar Log</button>
-                        <button class="mac-icon-btn btn-drawer-toggle" id="btn-terminal-icon" style="transform: rotate(0deg); transition: transform 0.3s; pointer-events:none;">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                        <button id="btn-copy" class="mac-btn-outline"
+                            style="font-size:11px; padding:4px 8px; z-index:101; position:relative;"
+                            onclick="event.stopPropagation(); copiarTerminal()">Copiar Logs</button>
+                        <button id="btn-clear" class="mac-btn-outline"
+                            style="font-size:11px; padding:4px 8px; z-index:101; position:relative;"
+                            onclick="event.stopPropagation();">Limpiar Log</button>
+                        <button class="mac-icon-btn btn-drawer-toggle" id="btn-terminal-icon"
+                            style="transform: rotate(0deg); transition: transform 0.3s; pointer-events:none;">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                <path d="M7 10l5 5 5-5z" />
+                            </svg>
                         </button>
                     </div>
                 </div>
@@ -150,81 +178,117 @@
             </footer>
         </main>
     </div>
-    
-    <!-- CONTENEDOR DE NOTIFICACIONES (TOAST) -->
+
     <div id="toast-container" class="toast-container"></div>
 
-    <!-- MODAL OJO DE DIOS -->
-<div id="modal-ojo-dios" class="modal-overlay" onclick="if(event.target===this) cerrarOjoDeDios()" style="z-index: 10000; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px);">
-        <div class="modal-content mac-window" style="width: calc(100vw - 40px); max-width: none; height: calc(100vh - 40px); background: rgba(30, 30, 30, 0.90); border: 1px solid rgba(255,255,255,0.1); padding: 0; display: flex; flex-direction: column; opacity: 1; transform: scale(1); border-radius: 12px;">
-            <div style="padding: 20px; display: flex; flex-direction: column; gap: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); -webkit-app-region: drag;">
-                <div style="display: flex; justify-content: space-between; align-items: center; -webkit-app-region: no-drag;">
-                    <h2 style="margin: 0; font-size: 20px; font-weight: 500; display: flex; align-items: center; gap: 10px;">
-                        <span style="color: #FF9500; font-size:24px;">👁</span> Ojo Total <span style="font-size: 11px; color: #888; font-weight: normal; margin-top:4px;">3 pantallas dedicadas</span>
+    <div id="modal-ojo-dios" class="modal-overlay" onclick="if(event.target===this) cerrarOjoDeDios()"
+        style="z-index: 10000; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px);">
+        <div class="modal-content mac-window"
+            style="width: calc(100vw - 40px); max-width: none; height: calc(100vh - 40px); background: rgba(30, 30, 30, 0.90); border: 1px solid rgba(255,255,255,0.1); padding: 0; display: flex; flex-direction: column; opacity: 1; transform: scale(1); border-radius: 12px;">
+            <div
+                style="padding: 20px; display: flex; flex-direction: column; gap: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); -webkit-app-region: drag;">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; -webkit-app-region: no-drag;">
+                    <h2
+                        style="margin: 0; font-size: 20px; font-weight: 500; display: flex; align-items: center; gap: 10px;">
+                        <span style="color: #FF9500; font-size:24px;">👁</span> Ojo Total <span
+                            style="font-size: 11px; color: #888; font-weight: normal; margin-top:4px;">3 pantallas
+                            dedicadas</span>
                     </h2>
-                    <button class="mac-btn close" onclick="cerrarOjoDeDios()" style="width: 14px; height: 14px; margin:0;" title="Cerrar Ojo Total"></button>
+                    <button class="mac-btn close" onclick="cerrarOjoDeDios()"
+                        style="width: 14px; height: 14px; margin:0;" title="Cerrar Ojo Total"></button>
                 </div>
                 <div class="ojo-tabs" style="-webkit-app-region: no-drag;">
                     <button class="ojo-tab-btn active" data-ojo-screen="search">Busqueda Global</button>
                     <button class="ojo-tab-btn" data-ojo-screen="disk">Mapa de Disco</button>
                     <button class="ojo-tab-btn" data-ojo-screen="apps">Desinstalador Apps</button>
                 </div>
-                <div id="ojo-status" style="font-size: 13px; color: #0A84FF; -webkit-app-region: no-drag;">Preparando indice global...</div>
+                <div id="ojo-status" style="font-size: 13px; color: #0A84FF; -webkit-app-region: no-drag;">Preparando
+                    indice global...</div>
             </div>
-            
-            <div style="flex: 1; overflow-y: auto; padding: 10px 20px 20px 20px; -webkit-app-region: no-drag;" id="ojo-results-container">
+
+            <div style="flex: 1; overflow-y: auto; padding: 10px 20px 20px 20px; -webkit-app-region: no-drag;"
+                id="ojo-results-container">
                 <div id="ojo-screen-search" class="ojo-screen active">
                     <div class="mac-group ghost-tools-panel" style="margin-bottom: 14px;">
-                        <div class="mac-group-row"><div class="mac-group-label">Buscador Global</div></div>
-                        <div style="padding: 12px 12px 0 12px;">
-                            <input type="text" id="ojo-input" placeholder="Busca archivos, carpetas y rutas en milisegundos..." class="mac-input-search" style="font-size: 18px; padding: 12px 14px; border-radius: 12px; background: rgba(0,0,0,0.5);">
+                        <div class="mac-group-row">
+                            <div class="mac-group-label">Buscador Global</div>
                         </div>
-                        <ul id="ojo-results" style="list-style: none; padding: 10px 10px 12px 10px; margin: 0; display: flex; flex-direction: column; gap: 6px;"></ul>
+                        <div style="padding: 12px 12px 0 12px;">
+                            <input type="text" id="ojo-input"
+                                placeholder="Busca archivos, carpetas y rutas en milisegundos..."
+                                class="mac-input-search"
+                                style="font-size: 18px; padding: 12px 14px; border-radius: 12px; background: rgba(0,0,0,0.5);">
+                        </div>
+                        <ul id="ojo-results"
+                            style="list-style: none; padding: 10px 10px 12px 10px; margin: 0; display: flex; flex-direction: column; gap: 6px;">
+                        </ul>
                     </div>
                 </div>
 
                 <div id="ojo-screen-disk" class="ojo-screen" style="height: 100%;">
-                    <div class="mac-group ghost-tools-panel" style="margin-bottom: 0; display: flex; flex-direction: column; height: 100%; padding: 15px;">
+                    <div class="mac-group ghost-tools-panel"
+                        style="margin-bottom: 0; display: flex; flex-direction: column; height: 100%; padding: 15px;">
                         <div class="mac-group-row" style="gap: 12px; justify-content: space-between; flex-shrink: 0;">
-                            <div class="mac-group-label">Mapa de Disco <span style="font-size:10px; color:#888; font-weight:normal; margin-left:8px;">WizTree Engine Integrado</span></div>
+                            <div class="mac-group-label">Mapa de Disco <span
+                                    style="font-size:10px; color:#888; font-weight:normal; margin-left:8px;">WizTree
+                                    Engine Integrado</span></div>
                             <div style="display:flex; gap:8px;">
                                 <button id="ojo-btn-disk-up" class="mac-action-btn edit">Subir nivel</button>
                                 <button id="ojo-btn-scan" class="mac-action-btn run">Raiz C:</button>
                             </div>
                         </div>
-                        <div id="ojo-disk-breadcrumb" class="disk-breadcrumb" style="flex-shrink: 0; margin-bottom: 12px;"></div>
-                        
-                        <div id="ojo-disk-loading" style="display: none; flex: 1; min-height: 0; margin-bottom: 15px; align-items: center; justify-content: center; flex-direction: column; gap: 15px;">
-                            <div style="width: 300px; height: 10px; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; position: relative;">
-                                <div style="width: 50%; height: 100%; background: linear-gradient(90deg, #0A84FF, #5b5bd6); border-radius: 10px; animation: scanProgress 1.5s infinite ease-in-out alternate;"></div>
+                        <div id="ojo-disk-breadcrumb" class="disk-breadcrumb"
+                            style="flex-shrink: 0; margin-bottom: 12px;"></div>
+
+                        <div id="ojo-disk-loading"
+                            style="display: none; flex: 1; min-height: 0; margin-bottom: 15px; align-items: center; justify-content: center; flex-direction: column; gap: 15px;">
+                            <div
+                                style="width: 300px; height: 12px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; position: relative; box-shadow: inset 0 1px 3px rgba(0,0,0,0.4);">
+                                <div id="ojo-disk-progress-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #0A84FF, #30D158); border-radius: 10px; transition: width 0.05s linear;"></div>
                             </div>
-                            <div style="color: #0A84FF; font-size: 14px; font-weight: 500; text-shadow: 0 0 10px rgba(10,132,255,0.3);">Analizando estructura de disco con motor hibrido MFT/WizTree... (Por favor, espera)</div>
+                            <div id="ojo-disk-loading-text"
+                                style="color: #0A84FF; font-size: 14px; font-weight: 500; text-shadow: 0 0 10px rgba(10,132,255,0.3);">
+                                Iniciando escaneo de disco... 0%
+                            </div>
                         </div>
 
-                        <div id="ojo-disk-content" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
-                              <div style="display: flex; gap: 15px; flex: 1; max-height: 300px; min-height: 200px; margin-bottom: 15px;">
-                                <div style="flex: 7; min-width: 0; display: flex; flex-direction: column; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
-                                    <div style="display: flex; padding: 6px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">
+                        <div id="ojo-disk-content"
+                            style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+                            <div
+                                style="display: flex; gap: 15px; flex: 1; max-height: 300px; min-height: 200px; margin-bottom: 15px;">
+                                <div
+                                    style="flex: 7; min-width: 0; display: flex; flex-direction: column; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
+                                    <div
+                                        style="display: flex; padding: 6px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">
                                         <div style="flex: 5;">Nombre</div>
                                         <div style="flex: 2; text-align: center;">% de Padre</div>
                                         <div style="flex: 2; text-align: right;">Tamaño</div>
                                     </div>
-                                    <div id="ojo-disk-results" style="flex: 1; position: relative; overflow-y: auto;"></div>
+                                    <div id="ojo-disk-results" style="flex: 1; position: relative; overflow-y: auto;">
+                                    </div>
                                 </div>
-                                
-                                <div style="flex: 3; min-width: 0; display: flex; flex-direction: column; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
-                                    <div style="display: flex; padding: 6px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">
+
+                                <div
+                                    style="flex: 3; min-width: 0; display: flex; flex-direction: column; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
+                                    <div
+                                        style="display: flex; padding: 6px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">
                                         <div style="flex: 4;">Extensión</div>
                                         <div style="flex: 2; text-align: right;">%</div>
                                         <div style="flex: 3; text-align: right;">Tamaño</div>
                                     </div>
-                                    <div id="ojo-disk-extensions" style="flex: 1; overflow-y: auto; overflow-x: hidden;"></div>
+                                    <div id="ojo-disk-extensions"
+                                        style="flex: 1; overflow-y: auto; overflow-x: hidden;"></div>
                                 </div>
                             </div>
 
-                            <div style="flex: 10; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; display: flex; flex-direction: column;">
-                                <div style="padding: 4px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">Treemap Visual</div>
-                                <div id="ojo-disk-treemap" class="disk-treemap" style="flex: 1; padding: 0px; overflow: hidden; position: relative;"></div>
+                            <div
+                                style="flex: 10; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; display: flex; flex-direction: column;">
+                                <div
+                                    style="padding: 4px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">
+                                    Treemap Visual</div>
+                                <div id="ojo-disk-treemap" class="disk-treemap"
+                                    style="flex: 1; padding: 0px; overflow: hidden; position: relative;"></div>
                             </div>
                         </div>
                     </div>
@@ -237,7 +301,8 @@
                             <button id="ojo-btn-apps" class="mac-action-btn edit">Cargar Apps Instaladas</button>
                         </div>
                         <div class="apps-search-wrap">
-                            <input type="text" id="ojo-apps-search" class="mac-input-search apps-search-input" placeholder="Buscar aplicacion para desinstalar...">
+                            <input type="text" id="ojo-apps-search" class="mac-input-search apps-search-input"
+                                placeholder="Buscar aplicacion para desinstalar...">
                         </div>
                         <div id="ojo-apps-grid" class="apps-grid"></div>
                     </div>
@@ -246,12 +311,11 @@
         </div>
     </div>
 
-    <!-- MODAL AUTOPILOT -->
     <div id="autopilot-modal" class="modal-overlay" onclick="if(event.target===this) cerrarAutopilot()">
         <div class="mac-modal mac-glass">
             <h3>Configurar Autopilot</h3>
             <p id="sch-filename" class="modal-subtitle">script.py</p>
-            
+
             <div class="mac-form-group">
                 <label>Ejecutar en bucle cada:</label>
                 <div style="display: flex; gap: 10px;">
@@ -263,7 +327,7 @@
                     </select>
                 </div>
             </div>
-            
+
             <div class="mac-modal-actions">
                 <button class="mac-btn-outline" onclick="cerrarAutopilot()">Cancelar</button>
                 <button class="mac-btn-primary" onclick="iniciarAutopilot()">Iniciar Bucle</button>
@@ -271,7 +335,6 @@
         </div>
     </div>
 
-    <!-- MODAL SETTINGS -->
     <div id="settings-modal" class="modal-overlay" onclick="if(event.target===this) closeSettings()">
         <div class="mac-modal mac-glass" style="width: 400px; text-align: left;">
             <h3 style="margin-bottom: 20px;">Configuracion Horus</h3>
@@ -289,6 +352,7 @@
         </div>
     </div>
 
-    <script src="renderer.js"></script>
+    <script type="module" src="renderer.js"></script>
 </body>
+
 </html>
