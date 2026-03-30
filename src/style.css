@@ -930,8 +930,9 @@ input:checked + .slider:before { transform: translateX(12px); }
 .wiz-node {
     position: absolute;
     box-sizing: border-box;
-    overflow: hidden;
-    transition: filter 0.2s ease;
+    border-radius: 6px; /* Bordes orgánicos */
+    transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease, filter 0.2s;
+    overflow: hidden; /* Corta mágicamente cualquier bloque que intente salirse */
 }
 
 .wiz-node:hover {

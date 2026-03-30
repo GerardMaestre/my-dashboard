@@ -85,32 +85,38 @@ function layoutRow(row, rect, horizontal, outputRects) {
 }
 
 function squarify(nodes, width, height) {
-	const safeNodes = [...nodes].filter((n) => Number(n.area || 0) > 0).sort((a, b) => b.area - a.area);
-	const rects = [];
-	let x = 0;
-	let y = 0;
-	let w = Math.max(1, width);
-	let h = Math.max(1, height);
+    const safeNodes = [...nodes].filter((n) => Number(n.area || 0) > 0).sort((a, b) => b.area - a.area);
+    const rects = [];
+    let rect = { x: 0, y: 0, w: width, h: height };
+    let row = [];
 
-	for (let i = 0; i < safeNodes.length; i++) {
-		const node = safeNodes[i];
-		const remainingArea = safeNodes.slice(i).reduce((acc, cur) => acc + cur.area, 0) || 1;
-		if (w <= 1 || h <= 1) break;
+    for (let i = 0; i < safeNodes.length; i++) {
+        const node = safeNodes[i];
+        const side = rect.w >= rect.h ? rect.w : rect.h;
+        
+        if (row.length === 0) {
+            row.push(node);
+            continue;
+        }
 
-		if (w >= h) {
-			const cw = Math.max(1, (node.area / remainingArea) * w);
-			rects.push({ node, x, y, w: Math.min(cw, w), h });
-			x += cw;
-			w = Math.max(0, w - cw);
-		} else {
-			const ch = Math.max(1, (node.area / remainingArea) * h);
-			rects.push({ node, x, y, w, h: Math.min(ch, h) });
-			y += ch;
-			h = Math.max(0, h - ch);
-		}
-	}
+        const worstWith = worstAspectRatio([...row, node], side);
+        const worstWithout = worstAspectRatio(row, side);
 
-	return rects.filter((r) => r.w > 0 && r.h > 0);
+        // Si agrupar este archivo mejora la forma del cuadrado, lo añadimos a la fila
+        if (worstWith <= worstWithout) {
+            row.push(node);
+        } else {
+            // Si la empeora, cerramos la fila actual y empezamos una nueva
+            rect = layoutRow(row, rect, rect.w >= rect.h, rects);
+            row = [node];
+        }
+    }
+    
+    if (row.length > 0) {
+        layoutRow(row, rect, rect.w >= rect.h, rects);
+    }
+    
+    return rects.filter((r) => r.w > 0.5 && r.h > 0.5);
 }
 
 self.onmessage = function onMessage(event) {

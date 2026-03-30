@@ -311,13 +311,18 @@ export async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false
 		await new Promise(resolve => setTimeout(resolve, 400));
 
 		// Ocultar barra y mostrar resultados
+// Ocultar barra y preparar el contenedor visual
 		if (loadingEl) loadingEl.style.display = 'none';
 		if (contentEl) contentEl.style.display = 'flex';
 
-		renderEscaneoDisco(payload);
-
-		ghostState.diskScanned = true;
-		setOjoStatus(`Mapa listo para ${targetRoot} (${(payload?.engine || 'native').toUpperCase()}).`);
+		// CRÍTICO: Le damos 50ms al navegador para que asimile el "display: flex" 
+		// y sepa exactamente cuántos píxeles de ancho y alto tiene la pantalla
+		// antes de ponerse a calcular el tamaño de los cuadrados del mapa.
+		setTimeout(() => {
+			renderEscaneoDisco(payload);
+			ghostState.diskScanned = true;
+			setOjoStatus(`Mapa listo para ${targetRoot} (${(payload?.engine || 'native').toUpperCase()}).`);
+		}, 50);
 	} catch (err) {
 		console.error(err);
 		// Si hay un error, ocultar la carga para que no se quede bloqueado
@@ -480,31 +485,75 @@ function squarifyLevel(items, width, height) {
 
     let scale = (width * height) / totalValue;
     let safeNodes = items.map(item => ({ item, area: Math.max(0, Number(item.sizeBytes)) * scale })).filter(n => n.area > 0);
+    safeNodes.sort((a, b) => b.area - a.area);
+
+    let rect = { x: 0, y: 0, w: width, h: height };
+    let row = [];
+
+    function worstRatio(row, w) {
+        if (row.length === 0) return Infinity;
+        let sum = 0, max = 0, min = Infinity;
+        for (let i = 0; i < row.length; i++) {
+            let a = row[i].area;
+            sum += a;
+            if (a > max) max = a;
+            if (a < min) min = a;
+        }
+        return Math.max((w * w * max) / (sum * sum), (sum * sum) / (w * w * min));
+    }
+
+    function layoutRow(row, isHorizontal) {
+        let rowArea = row.reduce((sum, n) => sum + n.area, 0);
+        if (rowArea === 0) return;
+        if (isHorizontal) {
+            let rowHeight = rowArea / rect.w;
+            let currentX = rect.x;
+            for (let i = 0; i < row.length; i++) {
+                let nodeW = row[i].area / rowHeight;
+                result.push({ item: row[i].item, xPx: currentX, yPx: rect.y, wPx: nodeW, hPx: rowHeight });
+                currentX += nodeW;
+            }
+            rect.y += rowHeight;
+            rect.h -= rowHeight;
+        } else {
+            let rowWidth = rowArea / rect.h;
+            let currentY = rect.y;
+            for (let i = 0; i < row.length; i++) {
+                let nodeH = row[i].area / rowWidth;
+                result.push({ item: row[i].item, xPx: rect.x, yPx: currentY, wPx: rowWidth, hPx: nodeH });
+                currentY += nodeH;
+            }
+            rect.x += rowWidth;
+            rect.w -= rowWidth;
+        }
+    }
+
+    for (let i = 0; i < safeNodes.length; i++) {
+        let node = safeNodes[i];
+        let isHorizontal = rect.w >= rect.h;
+        let side = isHorizontal ? rect.w : rect.h;
+
+        if (row.length === 0) {
+            row.push(node);
+            continue;
+        }
+
+        let worstWith = worstRatio([...row, node], side);
+        let worstWithout = worstRatio(row, side);
+
+        if (worstWith <= worstWithout) {
+            row.push(node);
+        } else {
+            layoutRow(row, isHorizontal);
+            row = [node];
+        }
+    }
     
-    let x = 0;
-	let y = 0;
-	let w = Math.max(1, width);
-	let h = Math.max(1, height);
+    if (row.length > 0) {
+        layoutRow(row, rect.w >= rect.h);
+    }
 
-	for (let i = 0; i < safeNodes.length; i++) {
-		const node = safeNodes[i];
-		const remainingArea = safeNodes.slice(i).reduce((acc, cur) => acc + cur.area, 0) || 1;
-		if (w <= 1 || h <= 1) break;
-
-		if (w >= h) {
-			const cw = Math.max(1, (node.area / remainingArea) * w);
-			result.push({ item: node.item, xPx: x, yPx: y, wPx: Math.min(cw, w), hPx: h });
-			x += cw;
-			w = Math.max(0, w - cw);
-		} else {
-			const ch = Math.max(1, (node.area / remainingArea) * h);
-			result.push({ item: node.item, xPx: x, yPx: y, wPx: w, hPx: Math.min(ch, h) });
-			y += ch;
-			h = Math.max(0, h - ch);
-		}
-	}
-
-	return result.filter((r) => r.wPx > 0 && r.hPx > 0);
+    return result.filter(r => r.wPx > 0.5 && r.hPx > 0.5);
 }
 
 function buildTreemapDOM(itemsOrRects, container, widthPx, heightPx, depth = 1, parentHue = null, isPrecalcCoords = false) {
