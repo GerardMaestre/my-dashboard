@@ -17,7 +17,7 @@ const pythonExePath = path.join(pythonEnvPath, 'python.exe');
 const activeProcesses = new Map();
 const outputListeners = new Set();
 const exitListeners = new Set();
-const forceExternalScripts = new Set(['07_Herramientas_Pro/Desinstalador_Root.bat']);
+const forceExternalScripts = new Set(['07_Herramientas_Pro/Desinstalador_Root.bat', '06_Personalizacion/Spicetify.bat']);
 
 const diskScanCache = new Map();
 const inFlightScans = new Map();
@@ -864,12 +864,15 @@ function runExternal(fileName, args) {
 
 	const envBlock = createSanitizedEnv(process.env);
 
+	// CREATE_NEW_CONSOLE (0x10) para que el script tenga su propia ventana de consola visible e interactiva.
+	// stdio: 'ignore' porque la consola real del proceso es la que muestra la salida, no los pipes de Electron.
 	const spawnOptions = { 
 		windowsHide: false,
-		detached: false,
+		detached: true,
 		shell: false,
-		creationFlags: 0,
-		env: envBlock
+		creationFlags: 0x00000010,
+		env: envBlock,
+		stdio: ['ignore', 'ignore', 'ignore']
 	};
 
 	if (info.isCmdScript) {
@@ -882,14 +885,6 @@ function runExternal(fileName, args) {
 
 	activeProcesses.set(fileName, child);
 
-	child.stdout.on('data', (data) => {
-		emitOutput({ fileName, type: 'success', message: data.toString() });
-	});
-
-	child.stderr.on('data', (data) => {
-		emitOutput({ fileName, type: 'error', message: data.toString() });
-	});
-
 	child.on('error', (error) => {
 		emitOutput({ fileName, type: 'error', message: String(error) });
 	});
@@ -901,6 +896,11 @@ function runExternal(fileName, args) {
 		}
 		emitExit({ fileName, code });
 	});
+
+	// Desacoplar del padre para que la ventana sobreviva si Electron se cierra
+	child.unref();
+
+	emitOutput({ fileName, type: 'success', message: '[SYS] Ventana externa abierta. La salida se muestra en la consola del script.' });
 
 	return child.pid;
 }
