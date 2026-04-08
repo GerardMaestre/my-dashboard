@@ -13,19 +13,70 @@ export function toggleTerminal() {
 	}
 }
 
-export function logTerminal(mensaje, tipo = 'system') {
+let logBuffer = [];
+let logRenderScheduled = false;
+
+const processLogBuffer = () => {
     const terminal = document.getElementById('terminal');
-    if (!terminal) return;
-	const span = document.createElement('span');
-	span.className = `log-line log-${tipo}`;
-	span.textContent = String(mensaje).replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
-	terminal.appendChild(span);
+    if (!terminal) {
+        logBuffer = [];
+        logRenderScheduled = false;
+        return;
+    }
 
-	if (terminal.childNodes.length > 1000) {
-		terminal.removeChild(terminal.firstChild);
-	}
+    const fragment = document.createDocumentFragment();
+    let lastSpan = terminal.lastElementChild;
+    const isAtBottom = terminal.scrollHeight - terminal.scrollTop <= terminal.clientHeight + 20;
 
-	terminal.scrollTop = terminal.scrollHeight;
+    for (let i = 0; i < logBuffer.length; i++) {
+        const { mensaje, tipo } = logBuffer[i];
+        let cleanMsg = String(mensaje).replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
+        
+        const parts = cleanMsg.split(/\r/);
+        for (let j = 0; j < parts.length; j++) {
+            const part = parts[j];
+            if (j > 0) {
+                if (lastSpan) {
+                    lastSpan.textContent = part;
+                } else if (part) {
+                    lastSpan = document.createElement('span');
+                    lastSpan.className = `log-line log-${tipo}`;
+                    lastSpan.textContent = part;
+                    fragment.appendChild(lastSpan);
+                }
+            } else if (part) {
+                lastSpan = document.createElement('span');
+                lastSpan.className = `log-line log-${tipo}`;
+                lastSpan.textContent = part;
+                fragment.appendChild(lastSpan);
+            }
+        }
+    }
+
+    if (fragment.childNodes.length > 0) {
+        terminal.appendChild(fragment);
+    }
+    
+    // Optimización purga de elementos (Batch removal)
+    while (terminal.childElementCount > 1000) {
+        terminal.removeChild(terminal.firstElementChild);
+    }
+
+    if (isAtBottom) {
+        terminal.scrollTop = terminal.scrollHeight;
+    }
+
+    logBuffer = [];
+    logRenderScheduled = false;
+};
+
+export function logTerminal(mensaje, tipo = 'system') {
+    logBuffer.push({ mensaje, tipo });
+    
+    if (!logRenderScheduled) {
+        logRenderScheduled = true;
+        requestAnimationFrame(processLogBuffer);
+    }
 }
 
 export function copiarTerminal() {
