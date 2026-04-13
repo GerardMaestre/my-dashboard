@@ -69,6 +69,7 @@ export async function cargarScripts() {
 	validFiles.sort((a, b) => a.localeCompare(b));
 	const fragment = document.createDocumentFragment();
 	let pendingAutostarts = [];
+	let globalIndex = 0;
 	const groups = {};
 
 	for (const file of validFiles) {
@@ -126,8 +127,8 @@ export async function cargarScripts() {
 			li.setAttribute('data-name', file);
 			li.setAttribute('data-type', info.name);
             // Efecto de entrada en cascada
-            const globalIndex = Array.from(fragment.querySelectorAll('.script-item')).length;
             li.style.animationDelay = `${Math.min(globalIndex * 0.03, 1)}s`;
+            globalIndex++;
 
 			const divHeader = document.createElement('div');
 			divHeader.className = 'card-header';
@@ -278,12 +279,45 @@ export async function cargarScripts() {
 
     setIsFirstLoad(false);
 	aplicarFiltros();
+	updateSidebarCounts(validFiles);
 
 	const splash = document.getElementById('splash-screen');
 	if (splash) {
 		splash.classList.add('hidden');
 		setTimeout(() => splash.remove(), 1000);
 	}
+}
+
+// UX: Badge de conteo en sidebar
+function updateSidebarCounts(files) {
+	const total = files.length;
+	const pyCount = files.filter(f => f.toLowerCase().endsWith('.py')).length;
+	const batCount = files.filter(f => f.toLowerCase().endsWith('.bat') || f.toLowerCase().endsWith('.cmd')).length;
+	const activeCount = runningFiles.size;
+
+	const badges = [
+		{ filter: 'all', count: total },
+		{ filter: 'py', count: pyCount },
+		{ filter: 'bat', count: batCount },
+		{ filter: 'active', count: activeCount }
+	];
+
+	badges.forEach(({ filter, count }) => {
+		const btn = document.querySelector(`.tab-btn[data-filter="${filter}"]`);
+		if (!btn) return;
+		let badge = btn.querySelector('.sidebar-count');
+		if (!badge) {
+			badge = document.createElement('span');
+			badge.className = 'sidebar-count';
+			btn.appendChild(badge);
+		}
+		badge.textContent = count;
+		badge.style.cssText = 'margin-left:auto; background:rgba(255,255,255,0.1); padding:2px 8px; border-radius:999px; font-size:11px; color:var(--mac-text-muted); font-weight:600;';
+		if (filter === 'active' && count > 0) {
+			badge.style.background = 'rgba(48, 209, 88, 0.2)';
+			badge.style.color = 'var(--mac-green)';
+		}
+	});
 }
 
 export function alternarBotones(fileName, ejecutando) {
@@ -294,6 +328,15 @@ export function alternarBotones(fileName, ejecutando) {
 	if (bRun && bStop) {
 		bRun.style.display = ejecutando ? 'none' : 'flex';
 		bStop.style.display = ejecutando ? 'flex' : 'none';
+	}
+	// UX: Animación de pulse para cards en ejecución
+	const card = document.querySelector(`.script-item[data-name="${fileName}"]`);
+	if (card) {
+		if (ejecutando) {
+			card.classList.add('is-running');
+		} else {
+			card.classList.remove('is-running');
+		}
 	}
 }
 
@@ -390,11 +433,12 @@ export function aplicarFiltros() {
 		if (!noResults) {
 			noResults = document.createElement('div');
 			noResults.id = 'no-results';
-			noResults.style.color = '#888';
-			noResults.style.padding = '50px 20px';
-			noResults.style.textAlign = 'center';
-			noResults.style.gridColumn = '1 / -1';
-			noResults.innerHTML = `<h3>No hay scripts para mostrar</h3><p style="opacity:0.7; margin-top:10px;">Prueba ajustando los filtros.</p>`;
+			noResults.style.cssText = 'color:#888; padding:60px 20px; text-align:center; grid-column:1/-1;';
+			noResults.innerHTML = `
+				<div style="font-size:48px; margin-bottom:15px; opacity:0.4; animation: pulse 2s ease-in-out infinite;">🔍</div>
+				<h3 style="font-weight:600; margin-bottom:8px; color:var(--mac-text-muted);">Sin resultados</h3>
+				<p style="opacity:0.5; font-size:13px;">Prueba ajustando los filtros o el texto de búsqueda.</p>
+			`;
 			const list = document.getElementById('script-list');
             if(list) list.appendChild(noResults);
 		}

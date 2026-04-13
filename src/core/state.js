@@ -26,8 +26,21 @@ export function setIsFirstLoad(value) {
     isFirstLoad = value;
 }
 
-export let autostartList = JSON.parse(localStorage.getItem('nexus_autostart') || '[]');
-export let favoritesList = JSON.parse(localStorage.getItem('nexus_favorites') || '[]');
+function safeParseLocalStorage(key, fallback = []) {
+    try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return fallback;
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : fallback;
+    } catch (e) {
+        console.error(`[HorusEngine] Corrupted localStorage key "${key}", resetting.`);
+        localStorage.removeItem(key);
+        return fallback;
+    }
+}
+
+export let autostartList = safeParseLocalStorage('nexus_autostart');
+export let favoritesList = safeParseLocalStorage('nexus_favorites');
 
 export function updateFavorites(newList) {
     favoritesList = newList;

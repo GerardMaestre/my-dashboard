@@ -6,7 +6,7 @@ export function mostrarToast(mensaje, tipo = 'system') {
 	toast.className = `toast toast-${tipo}`;
 
 	const wrapper = document.createElement('div');
-	wrapper.style.cssText = 'display:flex;align-items:center;gap:10px;';
+	wrapper.className = 'toast-body';
 
 	const iconDiv = document.createElement('span');
 	if (tipo === 'success') iconDiv.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="var(--mac-green)"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
@@ -19,7 +19,18 @@ export function mostrarToast(mensaje, tipo = 'system') {
 	wrapper.appendChild(iconDiv);
 	wrapper.appendChild(textSpan);
 	toast.appendChild(wrapper);
+
+	// Barra de progreso visual de auto-dismiss
+	const progressBar = document.createElement('div');
+	progressBar.className = 'toast-progress';
+	toast.appendChild(progressBar);
+
 	container.appendChild(toast);
+
+	// Limitar a máximo 5 toasts visibles
+	while (container.children.length > 5) {
+		container.removeChild(container.firstElementChild);
+	}
 
 	setTimeout(() => {
 		toast.classList.add('fadeOut');

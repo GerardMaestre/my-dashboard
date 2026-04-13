@@ -4,6 +4,7 @@ import { mostrarToast } from './ui/toastSystem.js';
 import { cargarScripts, ejecutar, matarProceso, openScript, toggleFavorite, toggleAutoStart, aplicarFiltros, alternarBotones, setupTabs } from './features/dashboardSystem.js';
 import { toggleAutopilot, cerrarAutopilot, iniciarAutopilot, initAutopilotLoop } from './features/autopilotSystem.js';
 import { abrirOjoDeDios, cerrarOjoDeDios, bindGhostEvents, cargarMotoresFantasma } from './features/ojoDeDios.js';
+import { initRuntimePaths } from './core/utils.js';
 import { runningFiles, silentRuns } from './core/state.js';
 
 // Exponer métodos críticos a WINDOW para que index.html "onclick" sigan funcionando
@@ -32,9 +33,10 @@ initAutopilotLoop();
 
 if (window.api) {
     window.api.getStorageDir();
-    cargarScripts();
-    cargarMotoresFantasma();
-    bindGhostEvents();
+    initRuntimePaths().catch(e => console.error('[HorusEngine] initRuntimePaths failed:', e));
+    cargarScripts().catch(e => console.error('[HorusEngine] cargarScripts failed:', e));
+    try { cargarMotoresFantasma(); } catch(e) { console.error('[HorusEngine] cargarMotoresFantasma failed:', e); }
+    try { bindGhostEvents(); } catch(e) { console.error('[HorusEngine] bindGhostEvents failed:', e); }
     
     // IPC Listeners para salida de procesos
     window.api.onProcessOutput(({ fileName, type, message }) => {
@@ -92,8 +94,8 @@ document.addEventListener('keydown', (e) => {
 	}
 	if (e.key === 'F3' || (e.ctrlKey && e.key === 'f')) {
 		e.preventDefault();
-        const searchInput = document.getElementById('search-input');
-		if(searchInput) searchInput.focus();
+        const searchField = document.getElementById('search-input');
+		if(searchField) searchField.focus();
 	}
     if (e.key === 'Escape') {
 		cerrarOjoDeDios();

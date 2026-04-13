@@ -1,6 +1,5 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const fs = require('fs');
 
 // =========================================================
 // ARRANQUE NORMAL DEL DASHBOARD (Doble clic en el icono)

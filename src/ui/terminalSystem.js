@@ -27,6 +27,9 @@ const processLogBuffer = () => {
     const fragment = document.createDocumentFragment();
     let lastSpan = terminal.lastElementChild;
     const isAtBottom = terminal.scrollHeight - terminal.scrollTop <= terminal.clientHeight + 20;
+    const now = new Date();
+    const timestamp = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+
 
     for (let i = 0; i < logBuffer.length; i++) {
         const { mensaje, tipo } = logBuffer[i];
@@ -47,7 +50,12 @@ const processLogBuffer = () => {
             } else if (part) {
                 lastSpan = document.createElement('span');
                 lastSpan.className = `log-line log-${tipo}`;
-                lastSpan.textContent = part;
+                // Timestamp prefix para tracking profesional
+                const timePrefix = document.createElement('span');
+                timePrefix.className = 'log-timestamp';
+                timePrefix.textContent = `[${timestamp}] `;
+                lastSpan.appendChild(timePrefix);
+                lastSpan.appendChild(document.createTextNode(part));
                 fragment.appendChild(lastSpan);
             }
         }
@@ -57,9 +65,14 @@ const processLogBuffer = () => {
         terminal.appendChild(fragment);
     }
     
-    // Optimización purga de elementos (Batch removal)
-    while (terminal.childElementCount > 1000) {
-        terminal.removeChild(terminal.firstElementChild);
+    // Optimización: purga batch via Range (O(1) vs O(n) individual removes)
+    const maxLines = 1000;
+    const excess = terminal.childElementCount - maxLines;
+    if (excess > 0) {
+        const range = document.createRange();
+        range.setStartBefore(terminal.firstElementChild);
+        range.setEndAfter(terminal.children[excess - 1]);
+        range.deleteContents();
     }
 
     if (isAtBottom) {

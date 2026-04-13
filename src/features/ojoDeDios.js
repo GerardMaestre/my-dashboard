@@ -104,12 +104,12 @@ export function renderResultadosBusqueda(items) {
 		const row = document.createElement('div');
 		row.className = 'ghost-item';
 		const fileIcon = getFileIconFromPath(item.fullPath || item.name);
-		const sourceLabel = item.source ? `<span style="font-size:10px;color:#8aa7ff;">${item.source}</span>` : '';
+		const sourceLabel = item.source ? `<span style="font-size:10px;color:#8aa7ff;">${safeText(item.source)}</span>` : '';
 		row.innerHTML = `
 			<div style="font-size:16px;">${fileIcon}</div>
 			<div style="min-width:0;flex:1;">
-				<div class="ghost-item-name">${item.name || 'archivo'} ${sourceLabel}</div>
-				<div class="ghost-item-path">${item.fullPath || ''}</div>
+				<div class="ghost-item-name">${safeText(item.name || 'archivo')} ${sourceLabel}</div>
+				<div class="ghost-item-path">${safeText(item.fullPath || '')}</div>
 			</div>
 		`;
 		row.addEventListener('click', () => {
@@ -441,7 +441,7 @@ function renderEscaneoDisco(payload) {
 		const pct = Math.max(1, Math.min(100, Number(item.percent || 0)));
 		card.innerHTML = `
 			<div class="disk-topline">
-				<span>${item.name || item.fullPath}</span>
+				<span>${safeText(item.name || item.fullPath)}</span>
 				<span>${formatBytes(item.sizeBytes)}</span>
 			</div>
 			<div class="disk-bar-bg">
@@ -591,7 +591,11 @@ function buildTreemapDOM(itemsOrRects, container, widthPx, heightPx, depth = 1, 
             for (let i = 0; i < ext.length; i++) hash = ext.charCodeAt(i) + ((hash << 5) - hash);
             hue = Math.abs(hash) % 360;
         } else if (depth === 1) {
-            hue = Math.floor(Math.random() * 360);
+            // Deterministic hue based on name for consistent colors
+            let nameStr = (item.name || item.fullPath || '').toLowerCase();
+            let nameHash = 0;
+            for (let i = 0; i < nameStr.length; i++) nameHash = nameStr.charCodeAt(i) + ((nameHash << 5) - nameHash);
+            hue = Math.abs(nameHash) % 360;
         }
 
         const div = document.createElement('div');

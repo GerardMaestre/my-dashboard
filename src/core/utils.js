@@ -70,6 +70,20 @@ export function buildFileUrl(winPath) {
 	return `file://${encodeURI(normalized)}`;
 }
 
+// Cache de rutas del sistema (se llena al arrancar)
+let runtimeEnvCache = null;
+
+export async function initRuntimePaths() {
+	if (window.api && window.api.getRuntimePaths) {
+		try {
+			const paths = await window.api.getRuntimePaths();
+			runtimeEnvCache = paths.env || {};
+		} catch (e) {
+			console.error('[HorusEngine] Error obteniendo runtime paths:', e);
+		}
+	}
+}
+
 export function extractIconPath(app) {
 	let raw = String(app?.displayIcon || '').trim();
 
@@ -87,12 +101,14 @@ export function extractIconPath(app) {
 	raw = raw.replace(/,[\s\-]?\d+$/, '').trim();
 	raw = raw.replace(/"/g, '');
 
-	raw = raw.replace(/%ProgramFiles%/gi, 'C:\\Program Files')
-		.replace(/%ProgramFiles\(x86\)%/gi, 'C:\\Program Files (x86)')
-		.replace(/%AppData%/gi, 'C:\\Users\\gerar\\AppData\\Roaming')
-		.replace(/%LocalAppData%/gi, 'C:\\Users\\gerar\\AppData\\Local')
-		.replace(/%SystemRoot%/gi, 'C:\\Windows')
-		.replace(/%WinDir%/gi, 'C:\\Windows');
+	// Resolver variables de entorno dinámicamente
+	const env = runtimeEnvCache || {};
+	raw = raw.replace(/%ProgramFiles%/gi, env.PROGRAMFILES || 'C:\\Program Files')
+		.replace(/%ProgramFiles\(x86\)%/gi, env.PROGRAMFILES_X86 || 'C:\\Program Files (x86)')
+		.replace(/%AppData%/gi, env.APPDATA || '')
+		.replace(/%LocalAppData%/gi, env.LOCALAPPDATA || '')
+		.replace(/%SystemRoot%/gi, env.SYSTEMROOT || 'C:\\Windows')
+		.replace(/%WinDir%/gi, env.WINDIR || 'C:\\Windows');
 
 	return raw;
 }

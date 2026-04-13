@@ -54,7 +54,7 @@ function ensureStandaloneEnvironment() {
     if (!fs.existsSync(pythonExePath) || !fs.existsSync(pyZipPath) || !fs.existsSync(pipPath)) {
         try {
             if (fs.existsSync(pythonEnvPath)) {
-                try { fs.rmSync(pythonEnvPath, { recursive: true, force: true }); } catch (e) {}
+                try { fs.rmSync(pythonEnvPath, { recursive: true, force: true }); } catch (e) { console.error('[HorusEngine] Error limpiando pythonEnvPath:', e.message); }
             }
             fs.mkdirSync(pythonEnvPath, { recursive: true });
             const zipPath = path.join(pythonEnvPath, 'python.zip');
@@ -75,9 +75,11 @@ function ensureStandaloneEnvironment() {
             execFile('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psCommand], { windowsHide: true }, (err) => {
                 if (!err && fs.existsSync(pipPath)) {
                     setTimeout(() => emitOutput({ fileName: 'Sistema', type: 'system', message: 'Entorno Python instalado correctamente' }), 2000);
+                } else if (err) {
+                    console.error('[HorusEngine] Error instalando Python portable:', err.message);
                 }
             });
-        } catch(e) {}
+        } catch(e) { console.error('[HorusEngine] Error critico en setup Python:', e.message); }
     }
 
     // Instalar WizTree Integrado
@@ -96,9 +98,11 @@ function ensureStandaloneEnvironment() {
             execFile('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psCommand], { windowsHide: true }, (err) => {
                if (!err && fs.existsSync(wiztreeExePath)) {
                    setTimeout(() => emitOutput({ fileName: 'Sistema', type: 'system', message: 'Motor WizTree instalado y activo' }), 2500);
+               } else if (err) {
+                   console.error('[HorusEngine] Error instalando WizTree:', err.message);
                }
             });
-        } catch(e) {}
+        } catch(e) { console.error('[HorusEngine] Error critico en setup WizTree:', e.message); }
     }
 }
 
@@ -493,12 +497,10 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 						topItems.push(node);
 					} else {
 						let parentPath = node.fullPath.toLowerCase().replace(/\\$/, '');
-						let parentFound = false;
 						while (parentPath.includes('\\') && parentPath.length > normBase.length) {
 							parentPath = parentPath.substring(0, parentPath.lastIndexOf('\\'));
 							if (nodeMap.has(parentPath)) {
 								nodeMap.get(parentPath).children.push(node);
-								parentFound = true;
 								break;
 							}
 						}
@@ -515,17 +517,12 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 					}
 				};
 
-				try {
-					const totalFoldersBytes = topItems.reduce((acc, cur) => acc + cur.sizeBytes, 0) || 1;
-					topItems.forEach(child => processNode(child, totalFoldersBytes));
-					// resolveParse(topItems); // This line was likely intended for the promise above, but is out of scope here.
-				} catch (err) {
-					require('fs').writeFileSync('C:\\mis_scripts\\debug_crash.txt', String(err.stack || err.message));
-					// resolveParse({ error: err.message }); // This line was likely intended for the promise above, but is out of scope here.
-				}
-
 				const totalFoldersBytes = topItems.reduce((acc, cur) => acc + cur.sizeBytes, 0) || 1;
-				topItems.forEach(child => processNode(child, totalFoldersBytes));
+				try {
+					topItems.forEach(child => processNode(child, totalFoldersBytes));
+				} catch (err) {
+					console.error('[HorusEngine] processNode error:', err.stack || err.message);
+				}
 
 				const topExts = Array.from(extMap.entries())
 					.map(([ext, sizeBytes]) => ({ ext, sizeBytes, percent: Number(Math.max(0.1, (sizeBytes * 100) / (totalFilesBytes || 1)).toFixed(1)) }))
@@ -631,8 +628,6 @@ async function ghostListInstalledApps() {
 		displayIcon: item.DisplayIcon || ''
 	}));
 }
-
-﻿﻿
 
 async function ghostUninstallApp(payload, force = false) {
     const uninstallString = String(payload?.uninstallString || '').trim();
@@ -763,15 +758,12 @@ async function ghostCleanLeftovers(items) {
         if (!item.Path || item.Path.length < 10) continue; 
         try {
             const pathE = escapePsSingleQuoted(item.Path);
-            let ps = '';
-            if (item.Type === 'Registry') {
-                ps = `Remove-Item -Path '${pathE}' -Recurse -Force -ErrorAction SilentlyContinue`;
-            } else {
-                ps = `Remove-Item -Path '${pathE}' -Recurse -Force -ErrorAction SilentlyContinue`;
-            }
+            const ps = `Remove-Item -Path '${pathE}' -Recurse -Force -ErrorAction SilentlyContinue`;
             await runPowerShell(ps, 15000);
             deletedCount++;
-        } catch (e) {}
+        } catch (e) {
+            console.error(`[HorusEngine] Error limpiando rastro ${item.Path}:`, e.message);
+        }
     }
     return { deleted: deletedCount };
 }
@@ -1028,8 +1020,11 @@ const api = {
 			let activeWorkers = 0;
 			
 			async function walk(dir) {
-				if (completed || limitReached) return;
-				activeWorkers++;
+				if (completed || limitReached) {
+					activeWorkers--;
+					if (activeWorkers === 0) finish();
+					return;
+				}
 				try {
 					// Yield event loop completely to prevent UI freeze
 					await new Promise(r => setTimeout(r, 0));
@@ -1050,7 +1045,8 @@ const api = {
 							}
 							results.push(`DIR|${resPath}`);
 							maybeReportProgress();
-							walk(resPath); // disparamos el worker asíncrono sin await
+							activeWorkers++; // Contar ANTES del dispatch para evitar race condition
+							walk(resPath);
 						} else {
 							if (results.length >= maxResults) {
 								limitReached = true;
@@ -1073,6 +1069,7 @@ const api = {
 			// Iniciar crawler para cada disco
 			for (const drive of drives) {
 				const startDir = `${drive}\\`;
+				activeWorkers++; // Contar ANTES del dispatch
 				walk(startDir);
 			}
 
