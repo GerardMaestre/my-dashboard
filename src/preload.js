@@ -1346,4 +1346,4 @@ try {
 // Pre-warm disk map scan silencioso para el disco C: (para que sea instantáneo la primera vez)
 setTimeout(() => {
 	ghostScanDisk('C:\\').catch(() => {});
-}, 8000);
+}, 1200);

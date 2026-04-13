@@ -301,6 +301,8 @@ export function subirNivelDisco() {
 export async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false, options = {}) {
 	const targetRoot = String(rootPath || ghostState.diskPathStack[ghostState.diskPathStack.length - 1] || 'C:\\');
 	const forceFresh = !!(options && options.forceFresh);
+	const sameRootAsCurrent = String(ghostState.currentDiskRoot || '').toLowerCase() === targetRoot.toLowerCase();
+	const keepCurrentView = forceFresh && sameRootAsCurrent && !!ghostState.currentDiskPayload;
 	if (pushStack) {
 		const last = ghostState.diskPathStack[ghostState.diskPathStack.length - 1];
 		if (!last || last.toLowerCase() !== targetRoot.toLowerCase()) {
@@ -320,21 +322,28 @@ export async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false
 		ghostState.treemapResizeObs = null;
 	}
 	resetTreemapWorker();
-	treemapRects = [];
-	treemapItemsRaw = [];
-	hoveredNode = null;
-	ghostState.currentDiskPayload = null;
+	if (!keepCurrentView) {
+		treemapRects = [];
+		treemapItemsRaw = [];
+		hoveredNode = null;
+		ghostState.currentDiskPayload = null;
+	}
 
 	if (btn) {
 		btn.disabled = true;
 		btn.textContent = 'Calculando...';
 	}
-	if (loadingEl) loadingEl.style.display = 'flex';
-	if (contentEl) contentEl.style.display = 'none';
+	if (keepCurrentView) {
+		if (loadingEl) loadingEl.style.display = 'none';
+		if (contentEl) contentEl.style.display = 'flex';
+	} else {
+		if (loadingEl) loadingEl.style.display = 'flex';
+		if (contentEl) contentEl.style.display = 'none';
+	}
 
 	try {
 		if(!window.api) return;
-		setOjoStatus(`Escaneando ${targetRoot}...`);
+		setOjoStatus(keepCurrentView ? `Actualizando ${targetRoot} en segundo plano...` : `Escaneando ${targetRoot}...`);
 		if (forceFresh && window.api.clearDiskScanCache) {
 			await window.api.clearDiskScanCache(targetRoot);
 		}
@@ -365,6 +374,9 @@ export async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false
 							? 'Finalizando mapa de disco...'
 							: (phase === 'done' ? 'Escaneo completo.' : 'Analizando estructura del disco...')));
 				loadingText.innerText = `${txt} ${visualPercent}%`;
+				if (keepCurrentView) {
+					setOjoStatus(`${txt} ${visualPercent}%`);
+				}
 			}
 		};
 
@@ -387,26 +399,28 @@ export async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false
 		
 		if (scanSeq !== ghostState.diskScanSeq) return;
 
-		syncLoadingProgress('done', 100);
+		if (!keepCurrentView) {
+			syncLoadingProgress('done', 100);
 
-		// PAUSA VISUAL: Obligamos a la interfaz a esperar casi medio segundo 
-		// para que te dé tiempo a ver cómo la barra llega al final suavemente
-		await new Promise(resolve => setTimeout(resolve, 400));
+			// PAUSA VISUAL: Obligamos a la interfaz a esperar casi medio segundo 
+			// para que te dé tiempo a ver cómo la barra llega al final suavemente
+			await new Promise(resolve => setTimeout(resolve, 400));
 
-		// Ocultar barra y mostrar resultados
-// Ocultar barra y preparar el contenedor visual
-		if (loadingEl) loadingEl.style.display = 'none';
-		if (contentEl) contentEl.style.display = 'flex';
+			// Ocultar barra y mostrar resultados
+			if (loadingEl) loadingEl.style.display = 'none';
+			if (contentEl) contentEl.style.display = 'flex';
+		}
 
 		// CRÍTICO: Le damos 50ms al navegador para que asimile el "display: flex" 
 		// y sepa exactamente cuántos píxeles de ancho y alto tiene la pantalla
 		// antes de ponerse a calcular el tamaño de los cuadrados del mapa.
 		setTimeout(() => {
 			ghostState.currentDiskPayload = payload || null;
+			ghostState.currentDiskRoot = targetRoot;
 			renderEscaneoDisco(payload);
 			ghostState.diskScanned = true;
 			setOjoStatus(`Mapa listo para ${targetRoot} (${(payload?.engine || 'native').toUpperCase()}).`);
-		}, 50);
+		}, keepCurrentView ? 0 : 50);
 	} catch (err) {
 		console.error(err);
 		// Si hay un error, ocultar la carga para que no se quede bloqueado

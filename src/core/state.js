@@ -14,6 +14,9 @@ export const ghostState = {
 	searchSeq: 0,
 	diskPathStack: ['C:\\'],
 	diskScanSeq: 0,
+    currentDiskRoot: '',
+    currentDiskPayload: null,
+    treemapResizeObs: null,
 	appsList: []
 };
 
