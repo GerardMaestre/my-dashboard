@@ -340,10 +340,59 @@ async function ghostSearchFiles(query, limit = 120) {
 }
 
 const scanProgressListeners = new Map();
-async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
+function clearWizTreeExports(rootPath = null) {
+	try {
+		if (!fs.existsSync(appDataNexus)) return;
+		const files = fs.readdirSync(appDataNexus, { withFileTypes: true });
+		const legacy = path.join(appDataNexus, 'wiztree-export.csv');
+		try { fs.rmSync(legacy, { force: true }); } catch (_) {}
+
+		if (!rootPath) {
+			for (const f of files) {
+				if (!f.isFile()) continue;
+				if (!/^wiztree-export-[A-Za-z]\.csv$/i.test(f.name)) continue;
+				try { fs.rmSync(path.join(appDataNexus, f.name), { force: true }); } catch (_) {}
+			}
+			return;
+		}
+
+		const base = String(rootPath || 'C:\\');
+		const driveMatch = base.match(/^([A-Za-z]):\\/);
+		const driveLetter = driveMatch ? driveMatch[1].toUpperCase() : 'C';
+		const tempCsv = path.join(appDataNexus, `wiztree-export-${driveLetter}.csv`);
+		try { fs.rmSync(tempCsv, { force: true }); } catch (_) {}
+	} catch (_) {
+		// noop
+	}
+}
+
+function clearDiskScanState(rootPath = null) {
+	try { ipcRenderer.invoke('disk-scan-reset-state').catch(() => {}); } catch (_) {}
+
+	if (!rootPath) {
+		diskScanCache.clear();
+		inFlightScans.clear();
+		scanProgressListeners.clear();
+		clearWizTreeExports(null);
+		return;
+	}
 
 	const base = String(rootPath || 'C:\\');
 	const normBase = (base.endsWith('\\') ? base : base + '\\').toLowerCase();
+	diskScanCache.delete(normBase);
+	inFlightScans.delete(normBase);
+	scanProgressListeners.delete(normBase);
+	clearWizTreeExports(base);
+}
+
+async function ghostScanDisk(rootPath = 'C:\\', onProgress = null, options = {}) {
+	const forceFresh = !!(options && options.forceFresh);
+
+	const base = String(rootPath || 'C:\\');
+	const normBase = (base.endsWith('\\') ? base : base + '\\').toLowerCase();
+	if (forceFresh) {
+		clearDiskScanState(base);
+	}
 	if (!scanProgressListeners.has(normBase)) scanProgressListeners.set(normBase, new Set());
 	if (onProgress) scanProgressListeners.get(normBase).add(onProgress);
 	let lastProgressPercent = 0;
@@ -360,7 +409,24 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 		lastProgressPhase = phase;
 		emitProgress({ phase, percent: monotonic, ...(extra || {}) });
 	};
+	let progressPulseTimer = null;
+	const stopProgressPulse = () => {
+		if (!progressPulseTimer) return;
+		clearInterval(progressPulseTimer);
+		progressPulseTimer = null;
+	};
+	const startProgressPulse = (phase, targetPercent, step = 1, intervalMs = 900) => {
+		stopProgressPulse();
+		progressPulseTimer = setInterval(() => {
+			if (lastProgressPercent >= targetPercent) {
+				stopProgressPulse();
+				return;
+			}
+			emitOverallProgress(phase, Math.min(targetPercent, lastProgressPercent + step));
+		}, intervalMs);
+	};
 	const detachProgressListener = () => {
+		stopProgressPulse();
 		if (!onProgress) return;
 		const listeners = scanProgressListeners.get(normBase);
 		if (!listeners) return;
@@ -371,7 +437,7 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 	emitOverallProgress('init', 2);
 
 	try {
-		if (diskScanCache.has(normBase)) {
+		if (!forceFresh && diskScanCache.has(normBase)) {
 			const cached = diskScanCache.get(normBase);
 			if (Date.now() - cached.timestamp < 10 * 60 * 1000) {
 				emitOverallProgress('cached', 100);
@@ -379,7 +445,7 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 			}
 		}
 
-		if (inFlightScans.has(normBase)) {
+		if (!forceFresh && inFlightScans.has(normBase)) {
 			return await inFlightScans.get(normBase);
 		}
 
@@ -388,11 +454,12 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 	if (mftPath) {
 		try {
 			emitOverallProgress('mft', 12);
+			startProgressPulse('mft', 24, 1, 850);
 			const { stdout } = await new Promise((resolve, reject) => {
 				execFile(
 					mftPath,
 					['scan', '--root', base, '--format', 'json'],
-					{ windowsHide: true, timeout: 180000, maxBuffer: 1024 * 1024 * 64 },
+					{ windowsHide: true, timeout: 5000, maxBuffer: 1024 * 1024 * 64 },
 					(err, out, errOut) => {
 						if (err) {
 							reject(new Error((errOut || err.message || '').trim() || 'mft scan failed'));
@@ -402,6 +469,7 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 					}
 				);
 			});
+			stopProgressPulse();
 
 			const parsed = safeJsonObject(stdout, null);
 			if (parsed && Array.isArray(parsed.items)) {
@@ -414,6 +482,8 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 			}
 		} catch {
 			// Continue with fallback.
+		} finally {
+			stopProgressPulse();
 		}
 	}
 
@@ -425,39 +495,45 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 			const driveLetter = driveMatch ? driveMatch[1].toUpperCase() : 'C';
 			const tempCsv = path.join(appDataNexus, `wiztree-export-${driveLetter}.csv`);
 			fs.mkdirSync(appDataNexus, { recursive: true });
-			
-			let needsScan = true;
-			try {
-				const stats = fs.statSync(tempCsv);
-				// Si el CSV tiene menos de 2 horas (7200000 ms), lo reutilizamos
-				if (Date.now() - stats.mtimeMs < 7200000) {
-					needsScan = false;
-				}
-			} catch (e) {}
 
-			if (needsScan) {
+			let shouldExportFresh = forceFresh;
+			if (!shouldExportFresh && fs.existsSync(tempCsv)) {
+				try {
+					const stats = fs.statSync(tempCsv);
+					const ageMs = Date.now() - stats.mtimeMs;
+					if (ageMs > 10 * 60 * 1000) shouldExportFresh = true;
+				} catch (_) {
+					shouldExportFresh = true;
+				}
+			} else if (!fs.existsSync(tempCsv)) {
+				shouldExportFresh = true;
+			}
+
+			if (shouldExportFresh) {
+				if (forceFresh) {
+					// Solo en modo forzado limpiamos cualquier export previo.
+					try { fs.rmSync(tempCsv, { force: true }); } catch (_) {}
+					try { fs.rmSync(path.join(appDataNexus, 'wiztree-export.csv'), { force: true }); } catch (_) {}
+				}
+				startProgressPulse('scan', 45, 1, 800);
 				await new Promise((resolve) => {
-					// Exportamos SIEMPRE la raiz del disco para poder cachear y reusar el CSV
 					execFile(
 						wiztreePath,
 						[`${driveLetter}:\\`, `/export=${tempCsv}`, '/admin=0'],
-						{ windowsHide: true, timeout: 120000 },
+						{ windowsHide: true, timeout: 45000 },
 						() => resolve()
 					);
 				});
+				stopProgressPulse();
 				emitOverallProgress('scan', 22);
 			} else {
-				emitOverallProgress('scan', 18);
+				emitOverallProgress('cached', 22);
 			}
 
-			// Fallback: si tempCsv no se generó (ej. WizTree sin licencia CMD o versión antigua),
-			// intentamos usar el archivo legacy 'wiztree-export.csv' que ya sepamos que funciona.
 			let effectiveCsv = tempCsv;
 			if (!fs.existsSync(effectiveCsv)) {
 				const legacyCsv = path.join(appDataNexus, 'wiztree-export.csv');
-				if (fs.existsSync(legacyCsv)) {
-					effectiveCsv = legacyCsv;
-				}
+				if (fs.existsSync(legacyCsv)) effectiveCsv = legacyCsv;
 			}
 
 			if (fs.existsSync(effectiveCsv)) {
@@ -604,13 +680,17 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 					extensions: topExts
 				};
 			}
+			emitOverallProgress('scan', 60);
 		} catch {
 			// Continue with fallback.
+		} finally {
+			stopProgressPulse();
 		}
 	}
 
 	const root = escapePsSingleQuoted(base);
 	emitOverallProgress('scan', 16);
+	startProgressPulse('scan', 90, 1, 1000);
 	const ps = `
 	$ErrorActionPreference = 'SilentlyContinue';
 	$root='${root}';
@@ -634,6 +714,7 @@ async function ghostScanDisk(rootPath = 'C:\\', onProgress = null) {
 	`;
 
 	const { stdout } = await runPowerShell(ps, 180000);
+	stopProgressPulse();
 	const rows = safeJsonParse(stdout, []);
 	const total = rows.reduce((acc, cur) => acc + Number(cur.SizeBytes || 0), 0) || 1;
 	emitOverallProgress('finalize', 98);
@@ -1220,8 +1301,12 @@ const api = {
 		const items = await ghostSearchFiles(query, limit);
 		return items;
 	},
-	escanearDisco: async (rootPath = 'C:\\', onProgress) => {
-		return await ghostScanDisk(rootPath, onProgress);
+	clearDiskScanCache: async (rootPath = null) => {
+		clearDiskScanState(rootPath);
+		return true;
+	},
+	escanearDisco: async (rootPath = 'C:\\', onProgress, options = {}) => {
+		return await ghostScanDisk(rootPath, onProgress, options);
 	},
 	listarAppsInstaladas: async () => {
 		return await ghostListInstalledApps();

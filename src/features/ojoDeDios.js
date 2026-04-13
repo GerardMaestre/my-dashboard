@@ -4,9 +4,66 @@ import { logTerminal } from '../ui/terminalSystem.js';
 import { mostrarToast } from '../ui/toastSystem.js';
 
 let treemapComputeWorker = null;
+let treemapCanvas = null;
+let treemapCtx = null;
+let treemapRects = []; // Guardaremos los rects actuales para interacción
+let treemapItemsRaw = []; // Referencia a los items originales para metadata
+let hoveredNode = null;
+let lastMousePos = { x: 0, y: 0 };
+let treemapScale = 1;
+
 function getTreemapWorker() {
 	if (!treemapComputeWorker) treemapComputeWorker = new Worker("./workers/treemapWorker.js");
 	return treemapComputeWorker;
+}
+
+function resetTreemapWorker() {
+	if (!treemapComputeWorker) return;
+	try {
+		treemapComputeWorker.terminate();
+	} catch (_) {
+		// noop
+	}
+	treemapComputeWorker = null;
+}
+
+function getTreemapTooltip() {
+    let el = document.getElementById('treemap-tooltip');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'treemap-tooltip';
+        el.className = 'mac-glass';
+        el.style.cssText = `
+            position: fixed;
+            pointer-events: none;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 12px;
+            z-index: 20000;
+            display: none;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            max-width: 300px;
+            backdrop-filter: blur(12px);
+            line-height: 1.4;
+        `;
+        document.body.appendChild(el);
+    }
+    return el;
+}
+
+function indexTreemapItems(items, bucket = []) {
+	if (!Array.isArray(items)) return bucket;
+	for (const item of items) {
+		const node = item || {};
+		node.__treemapIndex = bucket.length;
+		bucket.push(node);
+		if (Array.isArray(node.children) && node.children.length > 0) {
+			indexTreemapItems(node.children, bucket);
+		}
+	}
+	return bucket;
 }
 
 export function setOjoStatus(message) {
@@ -241,8 +298,9 @@ export function subirNivelDisco() {
 	ejecutarEscaneoFantasma(target, false);
 }
 
-export async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false) {
+export async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false, options = {}) {
 	const targetRoot = String(rootPath || ghostState.diskPathStack[ghostState.diskPathStack.length - 1] || 'C:\\');
+	const forceFresh = !!(options && options.forceFresh);
 	if (pushStack) {
 		const last = ghostState.diskPathStack[ghostState.diskPathStack.length - 1];
 		if (!last || last.toLowerCase() !== targetRoot.toLowerCase()) {
@@ -256,6 +314,17 @@ export async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false
 	const contentEl = document.getElementById('ojo-disk-content');
 	let loadingBarProgress = null;
 
+	// Reinicio estricto de estado antes de iniciar un escaneo nuevo
+	if (ghostState.treemapResizeObs) {
+		try { ghostState.treemapResizeObs.disconnect(); } catch (_) {}
+		ghostState.treemapResizeObs = null;
+	}
+	resetTreemapWorker();
+	treemapRects = [];
+	treemapItemsRaw = [];
+	hoveredNode = null;
+	ghostState.currentDiskPayload = null;
+
 	if (btn) {
 		btn.disabled = true;
 		btn.textContent = 'Calculando...';
@@ -266,14 +335,43 @@ export async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false
 	try {
 		if(!window.api) return;
 		setOjoStatus(`Escaneando ${targetRoot}...`);
+		if (forceFresh && window.api.clearDiskScanCache) {
+			await window.api.clearDiskScanCache(targetRoot);
+		}
 		
 		// Conexión con la nueva barra HTML
 		loadingBarProgress = document.getElementById('ojo-disk-progress-fill');
 		const loadingText = document.getElementById('ojo-disk-loading-text');
 		let progressValue = 0;
 
+		const syncLoadingProgress = (phase, percent) => {
+			const raw = Number(percent) || 0;
+			const normalized = raw <= 1 ? raw * 100 : raw;
+			progressValue = Math.max(progressValue, Math.max(0, Math.min(100, normalized)));
+			const visualPercent = Math.round(progressValue);
+
+			if (loadingBarProgress) {
+				loadingBarProgress.style.width = `${visualPercent}%`;
+				loadingBarProgress.style.maxWidth = `${visualPercent}%`;
+				loadingBarProgress.style.flexBasis = `${visualPercent}%`;
+			}
+
+			if (loadingText) {
+				const txt = phase === 'cached'
+					? 'Usando datos recientes para acelerar...'
+					: (phase === 'parsing'
+						? 'Leyendo y parseando archivos...'
+						: (phase === 'finalize'
+							? 'Finalizando mapa de disco...'
+							: (phase === 'done' ? 'Escaneo completo.' : 'Analizando estructura del disco...')));
+				loadingText.innerText = `${txt} ${visualPercent}%`;
+			}
+		};
+
 		if (loadingBarProgress) {
 			loadingBarProgress.style.width = '0%';
+			loadingBarProgress.style.maxWidth = '0%';
+			loadingBarProgress.style.flexBasis = '0%';
 		}
 
 		if (loadingText) {
@@ -281,30 +379,15 @@ export async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false
 		}
 
 		const payload = await window.api.escanearDisco(targetRoot, (progress) => {
+			if (scanSeq !== ghostState.diskScanSeq) return;
 			const phase = String(progress && progress.phase ? progress.phase : 'scan');
-			const raw = Math.max(0, Math.min(100, Number(progress && progress.percent ? progress.percent : 0)));
-			progressValue = Math.max(progressValue, raw);
-
-			if (loadingBarProgress) {
-				loadingBarProgress.style.width = `${progressValue.toFixed(1)}%`;
-			}
-
-			if (loadingText) {
-				const txt = phase === 'cached'
-					? 'Usando cache del escaneo...'
-					: (phase === 'parsing'
-						? 'Leyendo y parseando archivos...'
-						: (phase === 'finalize' ? 'Finalizando mapa de disco...' : 'Analizando estructura del disco...'));
-				loadingText.innerText = `${txt} ${Math.round(progressValue)}%`;
-			}
-		});
+			const raw = Number(progress && progress.percent ? progress.percent : 0);
+			syncLoadingProgress(phase, raw);
+		}, { forceFresh });
 		
 		if (scanSeq !== ghostState.diskScanSeq) return;
 
-		progressValue = 100;
-		if (loadingBarProgress) {
-			loadingBarProgress.style.width = `${progressValue}%`;
-		}
+		syncLoadingProgress('done', 100);
 
 		// PAUSA VISUAL: Obligamos a la interfaz a esperar casi medio segundo 
 		// para que te dé tiempo a ver cómo la barra llega al final suavemente
@@ -319,6 +402,7 @@ export async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false
 		// y sepa exactamente cuántos píxeles de ancho y alto tiene la pantalla
 		// antes de ponerse a calcular el tamaño de los cuadrados del mapa.
 		setTimeout(() => {
+			ghostState.currentDiskPayload = payload || null;
 			renderEscaneoDisco(payload);
 			ghostState.diskScanned = true;
 			setOjoStatus(`Mapa listo para ${targetRoot} (${(payload?.engine || 'native').toUpperCase()}).`);
@@ -377,61 +461,91 @@ function renderEscaneoDisco(payload) {
         treemap.style.display = 'block'; 
         treemap.style.position = 'relative';
 
+        const canvas = document.createElement('canvas');
+        canvas.id = 'ojo-disk-canvas';
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.display = 'block';
+        treemap.appendChild(canvas);
+
+        treemapCanvas = canvas;
+        treemapCtx = canvas.getContext('2d', { alpha: false });
+        
+        // Ajuste High-DPI
+        const dpr = window.devicePixelRatio || 1;
         const rect = treemap.getBoundingClientRect();
-        const boxW = Math.max(rect.width, 600); 
-        const boxH = Math.max(rect.height, 300);
-        
-        let mapItems = items.filter(i => Number(i.sizeBytes) > 0).sort((a, b) => Number(b.sizeBytes) - Number(a.sizeBytes)).slice(0, 250);
-		// Asignamos un ID asegurado para que el worker devuelva referencias cruzadas perfectas
-        mapItems.forEach((item, idx) => { if (!item.id) item.id = `disk-item-${idx}`; });
-        const rootItemById = new Map(mapItems.map((item) => [String(item.id), item]));
-        
-        const rootContainer = document.createElement('div');
-        rootContainer.className = 'wiz-container'; 
-        
-        rootContainer.style.position = 'absolute';
-        rootContainer.style.top = '0px';
-        rootContainer.style.left = '0px';
-        rootContainer.style.width = `${boxW}px`;
-        rootContainer.style.height = `${boxH}px`;
-        
-        if (mapItems.length === 0) {
-            rootContainer.innerHTML = '<div style="color:red; padding: 20px;">Error: No hay items válidos para dibujar el Treemap.</div>';
-        } else {
-            const worker = getTreemapWorker();
-			worker.onmessage = (e) => {
-				const data = e.data || {};
-				if (data.id !== 'main') return;
-				if (data.error) {
-					rootContainer.innerHTML = `<div style="color:#ff7676; padding: 20px;">Treemap worker fallo: ${safeText(data.error)}</div>`;
-					return;
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        treemapCtx.scale(dpr, dpr);
+        treemapScale = dpr;
+
+		const workerItems = items.slice(0, 1000);
+		treemapItemsRaw = indexTreemapItems(workerItems, []); // Incluye toda la jerarquía con índices estables
+
+        const worker = getTreemapWorker();
+		const workerSeq = ghostState.diskScanSeq;
+        worker.onmessage = (e) => {
+			if (workerSeq !== ghostState.diskScanSeq) return;
+            const { buffer, count } = e.data;
+            if (!buffer) return;
+
+            // Procesamos el buffer recibido
+            treemapRects = [];
+            for (let i = 0; i < count; i++) {
+                const offset = i * 8;
+                treemapRects.push({
+                    x: buffer[offset + 0],
+                    y: buffer[offset + 1],
+                    w: buffer[offset + 2],
+                    h: buffer[offset + 3],
+                    isDir: buffer[offset + 4] === 1,
+                    hue: buffer[offset + 5],
+                    depth: buffer[offset + 6],
+                    itemIndex: buffer[offset + 7]
+                });
+            }
+
+            drawTreemapContent();
+        };
+
+		worker.postMessage({ 
+			items: workerItems,
+            width: rect.width, 
+            height: rect.height,
+			maxDepth: 7
+        });
+
+		// ResizeObserver: siempre recrear por escaneo para no mezclar workers antiguos
+		if (ghostState.treemapResizeObs) {
+			try { ghostState.treemapResizeObs.disconnect(); } catch (_) {}
+		}
+		ghostState.treemapResizeObs = new ResizeObserver((entries) => {
+			for (let entry of entries) {
+				if (workerSeq !== ghostState.diskScanSeq) return;
+				if (entry.target === treemap && treemapRects.length > 0) {
+					const newRect = entry.contentRect;
+					if (newRect.width > 0 && newRect.height > 0) {
+						canvas.width = newRect.width * dpr;
+						canvas.height = newRect.height * dpr;
+						treemapCtx.scale(dpr, dpr);
+						// Se recalcula con el worker del escaneo actual
+						worker.postMessage({ 
+							items: workerItems,
+							width: newRect.width, 
+							height: newRect.height,
+							maxDepth: 7
+						});
+					}
 				}
+			}
+		});
+		ghostState.treemapResizeObs.observe(treemap);
 
-				const rects = Array.isArray(data.rects) ? data.rects : [];
-				if (!rects.length) {
-					rootContainer.innerHTML = '<div style="color:#999; padding: 20px;">No hay datos suficientes para dibujar el Treemap.</div>';
-					return;
-				}
-
-				const normalizedRects = rects.map((r) => {
-					const node = r && r.node ? r.node : null;
-					const nodeId = String(node && node.id ? node.id : '');
-					const sourceItem = rootItemById.get(nodeId) || (node && node.sourceItem) || node;
-					return {
-						item: sourceItem,
-						xPx: Number(r && Number.isFinite(Number(r.xPx)) ? r.xPx : (r && r.x) || 0),
-						yPx: Number(r && Number.isFinite(Number(r.yPx)) ? r.yPx : (r && r.y) || 0),
-						wPx: Number(r && Number.isFinite(Number(r.wPx)) ? r.wPx : (r && r.w) || 0),
-						hPx: Number(r && Number.isFinite(Number(r.hPx)) ? r.hPx : (r && r.h) || 0)
-					};
-				});
-
-				buildTreemapDOM(normalizedRects, rootContainer, boxW, boxH, 1, null, true);
-			};
-			worker.postMessage({ id: 'main', items: mapItems, width: boxW, height: boxH });
-        }
-        
-        treemap.appendChild(rootContainer);
+        // Eventos del Canvas
+        canvas.addEventListener('mousemove', handleCanvasMouseMove);
+        canvas.addEventListener('mouseleave', handleCanvasMouseLeave);
+        canvas.addEventListener('click', handleCanvasClick);
+        canvas.addEventListener('contextmenu', handleCanvasContextMenu);
     }
 
 	const fragment = document.createDocumentFragment();
@@ -478,178 +592,381 @@ function renderEscaneoDisco(payload) {
 	}
 }
 
-function squarifyLevel(items, width, height) {
-    let result = [];
-    let totalValue = items.reduce((sum, item) => sum + Math.max(0, Number(item.sizeBytes) || 0), 0);
-    if (totalValue === 0 || width <= 0 || height <= 0) return result;
-
-    let scale = (width * height) / totalValue;
-    let safeNodes = items.map(item => ({ item, area: Math.max(0, Number(item.sizeBytes)) * scale })).filter(n => n.area > 0);
-    safeNodes.sort((a, b) => b.area - a.area);
-
-    let rect = { x: 0, y: 0, w: width, h: height };
-    let row = [];
-
-    function worstRatio(row, w) {
-        if (row.length === 0) return Infinity;
-        let sum = 0, max = 0, min = Infinity;
-        for (let i = 0; i < row.length; i++) {
-            let a = row[i].area;
-            sum += a;
-            if (a > max) max = a;
-            if (a < min) min = a;
-        }
-        return Math.max((w * w * max) / (sum * sum), (sum * sum) / (w * w * min));
-    }
-
-    function layoutRow(row, isHorizontal) {
-        let rowArea = row.reduce((sum, n) => sum + n.area, 0);
-        if (rowArea === 0) return;
-        if (isHorizontal) {
-            let rowHeight = rowArea / rect.w;
-            let currentX = rect.x;
-            for (let i = 0; i < row.length; i++) {
-                let nodeW = row[i].area / rowHeight;
-                result.push({ item: row[i].item, xPx: currentX, yPx: rect.y, wPx: nodeW, hPx: rowHeight });
-                currentX += nodeW;
-            }
-            rect.y += rowHeight;
-            rect.h -= rowHeight;
-        } else {
-            let rowWidth = rowArea / rect.h;
-            let currentY = rect.y;
-            for (let i = 0; i < row.length; i++) {
-                let nodeH = row[i].area / rowWidth;
-                result.push({ item: row[i].item, xPx: rect.x, yPx: currentY, wPx: rowWidth, hPx: nodeH });
-                currentY += nodeH;
-            }
-            rect.x += rowWidth;
-            rect.w -= rowWidth;
-        }
-    }
-
-    for (let i = 0; i < safeNodes.length; i++) {
-        let node = safeNodes[i];
-        let isHorizontal = rect.w >= rect.h;
-        let side = isHorizontal ? rect.w : rect.h;
-
-        if (row.length === 0) {
-            row.push(node);
-            continue;
-        }
-
-        let worstWith = worstRatio([...row, node], side);
-        let worstWithout = worstRatio(row, side);
-
-        if (worstWith <= worstWithout) {
-            row.push(node);
-        } else {
-            layoutRow(row, isHorizontal);
-            row = [node];
-        }
-    }
-    
-    if (row.length > 0) {
-        layoutRow(row, rect.w >= rect.h);
-    }
-
-    return result.filter(r => r.wPx > 0.5 && r.hPx > 0.5);
+/**
+ * Paleta semántica para archivos; directorios siempre van en pizarra oscuro.
+ */
+function isFolderNode(node, fallbackIsDir = false) {
+	return Boolean(
+		fallbackIsDir ||
+		node?.isFolder ||
+		node?.isDir ||
+		(Array.isArray(node?.children) && node.children.length > 0)
+	);
 }
 
-function buildTreemapDOM(itemsOrRects, container, widthPx, heightPx, depth = 1, parentHue = null, isPrecalcCoords = false) {
-    if (depth > 6 || widthPx < 3 || heightPx < 3 || !itemsOrRects || itemsOrRects.length === 0) return; 
+function getColorForNode(node, fallbackIsDir = false, hueCategory = null, depth = 0) {
+	const rawName = String(node?.name || node?.fullPath || 'item');
+	const fileName = rawName.split(/[\\/]/).pop() || rawName;
+	const dirPalette = ['#355c7d', '#6c5b7b', '#2f6f5e', '#7b5e57', '#4e5d94', '#5f7c4a', '#7d4f6f', '#447b8f'];
+	const fileFallbackPalette = ['#00e5ff', '#b388ff', '#ffd740', '#ff5252', '#69f0ae', '#448aff', '#40c4ff', '#ea80fc'];
 
-    let layout;
-	if (isPrecalcCoords) {
-		layout = itemsOrRects
-			.map(rect => {
-				const item = rect?.item || rect?.node || null;
-				const xPx = Number.isFinite(Number(rect?.xPx)) ? Number(rect.xPx) : Number(rect?.x || 0);
-				const yPx = Number.isFinite(Number(rect?.yPx)) ? Number(rect.yPx) : Number(rect?.y || 0);
-				const wPx = Number.isFinite(Number(rect?.wPx)) ? Number(rect.wPx) : Number(rect?.w || 0);
-				const hPx = Number.isFinite(Number(rect?.hPx)) ? Number(rect.hPx) : Number(rect?.h || 0);
-				return { item, xPx, yPx, wPx, hPx };
-			})
-			.filter(rect => rect.item && rect.wPx > 0 && rect.hPx > 0);
-    } else {
-        let sortedItems = itemsOrRects.filter(i => Number(i.sizeBytes) > 0).sort((a, b) => Number(b.sizeBytes) - Number(a.sizeBytes));
-        if (depth === 1) sortedItems = sortedItems.slice(0, 250);
-        layout = squarifyLevel(sortedItems, widthPx, heightPx);
+	const pickByHash = (seed, palette) => {
+		const s = String(seed || 'x');
+		let hash = 0;
+		for (let i = 0; i < s.length; i++) hash = ((hash << 5) - hash) + s.charCodeAt(i);
+		return palette[Math.abs(hash) % palette.length];
+	};
+
+	if (isFolderNode(node, fallbackIsDir)) {
+		return pickByHash(`${fileName}:${depth}`, dirPalette);
 	}
+
+	if (!fileName.includes('.')) {
+		if (hueCategory === 1) return '#00e5ff';
+		if (hueCategory === 2) return '#b388ff';
+		if (hueCategory === 3) return '#ffd740';
+		if (hueCategory === 4) return '#ff5252';
+		if (hueCategory === 5) return '#448aff';
+		return pickByHash(fileName, fileFallbackPalette);
+	}
+
+	const ext = fileName.split('.').pop().toLowerCase();
+
+	switch (ext) {
+		case 'jpg':
+		case 'jpeg':
+		case 'png':
+		case 'gif':
+		case 'webp':
+			return '#00e5ff';
+		case 'mp4':
+		case 'mkv':
+		case 'avi':
+		case 'mov':
+			return '#b388ff';
+		case 'mp3':
+		case 'wav':
+		case 'flac':
+			return '#ffd740';
+		case 'exe':
+		case 'msi':
+		case 'bat':
+		case 'dll':
+			return '#ff5252';
+		case 'zip':
+		case 'rar':
+		case '7z':
+			return '#69f0ae';
+		case 'pdf':
+		case 'doc':
+		case 'txt':
+			return '#448aff';
+		default:
+			return pickByHash(ext, fileFallbackPalette);
+	}
+}
+
+function darkenHexByPercent(hex, percent = 0.3) {
+	const clean = (hex || '').replace('#', '').trim();
+	if (!/^[0-9a-fA-F]{6}$/.test(clean)) return '#448aff';
+
+	const factor = Math.max(0, Math.min(1, 1 - percent));
+	const r = Math.max(0, Math.min(255, Math.round(parseInt(clean.slice(0, 2), 16) * factor)));
+	const g = Math.max(0, Math.min(255, Math.round(parseInt(clean.slice(2, 4), 16) * factor)));
+	const b = Math.max(0, Math.min(255, Math.round(parseInt(clean.slice(4, 6), 16) * factor)));
+	return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+function boostHexSaturation(hex, amount = 0.12) {
+	const clean = (hex || '').replace('#', '').trim();
+	if (!/^[0-9a-fA-F]{6}$/.test(clean)) return '#448aff';
+
+	let r = parseInt(clean.slice(0, 2), 16) / 255;
+	let g = parseInt(clean.slice(2, 4), 16) / 255;
+	let b = parseInt(clean.slice(4, 6), 16) / 255;
+
+	const max = Math.max(r, g, b);
+	const min = Math.min(r, g, b);
+	let h = 0;
+	let s = 0;
+	const l = (max + min) / 2;
+
+	if (max !== min) {
+		const d = max - min;
+		s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+		switch (max) {
+			case r:
+				h = (g - b) / d + (g < b ? 6 : 0);
+				break;
+			case g:
+				h = (b - r) / d + 2;
+				break;
+			default:
+				h = (r - g) / d + 4;
+		}
+		h /= 6;
+	}
+
+	s = Math.max(0, Math.min(1, s + amount));
+
+	const hue2rgb = (p, q, t) => {
+		let tt = t;
+		if (tt < 0) tt += 1;
+		if (tt > 1) tt -= 1;
+		if (tt < 1 / 6) return p + (q - p) * 6 * tt;
+		if (tt < 1 / 2) return q;
+		if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6;
+		return p;
+	};
+
+	if (s === 0) {
+		r = l;
+		g = l;
+		b = l;
+	} else {
+		const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+		const p = 2 * l - q;
+		r = hue2rgb(p, q, h + 1 / 3);
+		g = hue2rgb(p, q, h);
+		b = hue2rgb(p, q, h - 1 / 3);
+	}
+
+	return `#${Math.round(r * 255).toString(16).padStart(2, '0')}${Math.round(g * 255).toString(16).padStart(2, '0')}${Math.round(b * 255).toString(16).padStart(2, '0')}`;
+}
+
+function drawTreemapLabel(ctx, x, y, width, height, name, isDir) {
+	ctx.save();
+	ctx.beginPath();
+	ctx.rect(x, y, width, height);
+	ctx.clip();
+
+	if (width < 45 || height < 15) {
+		ctx.restore();
+		return;
+	}
+
+	ctx.fillStyle = '#ffffff';
+	ctx.shadowColor = 'rgba(0,0,0,0.85)';
+	ctx.shadowBlur = 3;
+
+	if (isDir) {
+		ctx.font = '600 11px "SF Pro Display", "Inter", sans-serif';
+		ctx.textAlign = 'left';
+		ctx.textBaseline = 'middle';
+		ctx.fillText(name, x + 6, y + 9);
+	} else {
+		const fontSize = Math.min(12, Math.max(9, height / 5));
+		ctx.font = `500 ${fontSize}px "SF Pro Display", "Inter", sans-serif`;
+		ctx.textBaseline = 'middle';
+		ctx.textAlign = 'center';
+		ctx.fillText(name, x + (width / 2), y + (height / 2));
+	}
+
+	ctx.restore();
+}
+
+function drawTreemapContent() {
+	if (!treemapCtx || !treemapCanvas) return;
+	const ctx = treemapCtx;
+	const w = treemapCanvas.width / treemapScale;
+	const h = treemapCanvas.height / treemapScale;
+
+	// Limpieza global única por frame
+	ctx.clearRect(0, 0, treemapCanvas.width, treemapCanvas.height);
+
+	ctx.fillStyle = '#050505';
+	ctx.fillRect(0, 0, w, h);
+
+	if (!treemapRects || treemapRects.length === 0) return;
+
+	// Back-to-front: primero capas de menor profundidad, luego hijos encima.
+	const sortedRects = [...treemapRects].sort((a, b) => a.depth - b.depth);
+
+	// PASADA 1: Fondo y bordes
+	for (const r of sortedRects) {
+		if (r.w <= 0.5 || r.h <= 0.5) continue;
+
+		const item = treemapItemsRaw[r.itemIndex] || null;
+		const isFolder = isFolderNode(item, r.isDir);
+		const baseColor = getColorForNode(item, r.isDir, r.hue, r.depth);
+		const saturatedColor = boostHexSaturation(baseColor, isFolder ? 0.08 : 0.12);
+
+		ctx.save();
+		try {
+			const grd = ctx.createLinearGradient(r.x, r.y, r.x + r.w, r.y + r.h);
+			grd.addColorStop(0, saturatedColor);
+			grd.addColorStop(1, darkenHexByPercent(saturatedColor, isFolder ? 0.2 : 0.3));
+			ctx.fillStyle = grd;
+
+			ctx.fillRect(r.x, r.y, r.w, r.h);
+
+			ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+			ctx.lineWidth = 1;
+			ctx.strokeRect(r.x, r.y, r.w, r.h);
+
+			if (hoveredNode === r) {
+				ctx.strokeStyle = '#ffffff';
+				ctx.lineWidth = 2;
+				ctx.strokeRect(r.x + 0.5, r.y + 0.5, Math.max(0, r.w - 1), Math.max(0, r.h - 1));
+			}
+		} catch (e) {
+			console.error('Error dibujando rect:', e, r);
+		} finally {
+			ctx.restore();
+		}
+	}
+
+	// PASADA 2: Etiquetas con clipping estricto (sin desbordamiento)
+	for (const r of sortedRects) {
+		if (r.w <= 0.5 || r.h <= 0.5) continue;
+		const item = treemapItemsRaw[r.itemIndex] || null;
+		if (!item) continue;
+		const isFolder = isFolderNode(item, r.isDir);
+		drawTreemapLabel(ctx, r.x, r.y, r.w, r.h, item.name || '...', isFolder);
+	}
+}
+
+function handleCanvasMouseMove(e) {
+    const rect = treemapCanvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    lastMousePos = { x: e.clientX, y: e.clientY };
+
+    // Búsqueda del nodo más profundo bajo el cursor
+    let best = null;
+    let maxDepth = -1;
+
+    for (const r of treemapRects) {
+        if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
+            if (r.depth > maxDepth) {
+                maxDepth = r.depth;
+                best = r;
+            }
+        }
+    }
+
+    if (best !== hoveredNode) {
+        hoveredNode = best;
+        drawTreemapContent();
+        updateTreemapTooltip();
+    } else if (hoveredNode) {
+        updateTreemapTooltip();
+    }
+}
+
+function updateTreemapTooltip() {
+    const tooltip = getTreemapTooltip();
+    if (!hoveredNode) {
+        tooltip.style.display = 'none';
+        return;
+    }
+
+    const item = treemapItemsRaw[hoveredNode.itemIndex];
+    if (!item) return;
+
+    const parentSize = ghostState.currentDiskPayload?.totalSize || item.sizeBytes;
+    const percent = ((item.sizeBytes / parentSize) * 100).toFixed(2);
+
+    tooltip.innerHTML = `
+        <div style="font-weight:700; color:#fff; margin-bottom:4px; word-break:break-all;">${safeText(item.name)}</div>
+        <div style="color:#aaa; font-size:11px; margin-bottom:6px; word-break:break-all;">${safeText(item.fullPath)}</div>
+        <div style="display:flex; justify-content:space-between; gap:20px;">
+            <span style="color:#0A84FF;">Tamaño: ${formatBytes(item.sizeBytes)}</span>
+            <span style="color:#30D158;">${percent}%</span>
+        </div>
+    `;
+
+    tooltip.style.display = 'block';
     
-    layout.forEach(rect => {
-        const { item, xPx, yPx, wPx, hPx } = rect;
-        
-        if (wPx < 3 || hPx < 3) return;
+    // Posicionamiento inteligente
+    let tx = lastMousePos.x + 15;
+    let ty = lastMousePos.y + 15;
+    
+    if (tx + 250 > window.innerWidth) tx = lastMousePos.x - 265;
+    if (ty + 100 > window.innerHeight) ty = lastMousePos.y - 115;
 
-        const isParent = item.children && item.children.length > 0;
-        
-        let hue = parentHue;
-        if (!isParent) {
-            let ext = (item.name || '').split('.').pop().toLowerCase();
-            let hash = 0;
-            for (let i = 0; i < ext.length; i++) hash = ext.charCodeAt(i) + ((hash << 5) - hash);
-            hue = Math.abs(hash) % 360;
-        } else if (depth === 1) {
-            // Deterministic hue based on name for consistent colors
-            let nameStr = (item.name || item.fullPath || '').toLowerCase();
-            let nameHash = 0;
-            for (let i = 0; i < nameStr.length; i++) nameHash = nameStr.charCodeAt(i) + ((nameHash << 5) - nameHash);
-            hue = Math.abs(nameHash) % 360;
+    tooltip.style.left = `${tx}px`;
+    tooltip.style.top = `${ty}px`;
+}
+
+function handleCanvasMouseLeave() {
+    hoveredNode = null;
+    drawTreemapContent();
+    getTreemapTooltip().style.display = 'none';
+}
+
+function handleCanvasClick(e) {
+    if (hoveredNode) {
+        const item = treemapItemsRaw[hoveredNode.itemIndex];
+        if (item && item.isDir && item.fullPath) {
+            // Animación de Zoom-In
+            animateZoomIn(hoveredNode, () => {
+                ejecutarEscaneoFantasma(item.fullPath, true);
+            });
         }
+    }
+}
 
-        const div = document.createElement('div');
-        div.className = isParent ? 'wiz-node wiz-folder' : 'wiz-node wiz-file';
-        div.style.left = `${xPx}px`;
-        div.style.top = `${yPx}px`;
-        div.style.width = `${wPx}px`;
-        div.style.height = `${hPx}px`;
-        div.style.zIndex = depth;
+function animateZoomIn(node, callback) {
+    const startX = 0, startY = 0, startW = treemapCanvas.width / treemapScale, startH = treemapCanvas.height / treemapScale;
+    const targetX = node.x, targetY = node.y, targetW = node.w, targetH = node.h;
+    
+    let startTime = null;
+    const duration = 250; // ms
+
+    function animate(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const progress = Math.min((timestamp - startTime) / duration, 1);
+        const ease = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+
+        // Calculamos el viewport de transformación
+        const currentW = startW / (1 + (startW/targetW - 1) * ease);
+        const currentH = startH / (1 + (startH/targetH - 1) * ease);
+        const currentX = targetX * ease;
+        const currentY = targetY * ease;
+
+        // Limpiamos y redibujamos con transformación
+        treemapCtx.save();
+        treemapCtx.clearRect(0, 0, startW, startH);
         
-        div.title = `${item.name || item.fullPath}\n${formatBytes(item.sizeBytes, 1)}`;
-        div.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (item.fullPath && typeof ejecutarEscaneoFantasma === 'function') ejecutarEscaneoFantasma(item.fullPath, true);
-        });
+        const scaleX = startW / (startW - (startW - targetW) * ease);
+        const scaleY = startH / (startH - (startH - targetH) * ease);
+        
+        treemapCtx.translate(-targetX * ease * scaleX, -targetY * ease * scaleY);
+        treemapCtx.scale(scaleX, scaleY);
+        
+        drawTreemapContent();
+        treemapCtx.restore();
 
-        if (isParent) {
-            let headerHeight = (depth <= 4 && hPx > 35 && wPx > 45) ? 20 : 0;
-            
-            if (headerHeight > 0) {
-                const title = document.createElement('div');
-                title.className = 'wiz-folder-header';
-                title.style.height = `${headerHeight}px`;
-                title.style.lineHeight = `${headerHeight}px`;
-                title.innerText = item.name || item.fullPath;
-                div.appendChild(title);
-            }
-
-            let pad = (wPx > 25 && hPx > 25) ? 4 : 1; 
-            let childAreaW = wPx - (pad * 2);
-            let childAreaH = hPx - headerHeight - (pad * 2);
-
-            if (childAreaW > 6 && childAreaH > 6) {
-                const childContainer = document.createElement('div');
-                childContainer.style.position = 'absolute';
-                childContainer.style.left = `${pad}px`;
-                childContainer.style.top = `${headerHeight + pad}px`;
-                childContainer.style.width = `${childAreaW}px`; 
-                childContainer.style.height = `${childAreaH}px`; 
-                div.appendChild(childContainer);
-
-                buildTreemapDOM(item.children, childContainer, childAreaW, childAreaH, depth + 1, hue, false);
-            }
+        if (progress < 1) {
+            requestAnimationFrame(animate);
         } else {
-            div.style.background = `linear-gradient(135deg, hsl(${hue}, 65%, 60%), hsl(${hue}, 70%, 40%))`;
-            if (wPx > 55 && hPx > 25) {
-                const label = document.createElement('div');
-                label.className = 'wiz-label';
-                label.innerText = item.name || 'file';
-                div.appendChild(label);
-            }
+            callback();
         }
-        container.appendChild(div);
-    });
+    }
+    requestAnimationFrame(animate);
+}
+
+function handleCanvasContextMenu(e) {
+    if (!hoveredNode) return;
+    e.preventDefault();
+    const item = treemapItemsRaw[hoveredNode.itemIndex];
+    if (!item || !item.fullPath) return;
+
+    // Menú contextual nativo de Electron vía Preload
+    if (window.api && window.api.showContextMenu) {
+        window.api.showContextMenu([
+            { label: 'Abrir en Explorador', click: () => window.api.showGlobalItemInFolder(item.fullPath) },
+            { label: 'Copiar Ruta', click: () => navigator.clipboard.writeText(item.fullPath) },
+            { type: 'separator' },
+            { label: 'EliminarArchivo (Permanente)', click: () => {
+                if (confirm(`¿Eliminar definitivamente?\n${item.fullPath}`)) {
+                    // Lógica de eliminación...
+                }
+            }}
+        ]);
+    }
 }
 
 // ======================== APPS LOGIC ========================
@@ -1079,7 +1396,7 @@ export function bindGhostEvents() {
 	if (scanBtn) {
 		scanBtn.addEventListener('click', () => {
 			ghostState.diskPathStack = ['C:\\'];
-			ejecutarEscaneoFantasma('C:\\', false);
+			ejecutarEscaneoFantasma('C:\\', false, { forceFresh: true });
 		});
 	}
 

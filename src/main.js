@@ -35,9 +35,19 @@ const path = require('path');
   };
 
   let mainWindow = null;
+  let diskScanGeneration = 0;
 
   app.on('ready', () => {
     mainWindow = createWindow();
+
+    ipcMain.handle('disk-scan-reset-state', async () => {
+      diskScanGeneration += 1;
+      return { ok: true, generation: diskScanGeneration };
+    });
+
+    ipcMain.handle('disk-scan-get-state', async () => {
+      return { generation: diskScanGeneration };
+    });
     
     ipcMain.handle('get-file-icon', async (event, filePath) => {
         try {
