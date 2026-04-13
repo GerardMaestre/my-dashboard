@@ -12,6 +12,11 @@ window.windowControl = windowControl;
 window.openSettings = openSettings;
 window.closeSettings = closeSettings;
 window.changeTheme = changeTheme;
+window.changeGlobalTerminalMode = () => {
+    const mode = document.getElementById('global-terminal-mode').value;
+    localStorage.setItem('nexus_terminal_mode', mode);
+    cargarScripts(); // Re-render logic to apply mode hints
+};
 window.toggleTerminal = toggleTerminal;
 window.copiarTerminal = copiarTerminal;
 window.mostrarToast = mostrarToast;
@@ -30,6 +35,11 @@ window.cerrarOjoDeDios = cerrarOjoDeDios;
 initTheme();
 setupTabs();
 initAutopilotLoop();
+
+// Cargar preferencia de terminal global
+const savedTerminalMode = localStorage.getItem('nexus_terminal_mode') || 'external';
+const globalSelector = document.getElementById('global-terminal-mode');
+if (globalSelector) globalSelector.value = savedTerminalMode;
 
 if (window.api) {
     window.api.getStorageDir();

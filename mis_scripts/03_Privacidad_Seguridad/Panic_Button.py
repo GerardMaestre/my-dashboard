@@ -25,21 +25,6 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', line_buffering=True)
 
 
-def confirm_protocol():
-    print('====================================================')
-    print('[!] ADVERTENCIA CRITICA')
-    print('[!] Este script cierra apps, borra historial, vacia TEMP y papelera.')
-    print('[!] Parte de los cambios no se pueden deshacer.')
-    print('====================================================')
-    try:
-        confirm_a = input('Escribe SI para continuar: ').strip().upper()
-        if confirm_a != 'SI':
-            return False
-        confirm_b = input('Escribe BORRAR-RASTROS para confirmar: ').strip().upper()
-        return confirm_b == 'BORRAR-RASTROS'
-    except KeyboardInterrupt:
-        print('\n[SYS] Operacion cancelada por el usuario.')
-        return False
 
 def close_browsers():
     print("[*] Cerrando navegadores...")
@@ -92,10 +77,6 @@ def clear_temp_files():
 
 def run():
     print("=== INICIANDO PROTOCOLO DE PÁNICO ===")
-
-    if not confirm_protocol():
-        print('[SYS] Operacion cancelada por seguridad.')
-        return
 
     closed_browsers = close_browsers()
     removed_history = clear_browser_history()

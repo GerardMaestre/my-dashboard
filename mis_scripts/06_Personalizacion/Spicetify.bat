@@ -11,10 +11,7 @@ echo     HORUS ENGINE - SPICETIFY THEME INJECTOR
 echo ===================================================
 echo.
 echo [!] ADVERTENCIA: Este script ejecuta instaladores remotos de PowerShell.
-set /p "CONFIRM_A=Escribe SI para continuar: "
-if /I not "%CONFIRM_A%"=="SI" goto :Cancelled
-set /p "CONFIRM_B=Escribe SPICETIFY para confirmar: "
-if /I not "%CONFIRM_B%"=="SPICETIFY" goto :Cancelled
+echo.
 
 echo [*] Cerrando Spotify...
 taskkill /F /IM Spotify.exe >nul 2>&1

@@ -1,13 +1,2 @@
-FATAL ERROR: 
-Traceback (most recent call last):
-  File "C:\Users\gerar\Desktop\mi-dashboard\my-app\mis_scripts\03_Privacidad_Seguridad\Identidad_Falsa.py", line 268, in <module>
-    run()
-  File "C:\Users\gerar\Desktop\mi-dashboard\my-app\mis_scripts\03_Privacidad_Seguridad\Identidad_Falsa.py", line 195, in run
-    if not confirm_testing_use():
-           ^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\gerar\Desktop\mi-dashboard\my-app\mis_scripts\03_Privacidad_Seguridad\Identidad_Falsa.py", line 50, in confirm_testing_use
-    confirm_a = input("Escribe SOLO_TEST para continuar: ").strip().upper()
-                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-EOFError
-
-Sys.argv: ['C:\\Users\\gerar\\Desktop\\mi-dashboard\\my-app\\mis_scripts\\03_Privacidad_Seguridad\\Identidad_Falsa.py']
+Log de errores de Horus Engine limpio el 13/04/2026.
+No hay errores pendientes.

@@ -14,7 +14,6 @@ import re
 import atexit
 
 # Forzar codificación utf-8 a la salida
-import sys
 try:
     if sys.stdout is None or getattr(sys.stdout, 'name', '').upper() == 'NUL':
         sys.stdout = open('CONOUT$', 'w', encoding='utf-8')
@@ -23,7 +22,7 @@ try:
 except Exception: pass
 
 if hasattr(sys.stdout, 'reconfigure'):
-    try: sys.stdout.reconfigure(encoding='utf-8')
+    try: sys.stdout.reconfigure(encoding='utf-8', line_buffering=True)
     except Exception: pass
 
 # Colores ANSI para terminal integrada

@@ -6,7 +6,6 @@
 
 import os
 import sys
-import sys
 try:
     if sys.stdout is None or getattr(sys.stdout, 'name', '').upper() == 'NUL':
         sys.stdout = open('CONOUT$', 'w', encoding='utf-8')
@@ -15,7 +14,7 @@ try:
 except Exception: pass
 
 if hasattr(sys.stdout, 'reconfigure'):
-    try: sys.stdout.reconfigure(encoding='utf-8')
+    try: sys.stdout.reconfigure(encoding='utf-8', line_buffering=True)
     except Exception: pass
 import socket
 import threading
@@ -23,10 +22,6 @@ import http.server
 import socketserver
 import functools
 import time
-
-# Forzar codificación y evitar buffer
-if hasattr(sys.stdout, 'reconfigure'):
-    sys.stdout.reconfigure(encoding='utf-8', line_buffering=True)
 
 try:
     import qrcode

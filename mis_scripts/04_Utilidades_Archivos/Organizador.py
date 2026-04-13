@@ -83,20 +83,7 @@ print(f"[*] Analizando zona de impacto: {RUTA_DESCARGAS}\n")
 simulacion = any("--prueba" in arg.lower() for arg in sys.argv[1:])
 if simulacion:
     print("[!] MODO PRUEBA (DRY-RUN) ACTIVO: No se moverá ningún archivo realmente.\n")
-else:
-    print("[!] ADVERTENCIA: este script movera archivos a carpetas por categoria.")
-    try:
-        confirm_a = input("Escribe SI para continuar: ").strip().upper()
-        if confirm_a != "SI":
-            print("[SYS] Operacion cancelada por seguridad.")
-            sys.exit(0)
-        confirm_b = input("Escribe ORGANIZAR para confirmar: ").strip().upper()
-        if confirm_b != "ORGANIZAR":
-            print("[SYS] Operacion cancelada por seguridad.")
-            sys.exit(0)
-    except KeyboardInterrupt:
-        print("\n[SYS] Operacion cancelada por el usuario.")
-        sys.exit(0)
+    pass
 
 archivos_movidos = 0
 archivos_ignorados = 0

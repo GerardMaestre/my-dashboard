@@ -28,10 +28,6 @@ echo     ⚡ HORUS ENGINE - WIN DEBLOATER (RAPHI) ⚡
 echo ===================================================
 echo [!] ADVERTENCIA: Este script ejecuta una herramienta remota con privilegios de Administrador.
 echo [!] Revisa que entiendes los cambios antes de continuar.
-set /p "CONFIRM_A=Escribe SI para continuar: "
-if /I not "%CONFIRM_A%"=="SI" goto :Cancelled
-set /p "CONFIRM_B=Escribe EJECUTAR para confirmar: "
-if /I not "%CONFIRM_B%"=="EJECUTAR" goto :Cancelled
 echo [*] Descargando el motor de desinstalación de Bloatware...
 
 powershell.exe -NoProfile -Command "& ([scriptblock]::Create((irm 'https://debloat.raphi.re/')))"

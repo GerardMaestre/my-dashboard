@@ -41,20 +41,6 @@ C_BOLD = "\x1B[1m"
 
 dry_run = any(arg.lower() in ("--prueba", "--dry-run") for arg in sys.argv[1:])
 
-def confirm_testing_use():
-    if dry_run or "--confirmed" in sys.argv:
-        return True
-    print(f"{C_RED}[!] USO SENSIBLE: este script es solo para pruebas y automatizacion en entornos autorizados.{C_RESET}")
-    print(f"{C_RED}[!] No lo uses para fraude, suplantacion o actividades ilegales.{C_RESET}")
-    try:
-        confirm_a = input("Escribe SOLO_TEST para continuar: ").strip().upper()
-        if confirm_a != 'SOLO_TEST':
-            return False
-        confirm_b = input("Escribe ACEPTO para confirmar responsabilidad: ").strip().upper()
-        return confirm_b == 'ACEPTO'
-    except KeyboardInterrupt:
-        print(f"\n{C_YELLOW}[*] Operacion cancelada por el usuario.{C_RESET}")
-        return False
 
 def type_print(text, delay=0.012, end='\n'):
     """Efecto de terminal retro al imprimir"""
@@ -192,11 +178,6 @@ def check_messages(token, seen_ids):
     return found_new
 
 def run():
-    if not confirm_testing_use():
-        print(f"{C_YELLOW}[*] Operacion cancelada por seguridad.{C_RESET}")    
-        try: input("Presiona Enter para salir...")
-        except: pass
-        return
 
     print(f"\n{C_CYAN}[*] Inicializando Motor de Identidad Fantasma V2.2 (Mail.tm Edition)...{C_RESET}")
     time.sleep(0.5)
@@ -266,7 +247,6 @@ def run():
 if __name__ == "__main__":
     try:
         run()
-        input("\nPresiona Enter para cerrar la sesion...")
     except Exception as e:
         import traceback
         with open("ERROR_LOG.txt", "w") as x:

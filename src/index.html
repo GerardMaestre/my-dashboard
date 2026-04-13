@@ -120,10 +120,25 @@
             <div class="content-scrollable">
                 <div class="mac-group global-settings-group">
                     <div class="mac-group-row">
-                        <div class="mac-group-label">Parámetros Globales</div>
+                        <div class="mac-group-label" style="display:flex; align-items:center; gap:8px;">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="var(--mac-blue)"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
+                            Consola por defecto
+                        </div>
+                        <div class="mac-group-control">
+                            <select id="global-terminal-mode" class="mac-select" style="min-width: 120px;" onchange="changeGlobalTerminalMode()">
+                                <option value="internal">Integrada</option>
+                                <option value="external" selected>Externa (Win)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mac-group-row">
+                        <div class="mac-group-label" style="display:flex; align-items:center; gap:8px;">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="#30D158"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                            Parámetros Extra
+                        </div>
                         <div class="mac-group-control">
                             <input type="text" id="script-args" class="mac-input-clean"
-                                placeholder="Añade argumentos...">
+                                placeholder="-flag --valor...">
                         </div>
                     </div>
                 </div>
@@ -133,7 +148,7 @@
             </div> <!-- CLOSE content-scrollable -->
 
             <!-- TERMINAL INFERIOR (CAJÓN) Moviéndolo dentro de mac-content -->
-            <footer class="terminal-drawer mac-glass" id="terminal-drawer">
+            <footer class="terminal-drawer mac-glass collapsed" id="terminal-drawer">
                 <div class="drawer-header" id="terminal-toggle" onclick="toggleTerminal()">
                     <div class="drawer-title"
                         style="display:flex;align-items:center;gap:10px;font-weight:600;font-size:13px;color:var(--mac-blue);">

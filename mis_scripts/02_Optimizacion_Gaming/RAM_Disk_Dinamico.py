@@ -33,16 +33,6 @@ if confirmed:
     sys.argv.remove("--confirmed")
 
 
-def confirm_ramdisk_flow():
-    print("[!] ADVERTENCIA: Este flujo crea junctions y mueve carpetas temporalmente.")
-    try:
-        confirm_a = input("Escribe SI para continuar: ").strip().upper()
-        if confirm_a != "SI":
-            return False
-        confirm_b = input("Escribe RAMDISK para confirmar: ").strip().upper()
-        return confirm_b == "RAMDISK"
-    except KeyboardInterrupt:
-        return False
 
 # 1. Elevación de Privilegios
 import atexit, tempfile, time
@@ -83,9 +73,6 @@ if "--horus-log" in sys.argv:
     os.environ["HORUS_LOG_FILE"] = log_file
 elif not ctypes.windll.shell32.IsUserAnAdmin():
     if not confirmed:
-        if not confirm_ramdisk_flow():
-            print("[SYS] Operacion cancelada por seguridad.", flush=True)
-            sys.exit(0)
         confirmed = True
 
     print("[!] Solicitando permisos de Administrador para Ram-Disk (Acepta el escudo amarillo abajo)...", flush=True)
@@ -120,9 +107,7 @@ print("="*65)
 print("       ⚡ HORUS ENGINE - RAM-DISK DINÁMICO (CERO CARGAS) ⚡      ")
 print("="*65)
 if not confirmed:
-    if not confirm_ramdisk_flow():
-        print("[SYS] Operacion cancelada por seguridad.")
-        sys.exit(0)
+    confirmed = True
 
 # 2. Verificar o Instalar ImDisk (Motor de Disco Virtual)
 IMDISK_EXE = r"C:\Windows\System32\imdisk.exe"
@@ -139,7 +124,6 @@ if not os.path.exists(IMDISK_EXE):
     except Exception as e:
         print(f"[X] Fallo al instalar el motor: {e}")
         print("Asegúrate de tener conexión a Internet para esta primera vez.")
-        input("Presiona ENTER para salir...")
         sys.exit()
 
 # Ocultar ventana padre de Tkinter
@@ -207,7 +191,6 @@ cmd_imdisk = f'imdisk -a -s {ram_asignar}G -m {UNIDAD_RAM} -p "/fs:ntfs /q /y"'
 res = subprocess.run(cmd_imdisk, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 if not os.path.exists(UNIDAD_RAM):
     print("[X] Error crítico creando el RAM Disk.")
-    input("Presiona ENTER para salir...")
     sys.exit()
 
 print(f"[+] Disco de RAM creado y formateado a la perfección.")
@@ -274,5 +257,5 @@ print("[*] Desmaterializando Disco de RAM...")
 subprocess.run(f'imdisk -D -m {UNIDAD_RAM}', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 print("[+] Toda la Memoria RAM ha sido devuelta al sistema intacta.")
 print("\n[V] Misión Cumplida.")
-input("\nPresiona ENTER para cerrar el HORUS...")
+    pass
 

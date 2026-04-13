@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 chcp 65001 >nul
 :: DESC: Automatiza entorno Cloud Gaming. Con menu interactivo o parametros directos.
 :: ARGS: host | client 
@@ -46,19 +46,10 @@ set /p choice="Ingresa un numero (1-3): "
 
 :mode_selected
 if "%choice%"=="3" exit
-call :ConfirmHighRisk
-if errorlevel 1 goto cancelled
 if "%choice%"=="1" goto host
 if "%choice%"=="2" goto client
 goto end
 
-:ConfirmHighRisk
-echo [!] ADVERTENCIA: Este flujo instala software y modifica servicios de red para cloud gaming.
-set /p "CONFIRM_A=Escribe SI para continuar: "
-if /I not "%CONFIRM_A%"=="SI" exit /b 1
-set /p "CONFIRM_B=Escribe CLOUD para confirmar: "
-if /I not "%CONFIRM_B%"=="CLOUD" exit /b 1
-exit /b 0
 
 :: =======================================
 :: RUTINA DE INSTALACION COMUN (TAILSCALE)

@@ -52,21 +52,10 @@ echo [X] Opcion no valida. Intenta de nuevo.
 goto end
 
 :confirm
-call :ConfirmHighRisk
-if errorlevel 1 goto cancelled
 if "%choice%"=="1" goto home
 if "%choice%"=="2" goto pro
 goto end
 
-:ConfirmHighRisk
-echo.
-echo [!] ADVERTENCIA: Este script modifica el estado de licencia de Windows.
-echo [!] Solo debe usarse si tienes permiso legal para la activacion.
-set /p "CONFIRM_A=Escribe SI para continuar: "
-if /I not "%CONFIRM_A%"=="SI" exit /b 1
-set /p "CONFIRM_B=Escribe ACTIVAR para confirmar: "
-if /I not "%CONFIRM_B%"=="ACTIVAR" exit /b 1
-exit /b 0
 
 :home
 echo [*] Aplicando clave de Windows 11 Home...

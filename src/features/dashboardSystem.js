@@ -106,6 +106,13 @@ export function toggleFavorite(fileName) {
 	cargarScripts(); // Re-render for sorting
 }
 
+export function toggleScriptMode(fileName) {
+	const current = scriptModeOverrides[fileName] || 'internal';
+	const next = current === 'internal' ? 'external' : 'internal';
+	scriptModeOverrides[fileName] = next;
+	cargarScripts(); // Re-render to update UI
+}
+
 export function toggleAutoStart(fileName) {
     let newAuto = [...autostartList];
 	if (newAuto.includes(fileName)) {
@@ -225,18 +232,10 @@ export async function cargarScripts() {
 			divDesc.className = 'script-desc';
 			divDesc.title = meta.desc;
 			divDesc.textContent = meta.desc;
-			divDesc.style.flex = 'none';
-			divDesc.style.padding = '0';
 
 			const divArgs = document.createElement('div');
 			divArgs.className = 'script-args-info';
 			divArgs.title = meta.args;
-			divArgs.style.fontSize = '11px';
-			divArgs.style.color = '#0A84FF';
-			divArgs.style.marginTop = '4px';
-			divArgs.style.whiteSpace = 'nowrap';
-			divArgs.style.overflow = 'hidden';
-			divArgs.style.textOverflow = 'ellipsis';
 			divArgs.innerHTML = `<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" style="vertical-align: middle; margin-right: 4px; position:relative; top:-1px;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`;
 			const strong = document.createElement('strong');
 			strong.textContent = 'Parámetros:';
@@ -256,22 +255,18 @@ export async function cargarScripts() {
 			}
 
 			const modeHint = document.createElement('div');
-			const preferredMode = meta.mode || resolveRunMode(file, 'internal');
+			modeHint.className = 'script-mode-hint';
+			const globalModeSelect = document.getElementById('global-terminal-mode');
+			const defaultMode = globalModeSelect ? globalModeSelect.value : 'internal';
+			const preferredMode = meta.mode || resolveRunMode(file, defaultMode);
 			const modeColor = preferredMode === 'external' ? '#FF9F0A' : '#30D158';
-			modeHint.style.fontSize = '11px';
-			modeHint.style.marginTop = '4px';
 			modeHint.style.color = modeColor;
 			modeHint.textContent = meta.mode
-				? `Modo recomendado (script): ${modeLabel(preferredMode)}`
-				: `Modo recomendado: ${modeLabel(preferredMode)}`;
+				? `Prioridad Script: ${modeLabel(preferredMode)}`
+				: `Modo Activo: ${modeLabel(preferredMode)}`;
 
 			const divInfoContainer = document.createElement('div');
-			divInfoContainer.style.flex = '1';
-			divInfoContainer.style.display = 'flex';
-			divInfoContainer.style.flexDirection = 'column';
-			divInfoContainer.style.justifyContent = 'center';
-			divInfoContainer.style.overflow = 'hidden';
-			divInfoContainer.style.padding = '0 15px';
+			divInfoContainer.className = 'script-info-container';
 
 			divInfoContainer.appendChild(divDesc);
 			divInfoContainer.appendChild(divArgs);
@@ -295,6 +290,26 @@ export async function cargarScripts() {
 			const asText = document.createElement('span');
 			asText.className = 'autostart-text';
 			asText.textContent = 'Auto';
+
+			// Toggle de Modo de Terminal (Minimalista)
+			const currentMode = scriptModeOverrides[file] || (meta.mode ? meta.mode : 'default');
+			const isExternal = currentMode === 'external';
+			
+			const modeToggle = document.createElement('div');
+			modeToggle.className = `mode-toggle-wrap ${isExternal ? 'active' : ''}`;
+			modeToggle.title = "Alternar Terminal (Integrado vs Windows)";
+			modeToggle.onclick = (e) => {
+				e.stopPropagation();
+				toggleScriptMode(file);
+			};
+			modeToggle.innerHTML = `
+				<svg class="mode-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+					<polyline points="4 17 10 11 4 5"></polyline>
+					<line x1="12" y1="19" x2="20" y2="19"></line>
+				</svg>
+				<span class="mode-text-hint">${isExternal ? 'Win' : 'Int'}</span>
+			`;
+
 			const asLabel = document.createElement('label');
 			asLabel.className = 'mac-toggle';
 			asLabel.title = "Arrancar con la App al inicio";
@@ -307,6 +322,7 @@ export async function cargarScripts() {
 			asLabel.appendChild(asInput);
 			asLabel.appendChild(asSlider);
 			autostartRow.appendChild(btnFav);
+			autostartRow.appendChild(modeToggle);
 			autostartRow.appendChild(asText);
 			autostartRow.appendChild(asLabel);
 
@@ -438,8 +454,11 @@ export function matarProceso(fileName) {
 export function ejecutar(fileName, isAuto = false, isSilent = false) {
     const argsInput = document.getElementById('script-args');
 	const args = argsInput ? argsInput.value.trim() : '';
-	// Siempre usamos policy o en su defecto internal. Adiós al select manual.
-	const modeToUse = resolveRunMode(fileName, 'internal');
+	
+	const globalModeSelect = document.getElementById('global-terminal-mode');
+	const defaultMode = globalModeSelect ? globalModeSelect.value : 'internal';
+
+	const modeToUse = resolveRunMode(fileName, defaultMode);
 	const isExternal = modeToUse === 'external';
 
 	if (!isSilent) {

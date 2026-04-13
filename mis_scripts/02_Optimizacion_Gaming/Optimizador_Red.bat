@@ -28,10 +28,6 @@ echo     OPTIMIZADOR DE RED AGRESIVO
 echo ====================================
 echo.
 echo [!] ADVERTENCIA: Este script reinicia la pila de red y puede cortar tu conexion temporalmente.
-set /p "CONFIRM_A=Escribe SI para continuar: "
-if /I not "%CONFIRM_A%"=="SI" goto :Cancelled
-set /p "CONFIRM_B=Escribe OPTIMIZAR para confirmar: "
-if /I not "%CONFIRM_B%"=="OPTIMIZAR" goto :Cancelled
 
 echo [*] Renovando direccion IP...
 ipconfig /release >nul 2>&1

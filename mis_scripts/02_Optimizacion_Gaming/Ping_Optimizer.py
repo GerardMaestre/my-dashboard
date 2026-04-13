@@ -30,16 +30,6 @@ if confirmed:
     sys.argv.remove("--confirmed")
 
 
-def confirm_changes():
-    print("[!] ADVERTENCIA: Este script cambiará el DNS del adaptador activo.")
-    try:
-        confirm_a = input("Escribe SI para continuar: ").strip().upper()
-        if confirm_a != "SI":
-            return False
-        confirm_b = input("Escribe DNS para confirmar: ").strip().upper()
-        return confirm_b == "DNS"
-    except KeyboardInterrupt:
-        return False
 
 import atexit, tempfile, time
 def _horus_cleanup():
@@ -79,9 +69,6 @@ if "--horus-log" in sys.argv:
     os.environ["HORUS_LOG_FILE"] = log_file
 elif not dry_run and not ctypes.windll.shell32.IsUserAnAdmin():
     if not dry_run and not confirmed:
-        if not confirm_changes():
-            print("[SYS] Operacion cancelada por seguridad.", flush=True)
-            sys.exit(0)
         confirmed = True
 
     print("[!] Solicitando permisos de Administrador para cambiar DNS (Acepta el escudo amarillo)...", flush=True)
@@ -126,9 +113,7 @@ print("[*] Lanzando micro-paquetes ICMP a los servidores globales...\n")
 if dry_run:
     print("[i] MODO PRUEBA activo: no se aplicará ningún cambio de DNS.\n")
 elif not confirmed:
-    if not confirm_changes():
-        print("[SYS] Operacion cancelada por seguridad.")
-        sys.exit(0)
+    confirmed = True
 
 resultados = {}
 

@@ -31,16 +31,6 @@ if confirmed:
     sys.argv.remove("--confirmed")
 
 
-def confirm_cleanup_flow():
-    print("[!] ADVERTENCIA: Este proceso puede mover archivos duplicados a cuarentena global.")
-    try:
-        confirm_a = input("Escribe SI para continuar: ").strip().upper()
-        if confirm_a != "SI":
-            return False
-        confirm_b = input("Escribe LIMPIAR para confirmar: ").strip().upper()
-        return confirm_b == "LIMPIAR"
-    except KeyboardInterrupt:
-        return False
 
 # --- ELEVACION (Opcional, pero recomendada para leer todos los perfiles) ---
 import atexit, tempfile, time
@@ -81,9 +71,6 @@ if "--horus-log" in sys.argv:
     os.environ["HORUS_LOG_FILE"] = log_file
 elif not simulacion and not ctypes.windll.shell32.IsUserAnAdmin():
     if not simulacion and not confirmed:
-        if not confirm_cleanup_flow():
-            print("[SYS] Operacion cancelada por seguridad.", flush=True)
-            sys.exit(0)
         confirmed = True
 
     print("[!] Recomendamos conceder permisos de Administrador para que Horus pueda leer todos los perfiles de usuario...", flush=True)
@@ -175,9 +162,7 @@ print("="*65)
 if simulacion:
     print("[i] MODO PRUEBA activo: no se moverá ningun archivo.\n")
 elif not confirmed:
-    if not confirm_cleanup_flow():
-        print("[SYS] Operacion cancelada por seguridad.")
-        sys.exit(0)
+    confirmed = True
 
 print("[*] MODO DIOS ACTIVADO: Iniciando escaneo algorítmico profundo en todo el PC.")
 print("[V] Filtro de Seguridad Nuclear: ON (Sólo extrae Multimedia y Documentos).")
@@ -229,7 +214,7 @@ total_candidatos = sum(len(rutas) for rutas in candidatos.values())
 
 if total_candidatos == 0:
     print("\n[OK] Tu PC está impecable. No hay fotos, vídeos o documentos repetidos sustancialmente.")
-    input("\nPulsa ENTER para volver al Dashboard...")
+    pass
     sys.exit(0)
     
 print(f"\n[!] FASE 1 COMPLETADA. Se seleccionaron {total_candidatos} archivos de tamaño idéntico para verificación de ADN.")

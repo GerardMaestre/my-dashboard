@@ -30,10 +30,6 @@ echo     ⚡ HORUS ENGINE - DESPERTADOR DE NÚCLEOS CPU ⚡
 echo ===================================================
 echo.
 echo [!] ADVERTENCIA: Este script modifica planes de energia y estado minimo/maximo de CPU.
-set /p "CONFIRM_A=Escribe SI para continuar: "
-if /I not "%CONFIRM_A%"=="SI" goto :Cancelled
-set /p "CONFIRM_B=Escribe DESPERTAR para confirmar: "
-if /I not "%CONFIRM_B%"=="DESPERTAR" goto :Cancelled
 
 echo [*] Interrogando a la BIOS y al Kernel de Windows...
 echo [*] Deshabilitando el "Core Parking" (Aparcamiento de Nucleos)...

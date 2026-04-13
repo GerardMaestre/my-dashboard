@@ -28,10 +28,6 @@ echo     ⚡ HORUS ENGINE - CHRIS TITUS WIN-UTILS ⚡
 echo ===================================================
 echo [!] ADVERTENCIA: Este script ejecuta una herramienta remota con permisos de Administrador.
 echo [!] Asegurate de tener copia de seguridad o punto de restauracion.
-set /p "CONFIRM_A=Escribe SI para continuar: "
-if /I not "%CONFIRM_A%"=="SI" goto :Cancelled
-set /p "CONFIRM_B=Escribe EJECUTAR para confirmar: "
-if /I not "%CONFIRM_B%"=="EJECUTAR" goto :Cancelled
 echo [*] Descargando y ejecutando motor de optimización...
 
 powershell.exe -NoProfile -Command "iwr -useb https://christitus.com/win | iex"

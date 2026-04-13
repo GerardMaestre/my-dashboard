@@ -29,10 +29,6 @@ echo      ⚡ INICIANDO GOD MODE RAM ⚡
 echo ====================================
 echo.
 echo [!] ADVERTENCIA: se forzara el cierre de procesos y podrias perder trabajo sin guardar.
-set /p "CONFIRM_A=Escribe SI para continuar: "
-if /I not "%CONFIRM_A%"=="SI" goto :Cancelled
-set /p "CONFIRM_B=Escribe CERRAR para confirmar: "
-if /I not "%CONFIRM_B%"=="CERRAR" goto :Cancelled
 
 echo [*] Asesinando procesos zombis...
 set "KILLED=0"

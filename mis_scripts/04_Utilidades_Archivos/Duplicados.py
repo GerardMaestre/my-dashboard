@@ -88,20 +88,7 @@ print(f"[*] Escaneando en profundidad: {RUTA_ESCANEO}\n")
 simulacion = any(arg.lower() in ("--prueba", "--dry-run") for arg in sys.argv[1:])
 if simulacion:
     print("[i] MODO PRUEBA activo: no se moverá ningun archivo.\n")
-else:
-    print("[!] ADVERTENCIA: los duplicados detectados se moveran a cuarentena.")
-    try:
-        confirm_a = input("Escribe SI para continuar: ").strip().upper()
-        if confirm_a != "SI":
-            print("[SYS] Operacion cancelada por seguridad.")
-            sys.exit(0)
-        confirm_b = input("Escribe AISLAR para confirmar: ").strip().upper()
-        if confirm_b != "AISLAR":
-            print("[SYS] Operacion cancelada por seguridad.")
-            sys.exit(0)
-    except KeyboardInterrupt:
-        print("\n[SYS] Operacion cancelada por el usuario.")
-        sys.exit(0)
+    pass
 
 if not os.path.exists(RUTA_PAPELERA):
     os.makedirs(RUTA_PAPELERA)
