@@ -658,11 +658,13 @@ let appsSortColumn = 'name';
 let appsSortOrder = 'asc';
 
 function filterAppsList(query) {
-	const term = String(query || '').trim().toLowerCase();
+	const term = String(query || '').trim().toLocaleLowerCase();
 	if (!term) return ghostState.appsList;
+	
 	return ghostState.appsList.filter((app) => {
-		const fields = [app.name, app.publisher, app.version, app.installLocation].map((x) => String(x || '').toLowerCase());
-		return fields.some((x) => x.includes(term));
+		const name = String(app.name || '').toLocaleLowerCase();
+		const pub = String(app.publisher || '').toLocaleLowerCase();
+		return name.includes(term) || pub.includes(term);
 	});
 }
 

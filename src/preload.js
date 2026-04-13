@@ -674,9 +674,20 @@ async function ghostListInstalledApps() {
 	  'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*'
 	);
 	$apps = Get-ItemProperty $keys -ErrorAction SilentlyContinue |
-	  Where-Object { $_.DisplayName -and $_.UninstallString } |
+	  Where-Object { $_.DisplayName -and ($_.UninstallString -or $_.QuietUninstallString) } |
 	  Select-Object DisplayName, DisplayVersion, Publisher, InstallLocation, UninstallString, QuietUninstallString, DisplayIcon, PSChildName, InstallDate, EstimatedSize, PSPath |
 	  Sort-Object DisplayName -Unique;
+    
+    # Saneamiento de Iconos para el dashboard
+    foreach ($app in $apps) {
+        if ($app.DisplayIcon) {
+            $raw = $app.DisplayIcon.Trim().Trim('"').Trim("'")
+            if ($raw -match ',') { $raw = $raw.Split(',')[0].Trim() }
+            if ($raw -match '%') { $raw = [System.Environment]::ExpandEnvironmentVariables($raw) }
+            $app.DisplayIcon = $raw
+        }
+    }
+
 	$apps | ConvertTo-Json -Compress
 	`;
 	const { stdout } = await runPowerShell(ps, 60000);
@@ -711,7 +722,7 @@ async function ghostUninstallApp(payload, force = false) {
         $location = '${escapePsSingleQuoted(installLocation)}';
         $reg = '${escapePsSingleQuoted(registryPath)}';
         if ($location -and (Test-Path $location)) {
-            Get-Process | Where-Object { $_.Path -like "$location*" } | Stop-Process -Force
+            Get-Process | Where-Object { $_.Path -like "$location*" } | Stop-Process -Force -ErrorAction SilentlyContinue
             Remove-Item -Path $location -Recurse -Force
         }
         if ($reg) { Remove-Item -Path $reg -Force -Recurse }
@@ -736,15 +747,15 @@ async function ghostUninstallApp(payload, force = false) {
     $exe = ''; $args = '';
     
     # 2. Parsing Robusto: Intentar dividir en el primer .exe ignorando mayusculas
-    if ($line -match '(?i)\.exe') {
-        $parts = $line -split '(?i)\.exe', 2
+    if ($line -match '(?i)\\.exe') {
+        $parts = $line -split '(?i)\\.exe', 2
         $exe = ($parts[0] + '.exe').Trim('"').Trim().Trim("'")
         $args = $parts[1].Trim()
     } 
     # Fallback para GUIDs de MSI (Ej: MsiExec.exe /I{GUID} o /X{GUID})
-    elseif ($line -match '\{[A-F0-9-]+\}') {
+    elseif ($line -match '\\{[A-F0-9-]+\\}') {
         $exe = 'msiexec.exe'
-        $guid = ([regex]::Match($line, '\{[A-F0-9-]+\}').Value)
+        $guid = ([regex]::Match($line, '\\{[A-F0-9-]+\\}').Value)
         $args = "/X $guid /norestart"
     } else {
         # Parsing basico si no hay .exe ni GUID
@@ -821,7 +832,7 @@ async function ghostFindLeftovers(payload) {
     }
 
     # 1. Buscar Carpetas (Búsqueda por comodín)
-    $roots = @($env:APPDATA, $env:LOCALAPPDATA, $env:PROGRAMDATA, "$env:USERPROFILE\\Documents")
+    $roots = @($env:APPDATA, $env:LOCALAPPDATA, $env:PROGRAMDATA, "$env:ProgramFiles", "\${env:ProgramFiles(x86)}", "$env:USERPROFILE\\Documents")
     foreach ($root in $roots) {
         if (Test-Path $root) {
             Get-ChildItem -Path $root -Directory -Filter "*$AppName*" | ForEach-Object { Add-Found 'Folder' $_.FullName }
