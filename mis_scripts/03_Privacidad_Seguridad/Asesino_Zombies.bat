@@ -1,8 +1,12 @@
 :: DESC: Mata todos los procesos inutiles de la RAM (Spotify, Adobe, OneDrive, Edge...)
 :: ARGS: Ninguno
+:: RISK: high
+:: PERM: admin
+:: MODE: external
 
 @echo off
 chcp 65001 >nul
+setlocal enabledelayedexpansion
 echo [*] Solicitando permisos de Administrador...
 >nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
 if '%errorlevel%' NEQ '0' goto :HorusElevate
@@ -24,25 +28,43 @@ echo ====================================
 echo      ⚡ INICIANDO GOD MODE RAM ⚡     
 echo ====================================
 echo.
-echo [*] Asesinando procesos zombis...
+echo [!] ADVERTENCIA: se forzara el cierre de procesos y podrias perder trabajo sin guardar.
+set /p "CONFIRM_A=Escribe SI para continuar: "
+if /I not "%CONFIRM_A%"=="SI" goto :Cancelled
+set /p "CONFIRM_B=Escribe CERRAR para confirmar: "
+if /I not "%CONFIRM_B%"=="CERRAR" goto :Cancelled
 
-taskkill /F /IM "OneDrive.exe" /T 2>nul
-taskkill /F /IM "AdobeIPCBroker.exe" /T 2>nul
-taskkill /F /IM "CCXProcess.exe" /T 2>nul
-taskkill /F /IM "Spotify.exe" /T 2>nul
-taskkill /F /IM "Discord.exe" /T 2>nul
-taskkill /F /IM "chrome.exe" /T 2>nul
-taskkill /F /IM "msedge.exe" /T 2>nul
-taskkill /F /IM "YourPhone.exe" /T 2>nul
-taskkill /F /IM "Widgets.exe" /T 2>nul
-taskkill /F /IM "Skype.exe" /T 2>nul
-taskkill /F /IM "Cortana.exe" /T 2>nul
-taskkill /F /IM "SearchUI.exe" /T 2>nul
-taskkill /F /IM "EpicGamesLauncher.exe" /T 2>nul
-taskkill /F /IM "Steam.exe" /T 2>nul
-taskkill /F /IM "Razer Synapse 3.exe" /T 2>nul
-taskkill /F /IM "Razer Central.exe" /T 2>nul
+echo [*] Asesinando procesos zombis...
+set "KILLED=0"
+for %%P in (
+"OneDrive.exe"
+"AdobeIPCBroker.exe"
+"CCXProcess.exe"
+"Spotify.exe"
+"Discord.exe"
+"chrome.exe"
+"msedge.exe"
+"YourPhone.exe"
+"Widgets.exe"
+"Skype.exe"
+"Cortana.exe"
+"SearchUI.exe"
+"EpicGamesLauncher.exe"
+"Steam.exe"
+"Razer Synapse 3.exe"
+"Razer Central.exe"
+) do (
+	taskkill /F /IM %%~P /T >nul 2>&1
+	if !errorlevel! EQU 0 (
+		set /a KILLED+=1
+		echo [✓] %%~P cerrado.
+	)
+)
 
 echo.
-echo [V] MEMORIA RAM PURGADA Y LISTA PARA GAMING
+echo [V] MEMORIA RAM PURGADA Y LISTA PARA GAMING. Procesos cerrados: !KILLED!
+exit /b 0
+
+:Cancelled
+echo [SYS] Operacion cancelada por seguridad.
 exit /b 0

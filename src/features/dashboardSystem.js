@@ -1,17 +1,92 @@
-import { ghostState, autopilotTasks, runningFiles, silentRuns, isFirstLoad, setIsFirstLoad, autostartList, favoritesList, updateFavorites, updateAutostart, proModePolicy } from '../core/state.js';
-import { obtenerInfoArchivo, safeId, getElementId } from '../core/utils.js';
+import { ghostState, autopilotTasks, runningFiles, silentRuns, isFirstLoad, setIsFirstLoad, autostartList, favoritesList, updateFavorites, updateAutostart } from '../core/state.js';
+import { obtenerInfoArchivo, safeId } from '../core/utils.js';
 import { logTerminal } from '../ui/terminalSystem.js';
 import { mostrarToast } from '../ui/toastSystem.js';
 
 let selectedIndex = -1;
 let currentFilter = 'all';
+let runModePolicy = {};
+let scriptModeOverrides = {};
+
+export function setRunModePolicy(policy = {}) {
+	runModePolicy = policy && typeof policy === 'object' ? { ...policy } : {};
+}
 
 function resolveRunMode(fileName, selectedMode) {
-	return proModePolicy[fileName] || selectedMode;
+	return runModePolicy[fileName] || scriptModeOverrides[fileName] || selectedMode;
 }
 
 function modeLabel(mode) {
 	return mode === 'external' ? 'Visual externo' : 'Integrado';
+}
+
+function parseMetaLine(linea = '') {
+	const raw = String(linea || '').trim();
+	if (!raw) return null;
+
+	const clean = raw.replace(/^\s*(#|::|\/\/)+\s*/, '');
+	const sep = clean.indexOf(':');
+	if (sep <= 0) return null;
+
+	const key = clean.slice(0, sep).trim().toUpperCase();
+	const value = clean.slice(sep + 1).trim();
+	if (!key || !value) return null;
+
+	return { key, value };
+}
+
+function normalizeMode(value = '') {
+	const mode = String(value || '').trim().toLowerCase();
+	if (mode === 'internal' || mode === 'external') return mode;
+	return '';
+}
+
+function extractScriptMeta(lines = []) {
+	const meta = {
+		desc: "Añade 'DESC: tu descripción' dentro del código para que aparezca aquí.",
+		args: 'Ninguno / Desconocido',
+		risk: 'normal',
+		perm: 'user',
+		mode: ''
+	};
+
+	for (const linea of lines) {
+		const parsed = parseMetaLine(linea);
+		if (!parsed) continue;
+
+		switch (parsed.key) {
+			case 'DESC':
+				meta.desc = parsed.value;
+				break;
+			case 'ARGS':
+				meta.args = parsed.value;
+				break;
+			case 'RISK': {
+				const riskValue = parsed.value.toLowerCase();
+				meta.risk = ['normal', 'low', 'medium', 'high', 'critical'].includes(riskValue) ? riskValue : 'normal';
+				break;
+			}
+			case 'PERM': {
+				const permValue = parsed.value.toLowerCase();
+				meta.perm = ['user', 'admin'].includes(permValue) ? permValue : 'user';
+				break;
+			}
+			case 'MODE':
+				meta.mode = normalizeMode(parsed.value);
+				break;
+			default:
+				break;
+		}
+	}
+
+	return meta;
+}
+
+function createMetaBadge(label, variant = 'default') {
+	const badge = document.createElement('span');
+	badge.className = `meta-badge ${variant}`;
+	badge.textContent = label;
+	return badge;
 }
 
 export function openScript(fileName) {
@@ -45,6 +120,7 @@ export async function cargarScripts() {
 	const list = document.getElementById('script-list');
     if (!list) return;
 	list.innerHTML = '';
+	scriptModeOverrides = {};
 
 	let files = [];
 	try {
@@ -101,17 +177,13 @@ export async function cargarScripts() {
 			const info = obtenerInfoArchivo(file);
 			const isAutoActive = !!autopilotTasks[file];
 			const isAutostart = autostartList.includes(file);
-
-			let desc = "Añade 'DESC: tu descripción' dentro del código para que aparezca aquí.";
-			let args = 'Ninguno / Desconocido';
+			let meta = extractScriptMeta([]);
 
 			if (window.api) {
 			    try {
 				    const lineas = await window.api.readScriptMeta(file);
-				    for (const linea of lineas) {
-					    if (linea.includes('DESC:')) desc = linea.split('DESC:')[1].trim();
-					    if (linea.includes('ARGS:')) args = linea.split('ARGS:')[1].trim();
-				    }
+				    meta = extractScriptMeta(lineas);
+				    if (meta.mode) scriptModeOverrides[file] = meta.mode;
 			    } catch (err) {
 				    console.error('No se pudo leer el archivo: ', file, err);
 			    }
@@ -151,14 +223,14 @@ export async function cargarScripts() {
 
 			const divDesc = document.createElement('div');
 			divDesc.className = 'script-desc';
-			divDesc.title = desc;
-			divDesc.textContent = desc;
+			divDesc.title = meta.desc;
+			divDesc.textContent = meta.desc;
 			divDesc.style.flex = 'none';
 			divDesc.style.padding = '0';
 
 			const divArgs = document.createElement('div');
 			divArgs.className = 'script-args-info';
-			divArgs.title = args;
+			divArgs.title = meta.args;
 			divArgs.style.fontSize = '11px';
 			divArgs.style.color = '#0A84FF';
 			divArgs.style.marginTop = '4px';
@@ -169,16 +241,29 @@ export async function cargarScripts() {
 			const strong = document.createElement('strong');
 			strong.textContent = 'Parámetros:';
 			divArgs.appendChild(strong);
-			divArgs.appendChild(document.createTextNode(' ' + args));
+			divArgs.appendChild(document.createTextNode(' ' + meta.args));
+
+			const badgesRow = document.createElement('div');
+			badgesRow.className = 'script-meta-badges';
+			if (meta.risk !== 'normal') {
+				badgesRow.appendChild(createMetaBadge(`Riesgo ${meta.risk.toUpperCase()}`, `risk-${meta.risk}`));
+			}
+			if (meta.perm === 'admin') {
+				badgesRow.appendChild(createMetaBadge('Admin', 'perm-admin'));
+			}
+			if (meta.mode) {
+				badgesRow.appendChild(createMetaBadge(`Modo ${modeLabel(meta.mode)}`, `mode-${meta.mode}`));
+			}
 
 			const modeHint = document.createElement('div');
-            const runModeSelect = document.getElementById('run-mode');
-			const preferredMode = proModePolicy[file] || (runModeSelect ? runModeSelect.value : 'internal');
+			const preferredMode = meta.mode || resolveRunMode(file, 'internal');
 			const modeColor = preferredMode === 'external' ? '#FF9F0A' : '#30D158';
 			modeHint.style.fontSize = '11px';
 			modeHint.style.marginTop = '4px';
 			modeHint.style.color = modeColor;
-			modeHint.textContent = `Modo recomendado: ${modeLabel(preferredMode)}`;
+			modeHint.textContent = meta.mode
+				? `Modo recomendado (script): ${modeLabel(preferredMode)}`
+				: `Modo recomendado: ${modeLabel(preferredMode)}`;
 
 			const divInfoContainer = document.createElement('div');
 			divInfoContainer.style.flex = '1';
@@ -190,6 +275,9 @@ export async function cargarScripts() {
 
 			divInfoContainer.appendChild(divDesc);
 			divInfoContainer.appendChild(divArgs);
+			if (badgesRow.childElementCount > 0) {
+				divInfoContainer.appendChild(badgesRow);
+			}
 			divInfoContainer.appendChild(modeHint);
 
 			const isFavorite = favoritesList.includes(file);
@@ -350,9 +438,8 @@ export function matarProceso(fileName) {
 export function ejecutar(fileName, isAuto = false, isSilent = false) {
     const argsInput = document.getElementById('script-args');
 	const args = argsInput ? argsInput.value.trim() : '';
-    const modeSelect = document.getElementById('run-mode');
-	const selectedMode = modeSelect ? modeSelect.value : 'internal';
-	const modeToUse = resolveRunMode(fileName, selectedMode);
+	// Siempre usamos policy o en su defecto internal. Adiós al select manual.
+	const modeToUse = resolveRunMode(fileName, 'internal');
 	const isExternal = modeToUse === 'external';
 
 	if (!isSilent) {

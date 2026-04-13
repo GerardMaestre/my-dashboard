@@ -2,6 +2,9 @@
 chcp 65001 >nul
 :: DESC: Desbloquea la carpeta maestra 'Modo Dios' en tu escritorio para acceder a +200 ajustes ocultos de Windows.
 :: ARGS: Ninguno
+:: RISK: low
+:: PERM: user
+:: MODE: internal
 
 echo âš¡ ==== HORUS ====âš¡ ==== HORUS ====âš¡ ==== HORUS ====âš¡ ==== HORUS ====âš¡ ==== HORUS ====âš¡ ==== HORUS ====âš¡ ==== HORUS ====âš¡ ==== HORUS ====âš¡ ==== HORUS ====âš¡ ==== HORUS =====
 echo        âš¡ HORUS ENGINE - GOD MODE CREATOR âš¡       

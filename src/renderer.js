@@ -1,7 +1,7 @@
 import { windowControl, openSettings, closeSettings, initTheme, changeTheme } from './ui/windowSystem.js';
 import { toggleTerminal, logTerminal, copiarTerminal, clearTerminal } from './ui/terminalSystem.js';
 import { mostrarToast } from './ui/toastSystem.js';
-import { cargarScripts, ejecutar, matarProceso, openScript, toggleFavorite, toggleAutoStart, aplicarFiltros, alternarBotones, setupTabs } from './features/dashboardSystem.js';
+import { cargarScripts, ejecutar, matarProceso, openScript, toggleFavorite, toggleAutoStart, aplicarFiltros, alternarBotones, setupTabs, setRunModePolicy } from './features/dashboardSystem.js';
 import { toggleAutopilot, cerrarAutopilot, iniciarAutopilot, initAutopilotLoop } from './features/autopilotSystem.js';
 import { abrirOjoDeDios, cerrarOjoDeDios, bindGhostEvents, cargarMotoresFantasma } from './features/ojoDeDios.js';
 import { initRuntimePaths } from './core/utils.js';
@@ -34,7 +34,14 @@ initAutopilotLoop();
 if (window.api) {
     window.api.getStorageDir();
     initRuntimePaths().catch(e => console.error('[HorusEngine] initRuntimePaths failed:', e));
-    cargarScripts().catch(e => console.error('[HorusEngine] cargarScripts failed:', e));
+    if (window.api.getRunModePolicy) {
+        window.api.getRunModePolicy()
+            .then((policy) => setRunModePolicy(policy || {}))
+            .catch((e) => console.error('[HorusEngine] getRunModePolicy failed:', e))
+            .finally(() => cargarScripts().catch(e => console.error('[HorusEngine] cargarScripts failed:', e)));
+    } else {
+        cargarScripts().catch(e => console.error('[HorusEngine] cargarScripts failed:', e));
+    }
     try { cargarMotoresFantasma(); } catch(e) { console.error('[HorusEngine] cargarMotoresFantasma failed:', e); }
     try { bindGhostEvents(); } catch(e) { console.error('[HorusEngine] bindGhostEvents failed:', e); }
     

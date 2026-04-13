@@ -1,5 +1,8 @@
 :: DESC: Optimiza el DNS, Winsock y adaptador de red para reducir PING en gaming.
 :: ARGS: Ninguno
+:: RISK: high
+:: PERM: admin
+:: MODE: external
 
 @echo off
 chcp 65001 >nul
@@ -24,6 +27,11 @@ echo ====================================
 echo     OPTIMIZADOR DE RED AGRESIVO
 echo ====================================
 echo.
+echo [!] ADVERTENCIA: Este script reinicia la pila de red y puede cortar tu conexion temporalmente.
+set /p "CONFIRM_A=Escribe SI para continuar: "
+if /I not "%CONFIRM_A%"=="SI" goto :Cancelled
+set /p "CONFIRM_B=Escribe OPTIMIZAR para confirmar: "
+if /I not "%CONFIRM_B%"=="OPTIMIZAR" goto :Cancelled
 
 echo [*] Renovando direccion IP...
 ipconfig /release >nul 2>&1
@@ -53,4 +61,8 @@ ipconfig /registerdns >nul 2>&1
 
 echo.
 echo [V] RED OPTIMIZADA. SE RECOMIENDA REINICIAR.
+exit /b 0
+
+:Cancelled
+echo [SYS] Operacion cancelada por seguridad.
 exit /b 0

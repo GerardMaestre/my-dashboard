@@ -1,8 +1,26 @@
 @echo off
+:: DESC: Detiene el stack Docker de Immich para liberar recursos.
+:: ARGS: [Ruta_Immich]
+:: RISK: low
+:: PERM: user
+:: MODE: external
+
+set "IMMICH_DIR=%~1"
+if not defined IMMICH_DIR set "IMMICH_DIR=%HORUS_IMMICH_PATH%"
+if not defined IMMICH_DIR set "IMMICH_DIR=C:\immich-app"
+
 echo =========================================
 echo       Apagando Servidor Immich...
 echo =========================================
 echo.
+
+:: Validar ruta objetivo ANTES de tocar Docker
+if not exist "%IMMICH_DIR%" (
+    echo [ERROR] No se encontro la carpeta de Immich: %IMMICH_DIR%
+    echo         Puedes pasar la ruta como argumento o definir HORUS_IMMICH_PATH.
+    pause
+    exit /b 1
+)
 
 :: Verificar si Docker esta activo antes de intentar parar nada
 docker info >nul 2>&1
@@ -16,14 +34,7 @@ if errorlevel 1 (
     exit /b 0
 )
 
-:: Ir a la carpeta de la aplicacion
-if not exist "C:\immich-app" (
-    echo [ERROR] No se encontro la carpeta C:\immich-app
-    pause
-    exit /b 1
-)
-
-cd /d C:\immich-app
+cd /d "%IMMICH_DIR%"
 
 :: Intentar apagar con docker compose (V2) o docker-compose (V1)
 echo [INFO] Ejecutando docker compose down...

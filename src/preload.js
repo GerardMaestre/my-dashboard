@@ -10,43 +10,106 @@ const resourcesBase = isPackaged
 	: path.join(__dirname, '..');
 
 const storageDir = path.join(resourcesBase, 'mis_scripts');
-const pythonEnvPath = path.join(storageDir, 'env_python');
-const toolsDir = path.join(storageDir, 'tools');
-const pythonExePath = path.join(pythonEnvPath, 'python.exe');
+const portableBaseDir = process.env.PORTABLE_EXECUTABLE_DIR || '';
+const userProfileBase = process.env.APPDATA || process.env.USERPROFILE || process.cwd();
+const appDataNexus = portableBaseDir
+	? path.join(portableBaseDir, 'HorusData')
+	: path.join(userProfileBase, 'HorusEngine');
+
+const writableRuntimeRoot = isPackaged ? path.join(appDataNexus, 'runtime') : storageDir;
+const pythonEnvPath = path.join(writableRuntimeRoot, 'env_python');
+const toolsDir = path.join(writableRuntimeRoot, 'tools');
+const bundledToolsDir = path.join(storageDir, 'tools');
 
 const activeProcesses = new Map();
 const outputListeners = new Set();
 const exitListeners = new Set();
-const forceExternalScripts = new Set(['07_Herramientas_Pro/Desinstalador_Root.bat', '06_Personalizacion/Spicetify.bat']);
+const runModePolicy = Object.freeze({
+	'01_Mantenimiento_Windows/Activar_Windows_11_Universal.bat': 'external',
+	'01_Mantenimiento_Windows/Desinstalador_Bloatware.bat': 'external',
+	'01_Mantenimiento_Windows/Desinstalador_Telemetria.bat': 'external',
+	'02_Optimizacion_Gaming/Despertar_Nucleos.bat': 'external',
+	'02_Optimizacion_Gaming/Optimizador_Red.bat': 'external',
+	'02_Optimizacion_Gaming/Ping_Optimizer.py': 'external',
+	'02_Optimizacion_Gaming/RAM_Disk_Dinamico.py': 'external',
+	'03_Privacidad_Seguridad/Asesino_Zombies.bat': 'external',
+	'03_Privacidad_Seguridad/Identidad_Falsa.py': 'external',
+	'03_Privacidad_Seguridad/Panic_Button.py': 'external',
+	'04_Utilidades_Archivos/Duplicados.py': 'external',
+	'04_Utilidades_Archivos/Limpieza_Extrema_Global.py': 'external',
+	'04_Utilidades_Archivos/Organizador.py': 'external',
+	'05_Descargas_Multimedia/Servidor_Descargar.py': 'external',
+	'06_Personalizacion/Inyector_Macros.py': 'external',
+	'06_Personalizacion/Lanzador_Cloud_Gaming.bat': 'external',
+	'06_Personalizacion/Spicetify.bat': 'external'
+});
+const scriptEditorOverrides = Object.freeze({
+	'06_Personalizacion/Inyector_Macros.py': {
+		type: 'json',
+		targetFile: 'macros_config.json',
+		defaults: {
+			'/correo': 'test@gmail.com',
+			'/HORUS': '⚡ HORUS ENGINE ACTIVADO ⚡',
+			'/atencion': 'Hola, gracias por contactar. En un momento te atiendo.',
+			'/gg': 'Good Game Well Played! :)'
+		}
+	}
+});
 
 const diskScanCache = new Map();
 const inFlightScans = new Map();
 
-const portableBaseDir = process.env.PORTABLE_EXECUTABLE_DIR || '';
-const appDataNexus = portableBaseDir
-	? path.join(portableBaseDir, 'HorusData')
-	: path.join(process.env.APPDATA || process.env.USERPROFILE, 'HorusEngine');
-
 const toolCandidates = {
 	es: [
 		path.join(toolsDir, 'es.exe'),
+		path.join(bundledToolsDir, 'es.exe'),
 		'Everything\\es.exe'
 	],
 	mft: [
 		path.join(toolsDir, 'mft_reader.exe'),
+		path.join(bundledToolsDir, 'mft_reader.exe'),
 		path.join(resourcesBase, 'native_modules', 'mft_reader', 'target', 'release', 'mft_reader.exe')
 	],
 	wiztree: [
 		path.join(toolsDir, 'WizTree64.exe'),
+		path.join(bundledToolsDir, 'WizTree64.exe'),
 		'C:\\Program Files\\WizTree\\WizTree64.exe'
 	],
 	geek: [
-		path.join(toolsDir, 'GeekUninstaller.exe')
+		path.join(toolsDir, 'GeekUninstaller.exe'),
+		path.join(bundledToolsDir, 'GeekUninstaller.exe')
 	]
 };
 
+function ensureDir(dirPath) {
+	try {
+		fs.mkdirSync(dirPath, { recursive: true });
+		return true;
+	} catch (error) {
+		console.error(`[HorusEngine] No se pudo crear ${dirPath}:`, error.message);
+		return false;
+	}
+}
+
+function getPythonExePath() {
+	return path.join(pythonEnvPath, 'python.exe');
+}
+
+function resolvePolicyMode(fileName) {
+	return runModePolicy[normalizeRelativePath(fileName)] || null;
+}
+
+function shouldForceExternal(fileName) {
+	return resolvePolicyMode(fileName) === 'external';
+}
+
+function resolveEditorOverride(fileName) {
+	return scriptEditorOverrides[normalizeRelativePath(fileName)] || null;
+}
+
 // Autoinstalador silencioso de Python Portable y herramientas
 function ensureStandaloneEnvironment() {
+    const pythonExePath = getPythonExePath();
     const pipPath = path.join(pythonEnvPath, 'Scripts', 'pip.exe');
     const pyZipPath = path.join(pythonEnvPath, 'python311.zip');
     
@@ -56,7 +119,7 @@ function ensureStandaloneEnvironment() {
             if (fs.existsSync(pythonEnvPath)) {
                 try { fs.rmSync(pythonEnvPath, { recursive: true, force: true }); } catch (e) { console.error('[HorusEngine] Error limpiando pythonEnvPath:', e.message); }
             }
-            fs.mkdirSync(pythonEnvPath, { recursive: true });
+            if (!ensureDir(pythonEnvPath)) return;
             const zipPath = path.join(pythonEnvPath, 'python.zip');
             const getPipBase = path.join(pythonEnvPath, 'get-pip.py');
             
@@ -73,7 +136,7 @@ function ensureStandaloneEnvironment() {
             `;
 
             execFile('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psCommand], { windowsHide: true }, (err) => {
-                if (!err && fs.existsSync(pipPath)) {
+				if (!err && fs.existsSync(getPythonExePath()) && fs.existsSync(pipPath)) {
                     setTimeout(() => emitOutput({ fileName: 'Sistema', type: 'system', message: 'Entorno Python instalado correctamente' }), 2000);
                 } else if (err) {
                     console.error('[HorusEngine] Error instalando Python portable:', err.message);
@@ -87,7 +150,7 @@ function ensureStandaloneEnvironment() {
     
     if (!fs.existsSync(wiztreeExePath)) {
         try {
-            if (!fs.existsSync(toolsDir)) fs.mkdirSync(toolsDir, { recursive: true });
+			if (!ensureDir(toolsDir)) return;
             const wizZip = path.join(toolsDir, 'wiztree.zip');
             const psCommand = `
             $ProgressPreference = 'SilentlyContinue';
@@ -110,8 +173,13 @@ function ensureStandaloneEnvironment() {
 ensureStandaloneEnvironment();
 
 function ensureStorageDir() {
-	if (!fs.existsSync(storageDir)) {
+	if (fs.existsSync(storageDir)) return true;
+	try {
 		fs.mkdirSync(storageDir, { recursive: true });
+		return true;
+	} catch (error) {
+		console.error('[HorusEngine] No se pudo preparar mis_scripts:', error.message);
+		return false;
 	}
 }
 
@@ -131,10 +199,6 @@ function normalizeRelativePath(fileName) {
 
 function toOsRelativePath(fileName) {
 	return normalizeRelativePath(fileName).replace(/\//g, path.sep);
-}
-
-function shouldForceExternal(fileName) {
-	return forceExternalScripts.has(normalizeRelativePath(fileName));
 }
 
 function createSanitizedEnv(baseEnv = process.env) {
@@ -771,8 +835,10 @@ async function ghostCleanLeftovers(items) {
   function getScriptInfo(fileName) {
     const ext = path.extname(fileName).toLowerCase();
     if (ext === '.py') {
-        // Usa el portátil si ya se bajó, si no (la primera vez), usa el temporal del PATH o falla sigilosamente
-        return { cmd: fs.existsSync(pythonExePath) ? pythonExePath : 'python' };
+		const pythonExePath = getPythonExePath();
+		const hasPortablePython = fs.existsSync(pythonExePath);
+		// En modo instalador ligero, la primera ejecucion puede ocurrir antes de terminar la descarga.
+		return { cmd: hasPortablePython ? pythonExePath : 'python', missingPortablePython: !hasPortablePython };
     }
     if (ext === '.bat' || ext === '.cmd') return { cmd: 'cmd.exe', isCmdScript: true };
     if (ext === '.sh') return { cmd: 'bash' };
@@ -795,6 +861,10 @@ function runInternal(fileName, args) {
 	const filePath = path.join(storageDir, toOsRelativePath(fileName));
 	const info = getScriptInfo(fileName);
 	let child = null;
+
+	if (info.missingPortablePython) {
+		emitOutput({ fileName: 'Sistema', type: 'system', message: '[PY] Entorno Python portable no listo. Se intentara usar Python del sistema o espera unos segundos y reintenta.' });
+	}
 
 	if (!fs.existsSync(filePath)) {
 		emitOutput({ fileName, type: 'error', message: `[SYS] No se encontró el script: ${filePath}` });
@@ -849,6 +919,10 @@ function runExternal(fileName, args) {
 	const info = getScriptInfo(fileName);
 	let child = null;
 
+	if (info.missingPortablePython) {
+		emitOutput({ fileName: 'Sistema', type: 'system', message: '[PY] Entorno Python portable no listo. La consola externa intentara usar Python del sistema.' });
+	}
+
 	emitOutput({ fileName: 'Sistema', type: 'system', message: `[VISUAL] Abriendo ejecución externa para ${fileName}` });
 	if (shouldForceExternal(fileName)) {
 		emitOutput({ fileName: 'Sistema', type: 'system', message: '[VISUAL] Esta herramienta puede solicitar permisos UAC y abrir su interfaz nativa.' });
@@ -856,15 +930,17 @@ function runExternal(fileName, args) {
 
 	const envBlock = createSanitizedEnv(process.env);
 
-	// CREATE_NEW_CONSOLE (0x10) para que el script tenga su propia ventana de consola visible e interactiva.
-	// stdio: 'ignore' porque la consola real del proceso es la que muestra la salida, no los pipes de Electron.
+	// Windows: create new visible console with full stdin inheritance for interactive user input
+	// creationFlags: 0x10 = CREATE_NEW_CONSOLE (creates new visible console window)
+	// stdio: 'inherit' = passes parent's stdin/stdout/stderr for full interactivity
+	// shell: false = directly spawn interpreter, no cmd.exe wrapper layer
 	const spawnOptions = { 
-		windowsHide: false,
-		detached: true,
+		stdio: 'inherit',
 		shell: false,
-		creationFlags: 0x00000010,
 		env: envBlock,
-		stdio: ['ignore', 'ignore', 'ignore']
+		cwd: path.dirname(filePath),
+		creationFlags: 0x10, // CREATE_NEW_CONSOLE
+		windowsHide: false
 	};
 
 	if (info.isCmdScript) {
@@ -915,10 +991,19 @@ function killProcessTree(fileName) {
 const api = {
 	getStorageDir: async () => {
 		ensureStorageDir();
+		ensureDir(writableRuntimeRoot);
+		ensureDir(toolsDir);
 		return storageDir;
 	},
+	getRunModePolicy: async () => Object.assign({}, runModePolicy),
 	getRuntimePaths: async () => ({
+		isPackaged,
+		resourcesBase,
 		storageDir,
+		writableRuntimeRoot,
+		pythonEnvPath,
+		toolsDir,
+		bundledToolsDir,
 		appDataNexus,
 		portableBaseDir,
 		env: {
@@ -932,7 +1017,7 @@ const api = {
 		}
 	}),
 	listScripts: async () => {
-		ensureStorageDir();
+		if (!ensureStorageDir()) return [];
 		try {
 			const getFiles = async (dir, base = '') => {
 				const dirents = await fs.promises.readdir(dir, { withFileTypes: true });
@@ -961,20 +1046,15 @@ const api = {
 	},
 	openPath: (fileName) => shell.openPath(path.join(storageDir, toOsRelativePath(fileName))),
 	editScript: (fileName) => {
-		if (fileName.includes('Inyector_Macros')) {
-			const configPath = path.join(appDataNexus, 'macros_config.json');
+		const editorOverride = resolveEditorOverride(fileName);
+		if (editorOverride && editorOverride.type === 'json') {
+			const configPath = path.join(appDataNexus, editorOverride.targetFile);
 			if (!fs.existsSync(configPath)) {
 				try {
-					const default_macros = {
-						"/correo": "test@gmail.com",
-						"/HORUS": "⚡ HORUS ENGINE ACTIVADO ⚡",
-						"/atencion": "Hola, gracias por contactar. En un momento te atiendo.",
-						"/gg": "Good Game Well Played! :)"
-					};
-					fs.mkdirSync(appDataNexus, { recursive: true });
-					fs.writeFileSync(configPath, JSON.stringify(default_macros, null, 4), 'utf8');
-				} catch (e) {
-					console.error("Error creating default macros config:", e);
+					if (!ensureDir(appDataNexus)) throw new Error('No se pudo preparar el directorio de configuracion');
+					fs.writeFileSync(configPath, JSON.stringify(editorOverride.defaults || {}, null, 4), 'utf8');
+				} catch (error) {
+					console.error('[HorusEngine] Error creando config de editor:', error.message);
 				}
 			}
 			spawn('notepad.exe', [configPath]);
@@ -1081,10 +1161,15 @@ const api = {
 	},
 	runScript: ({ fileName, args = '', mode = 'internal' }) => {
 		const parsedArgs = splitArgs(args);
-		const forcedExternal = shouldForceExternal(fileName);
-		const modeUsed = forcedExternal ? 'external' : mode;
-		if (forcedExternal && mode !== 'external') {
+		const policyMode = resolvePolicyMode(fileName);
+		const forcedExternal = policyMode === 'external';
+		const modeUsed = policyMode || mode;
+
+		if (policyMode === 'external' && mode !== 'external') {
 			emitOutput({ fileName: 'Sistema', type: 'system', message: `[POLICY] ${fileName} se ejecuta en modo visual externo por seguridad/UX.` });
+		}
+		if (policyMode === 'internal' && mode === 'external') {
+			emitOutput({ fileName: 'Sistema', type: 'system', message: `[POLICY] ${fileName} se mantiene en modo integrado por compatibilidad.` });
 		}
 
 		if (modeUsed === 'external') {

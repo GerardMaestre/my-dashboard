@@ -2,6 +2,9 @@
 chcp 65001 >nul
 :: DESC: Lanza la navaja suiza de Chris Titus. Perfecta para instalar programas base y optimizar Windows a fondo.
 :: ARGS: Ninguno
+:: RISK: high
+:: PERM: admin
+:: MODE: external
 
 echo [*] Elevando privilegios para desinstalar telemetría profunda...
 >nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
@@ -23,6 +26,17 @@ exit /B
 echo ===================================================
 echo     ⚡ HORUS ENGINE - CHRIS TITUS WIN-UTILS ⚡    
 echo ===================================================
+echo [!] ADVERTENCIA: Este script ejecuta una herramienta remota con permisos de Administrador.
+echo [!] Asegurate de tener copia de seguridad o punto de restauracion.
+set /p "CONFIRM_A=Escribe SI para continuar: "
+if /I not "%CONFIRM_A%"=="SI" goto :Cancelled
+set /p "CONFIRM_B=Escribe EJECUTAR para confirmar: "
+if /I not "%CONFIRM_B%"=="EJECUTAR" goto :Cancelled
 echo [*] Descargando y ejecutando motor de optimización...
 
 powershell.exe -NoProfile -Command "iwr -useb https://christitus.com/win | iex"
+goto :EOF
+
+:Cancelled
+echo [SYS] Operacion cancelada por seguridad.
+exit /b 0

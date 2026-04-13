@@ -1,13 +1,45 @@
 # DESC: Mide la latencia contra los mejores DNS del mundo y te muestra cuál es el servidor más rápido para tu conexión.
 # ARGS: Ninguno (Solicitará permisos de Administrador)
+# RISK: high
+# PERM: admin
+# MODE: external
 
 import subprocess
 import ctypes
 import sys
+import sys
+try:
+    if sys.stdout is None or getattr(sys.stdout, 'name', '').upper() == 'NUL':
+        sys.stdout = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stderr = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stdin = open('CONIN$', 'r', encoding='utf-8')
+except Exception: pass
+
+if hasattr(sys.stdout, 'reconfigure'):
+    try: sys.stdout.reconfigure(encoding='utf-8')
+    except Exception: pass
 import re
+import os
 
 if sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
+
+dry_run = any(arg.lower() in ("--prueba", "--dry-run") for arg in sys.argv[1:])
+confirmed = "--confirmed" in sys.argv
+if confirmed:
+    sys.argv.remove("--confirmed")
+
+
+def confirm_changes():
+    print("[!] ADVERTENCIA: Este script cambiará el DNS del adaptador activo.")
+    try:
+        confirm_a = input("Escribe SI para continuar: ").strip().upper()
+        if confirm_a != "SI":
+            return False
+        confirm_b = input("Escribe DNS para confirmar: ").strip().upper()
+        return confirm_b == "DNS"
+    except KeyboardInterrupt:
+        return False
 
 import atexit, tempfile, time
 def _horus_cleanup():
@@ -19,15 +51,46 @@ atexit.register(_horus_cleanup)
 if "--horus-log" in sys.argv:
     idx = sys.argv.index("--horus-log")
     log_file = sys.argv[idx + 1]
-    sys.stdout = open(log_file, "w", encoding="utf-8")
+    
+    class Tee:
+        def __init__(self, name, stream):
+            self.file = open(name, 'w', encoding='utf-8')
+            self.stream = stream
+        def write(self, data):
+            self.file.write(data)
+            self.file.flush()
+            try:
+                self.stream.write(data)
+                self.stream.flush()
+            except Exception:
+                pass
+        def flush(self):
+            self.file.flush()
+            try:
+                self.stream.flush()
+            except Exception:
+                pass
+        def isatty(self):
+            return hasattr(self.stream, 'isatty') and self.stream.isatty()
+            
+    sys.stdout = Tee(log_file, sys.stdout)
     sys.stderr = sys.stdout
     del sys.argv[idx:idx+2]
     os.environ["HORUS_LOG_FILE"] = log_file
-elif not ctypes.windll.shell32.IsUserAnAdmin():
+elif not dry_run and not ctypes.windll.shell32.IsUserAnAdmin():
+    if not dry_run and not confirmed:
+        if not confirm_changes():
+            print("[SYS] Operacion cancelada por seguridad.", flush=True)
+            sys.exit(0)
+        confirmed = True
+
     print("[!] Solicitando permisos de Administrador para cambiar DNS (Acepta el escudo amarillo)...", flush=True)
     log_file = os.path.join(tempfile.gettempdir(), f"horus_admin_{os.getpid()}.log")
     open(log_file, "w").close()
-    params = f'"{os.path.abspath(__file__)}" ' + " ".join(f'"{a}"' for a in sys.argv[1:]) + f' --horus-log "{log_file}"'
+    params = f'"{os.path.abspath(__file__)}" ' + " ".join(f'"{a}"' for a in sys.argv[1:])
+    if confirmed:
+        params += " --confirmed"
+    params += f' --horus-log "{log_file}"'
     sw_mode = 1 if sys.stdout and sys.stdout.isatty() else 0
     if ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, params, None, sw_mode) <= 32:
         print("[X] Elevación UAC rechazada.", flush=True); sys.exit(1)
@@ -60,6 +123,12 @@ print("="*65)
 print("        ⚡ HORUS ENGINE - PING OPTIMIZER ⚡        ")
 print("="*65)
 print("[*] Lanzando micro-paquetes ICMP a los servidores globales...\n")
+if dry_run:
+    print("[i] MODO PRUEBA activo: no se aplicará ningún cambio de DNS.\n")
+elif not confirmed:
+    if not confirm_changes():
+        print("[SYS] Operacion cancelada por seguridad.")
+        sys.exit(0)
 
 resultados = {}
 
@@ -88,6 +157,12 @@ mejor_ms = mejor_dns[1]['ms']
 
 print("\n" + "-"*65)
 print(f"[*] GANADOR: {mejor_nombre} con {mejor_ms} ms")
+
+if dry_run:
+    print(f"[i] Simulacion: se aplicaria {mejor_ip} en el adaptador de red principal.")
+    print("-" * 65)
+    sys.exit(0)
+
 print(f"[*] Aplicando la mejor configuración DNS al adaptador de red principal...")
 
 try:

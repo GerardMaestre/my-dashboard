@@ -1,8 +1,22 @@
 # DESC: Convierte tu Memoria RAM en un Disco virtual ultra-rápido (20,000 MB/s). Elimina tiempos de carga en juegos pesados usando enlaces Mágicos (Junctions).
 # ARGS: Ninguno (Tiene interfaz interactiva)
+# RISK: high
+# PERM: admin
+# MODE: external
 
 import os
 import sys
+import sys
+try:
+    if sys.stdout is None or getattr(sys.stdout, 'name', '').upper() == 'NUL':
+        sys.stdout = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stderr = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stdin = open('CONIN$', 'r', encoding='utf-8')
+except Exception: pass
+
+if hasattr(sys.stdout, 'reconfigure'):
+    try: sys.stdout.reconfigure(encoding='utf-8')
+    except Exception: pass
 import ctypes
 import shutil
 import urllib.request
@@ -13,6 +27,22 @@ from tkinter import filedialog, messagebox, simpledialog
 # Forzar codificación y evitar buffer
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', line_buffering=True)
+
+confirmed = "--confirmed" in sys.argv
+if confirmed:
+    sys.argv.remove("--confirmed")
+
+
+def confirm_ramdisk_flow():
+    print("[!] ADVERTENCIA: Este flujo crea junctions y mueve carpetas temporalmente.")
+    try:
+        confirm_a = input("Escribe SI para continuar: ").strip().upper()
+        if confirm_a != "SI":
+            return False
+        confirm_b = input("Escribe RAMDISK para confirmar: ").strip().upper()
+        return confirm_b == "RAMDISK"
+    except KeyboardInterrupt:
+        return False
 
 # 1. Elevación de Privilegios
 import atexit, tempfile, time
@@ -25,15 +55,46 @@ atexit.register(_horus_cleanup)
 if "--horus-log" in sys.argv:
     idx = sys.argv.index("--horus-log")
     log_file = sys.argv[idx + 1]
-    sys.stdout = open(log_file, "w", encoding="utf-8")
+    
+    class Tee:
+        def __init__(self, name, stream):
+            self.file = open(name, 'w', encoding='utf-8')
+            self.stream = stream
+        def write(self, data):
+            self.file.write(data)
+            self.file.flush()
+            try:
+                self.stream.write(data)
+                self.stream.flush()
+            except Exception:
+                pass
+        def flush(self):
+            self.file.flush()
+            try:
+                self.stream.flush()
+            except Exception:
+                pass
+        def isatty(self):
+            return hasattr(self.stream, 'isatty') and self.stream.isatty()
+            
+    sys.stdout = Tee(log_file, sys.stdout)
     sys.stderr = sys.stdout
     del sys.argv[idx:idx+2]
     os.environ["HORUS_LOG_FILE"] = log_file
 elif not ctypes.windll.shell32.IsUserAnAdmin():
+    if not confirmed:
+        if not confirm_ramdisk_flow():
+            print("[SYS] Operacion cancelada por seguridad.", flush=True)
+            sys.exit(0)
+        confirmed = True
+
     print("[!] Solicitando permisos de Administrador para Ram-Disk (Acepta el escudo amarillo abajo)...", flush=True)
     log_file = os.path.join(tempfile.gettempdir(), f"horus_admin_{os.getpid()}.log")
     open(log_file, "w").close()
-    params = f'"{os.path.abspath(__file__)}" ' + " ".join(f'"{a}"' for a in sys.argv[1:]) + f' --horus-log "{log_file}"'
+    params = f'"{os.path.abspath(__file__)}" ' + " ".join(f'"{a}"' for a in sys.argv[1:])
+    if confirmed:
+        params += " --confirmed"
+    params += f' --horus-log "{log_file}"'
     sw_mode = 1 if sys.stdout and sys.stdout.isatty() else 0
     if ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, params, None, sw_mode) <= 32:
         print("[X] Elevación UAC rechazada.", flush=True); sys.exit(1)
@@ -58,6 +119,10 @@ elif not ctypes.windll.shell32.IsUserAnAdmin():
 print("="*65)
 print("       ⚡ HORUS ENGINE - RAM-DISK DINÁMICO (CERO CARGAS) ⚡      ")
 print("="*65)
+if not confirmed:
+    if not confirm_ramdisk_flow():
+        print("[SYS] Operacion cancelada por seguridad.")
+        sys.exit(0)
 
 # 2. Verificar o Instalar ImDisk (Motor de Disco Virtual)
 IMDISK_EXE = r"C:\Windows\System32\imdisk.exe"

@@ -1,21 +1,47 @@
 # DESC: Escanea tu carpeta de Descargas buscando clones exactos (verificando Hashes MD5) y los aísla.
 # ARGS: <Ruta_Carpeta> <Ruta_Cuarentena>
+# RISK: medium
+# PERM: user
+# MODE: external
 
 import os
 import hashlib
 import shutil
 import sys
+import sys
+try:
+    if sys.stdout is None or getattr(sys.stdout, 'name', '').upper() == 'NUL':
+        sys.stdout = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stderr = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stdin = open('CONIN$', 'r', encoding='utf-8')
+except Exception: pass
+
+if hasattr(sys.stdout, 'reconfigure'):
+    try: sys.stdout.reconfigure(encoding='utf-8')
+    except Exception: pass
 from pathlib import Path
 
-if sys.stdout.encoding.lower() != 'utf-8':
+if (sys.stdout.encoding or '').lower() != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
 
 # Configuración
 argumentos = [arg for arg in sys.argv[1:] if not arg.startswith("--")]
 
-if len(argumentos) >= 1:
-    # Al unir los argumentos, soportamos rutas con espacios sin necesidad de comillas.
-    RUTA_ESCANEO = " ".join(argumentos).strip('"').strip("'")
+
+def _clean_path(raw):
+    return str(raw or '').strip().strip('"').strip("'")
+
+
+RUTA_ESCANEO = ''
+RUTA_PAPELERA = ''
+
+if len(argumentos) >= 2 and os.path.exists(_clean_path(argumentos[0])):
+    RUTA_ESCANEO = _clean_path(argumentos[0])
+    # Si vienen argumentos extra, se consideran parte de la ruta de cuarentena.
+    RUTA_PAPELERA = _clean_path(" ".join(argumentos[1:]))
+elif len(argumentos) >= 1:
+    # Compatibilidad legacy: una sola ruta de escaneo (incluye casos con espacios sin comillas).
+    RUTA_ESCANEO = _clean_path(" ".join(argumentos))
     if not os.path.exists(RUTA_ESCANEO):
         print(f"[X] ERROR: La ruta especificada no existe: {RUTA_ESCANEO}")
         sys.exit(1)
@@ -38,7 +64,8 @@ if len(argumentos) >= 1:
 else:
     RUTA_ESCANEO = os.path.join(Path.home(), "Downloads")
 
-RUTA_PAPELERA = os.path.join(RUTA_ESCANEO, "DUPLICADOS_A_BORRAR")
+if not RUTA_PAPELERA:
+    RUTA_PAPELERA = os.path.join(RUTA_ESCANEO, "DUPLICADOS_A_BORRAR")
 
 def hash_archivo(ruta):
     """Crea una huella digital única (hash) del archivo para compararlo."""
@@ -57,6 +84,24 @@ print("="*65)
 print("      ⚡ HORUS AUTOPILOT - CAZADOR DE DUPLICADOS ⚡      ")
 print("="*65)
 print(f"[*] Escaneando en profundidad: {RUTA_ESCANEO}\n")
+
+simulacion = any(arg.lower() in ("--prueba", "--dry-run") for arg in sys.argv[1:])
+if simulacion:
+    print("[i] MODO PRUEBA activo: no se moverá ningun archivo.\n")
+else:
+    print("[!] ADVERTENCIA: los duplicados detectados se moveran a cuarentena.")
+    try:
+        confirm_a = input("Escribe SI para continuar: ").strip().upper()
+        if confirm_a != "SI":
+            print("[SYS] Operacion cancelada por seguridad.")
+            sys.exit(0)
+        confirm_b = input("Escribe AISLAR para confirmar: ").strip().upper()
+        if confirm_b != "AISLAR":
+            print("[SYS] Operacion cancelada por seguridad.")
+            sys.exit(0)
+    except KeyboardInterrupt:
+        print("\n[SYS] Operacion cancelada por el usuario.")
+        sys.exit(0)
 
 if not os.path.exists(RUTA_PAPELERA):
     os.makedirs(RUTA_PAPELERA)
@@ -107,8 +152,11 @@ for rutas in posibles_duplicados.values():
 
                 visual = archivo_nombre[:40] + '...' if len(archivo_nombre) > 40 else archivo_nombre
                 try:
-                    shutil.move(ruta, nueva_ruta)
-                    print(f" [!] CLON AISLADO: {visual}")
+                    if simulacion:
+                        print(f" [Simulación] Se aislaria: {visual}")
+                    else:
+                        shutil.move(ruta, nueva_ruta)
+                        print(f" [!] CLON AISLADO: {visual}")
                 except Exception as e:
                     print(f" [X] ERROR aislando {visual}: {e}")
             else:
@@ -116,7 +164,10 @@ for rutas in posibles_duplicados.values():
 
 print("\n" + "-" * 65)
 if duplicados > 0:
-    print(f"[OK] Se aislaron {duplicados} archivos duplicados en la carpeta 'DUPLICADOS_A_BORRAR'.")
-    print("[I] Revisa la carpeta y elimínala manualmente cuando estés seguro.")
+    if simulacion:
+        print(f"[OK] Simulacion completada: se aislarian {duplicados} archivos duplicados.")
+    else:
+        print(f"[OK] Se aislaron {duplicados} archivos duplicados en la carpeta 'DUPLICADOS_A_BORRAR'.")
+        print("[I] Revisa la carpeta y elimínala manualmente cuando estés seguro.")
 else:
     print("[OK] Sistema limpio. No se encontraron clones exactos.")

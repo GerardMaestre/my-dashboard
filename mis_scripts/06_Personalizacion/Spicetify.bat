@@ -2,11 +2,19 @@
 chcp 65001 >nul
 :: DESC: Inyecta el motor Spicetify en el cliente oficial de Spotify para desbloquear temas visuales, extensiones y letras.
 :: ARGS: Ninguno
+:: RISK: high
+:: PERM: user
+:: MODE: external
 title HORUS ENGINE - SPICETIFY
 echo ===================================================
 echo     HORUS ENGINE - SPICETIFY THEME INJECTOR
 echo ===================================================
 echo.
+echo [!] ADVERTENCIA: Este script ejecuta instaladores remotos de PowerShell.
+set /p "CONFIRM_A=Escribe SI para continuar: "
+if /I not "%CONFIRM_A%"=="SI" goto :Cancelled
+set /p "CONFIRM_B=Escribe SPICETIFY para confirmar: "
+if /I not "%CONFIRM_B%"=="SPICETIFY" goto :Cancelled
 
 echo [*] Cerrando Spotify...
 taskkill /F /IM Spotify.exe >nul 2>&1
@@ -36,3 +44,8 @@ echo     Abre Spotify para ver los cambios.
 echo ===================================================
 echo.
 pause
+exit /b 0
+
+:Cancelled
+echo [SYS] Operacion cancelada por seguridad.
+exit /b 0

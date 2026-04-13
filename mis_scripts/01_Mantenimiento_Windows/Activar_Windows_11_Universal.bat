@@ -2,6 +2,9 @@
 chcp 65001 >nul
 :: DESC: Activa Windows 11 (Home o Pro) conectándose a un servidor KMS de forma segura.
 :: ARGS: 1 W11 Home | 2 W11 Pro | 3 Salir
+:: RISK: high
+:: PERM: admin
+:: MODE: external
 
 echo [*] Solicitando permisos de Administrador...
 >nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
@@ -23,10 +26,10 @@ exit /B
 color 0a
 
 :: Interpretar Parámetros Silenciosos (Desde Dashboard)
-if "%~1"=="1" goto home
-if /I "%~1"=="home" goto home
-if "%~1"=="2" goto pro
-if /I "%~1"=="pro" goto pro
+if "%~1"=="1" set "choice=1" & goto confirm
+if /I "%~1"=="home" set "choice=1" & goto confirm
+if "%~1"=="2" set "choice=2" & goto confirm
+if /I "%~1"=="pro" set "choice=2" & goto confirm
 if "%~1"=="3" exit
 
 echo ===================================================
@@ -42,11 +45,28 @@ echo.
 
 set /p choice="Ingresa un numero (1-3): "
 
-if "%choice%"=="1" goto home
-if "%choice%"=="2" goto pro
+if "%choice%"=="1" goto confirm
+if "%choice%"=="2" goto confirm
 if "%choice%"=="3" exit
 echo [X] Opcion no valida. Intenta de nuevo.
 goto end
+
+:confirm
+call :ConfirmHighRisk
+if errorlevel 1 goto cancelled
+if "%choice%"=="1" goto home
+if "%choice%"=="2" goto pro
+goto end
+
+:ConfirmHighRisk
+echo.
+echo [!] ADVERTENCIA: Este script modifica el estado de licencia de Windows.
+echo [!] Solo debe usarse si tienes permiso legal para la activacion.
+set /p "CONFIRM_A=Escribe SI para continuar: "
+if /I not "%CONFIRM_A%"=="SI" exit /b 1
+set /p "CONFIRM_B=Escribe ACTIVAR para confirmar: "
+if /I not "%CONFIRM_B%"=="ACTIVAR" exit /b 1
+exit /b 0
 
 :home
 echo [*] Aplicando clave de Windows 11 Home...
@@ -69,6 +89,10 @@ echo.
 echo [OK] Windows ha sido activado.
 pause
 exit
+
+:cancelled
+echo [SYS] Operacion cancelada por seguridad.
+exit /b 0
 
 :end
 echo [X] Opcion no valida.

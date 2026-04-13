@@ -1,6 +1,9 @@
 @echo off
 :: DESC: Hackea el plan de energía del Kernel para despertar el 100% de los núcleos de tu CPU. Adiós tirones en juegos.
 :: ARGS: Ninguno (Pedirá permisos de Administrador)
+:: RISK: high
+:: PERM: admin
+:: MODE: external
 
 :: Forzar soporte para Emojis UTF-8 en CMD
 chcp 65001 >nul
@@ -26,6 +29,12 @@ echo ===================================================
 echo     ⚡ HORUS ENGINE - DESPERTADOR DE NÚCLEOS CPU ⚡    
 echo ===================================================
 echo.
+echo [!] ADVERTENCIA: Este script modifica planes de energia y estado minimo/maximo de CPU.
+set /p "CONFIRM_A=Escribe SI para continuar: "
+if /I not "%CONFIRM_A%"=="SI" goto :Cancelled
+set /p "CONFIRM_B=Escribe DESPERTAR para confirmar: "
+if /I not "%CONFIRM_B%"=="DESPERTAR" goto :Cancelled
+
 echo [*] Interrogando a la BIOS y al Kernel de Windows...
 echo [*] Deshabilitando el "Core Parking" (Aparcamiento de Nucleos)...
 echo [*] Creando o aplicando plan de Rendimiento Definitivo (Ultimate Performance)...
@@ -53,3 +62,8 @@ echo [OK] INYECCIÓN COMPLETADA.
 echo [I] El 100%% de los hilos y nucleos fisicos estan ahora despiertos y al maximo.
 echo [I] Listo para sacar los maximos FPS posibles.
 echo ===================================================
+exit /b 0
+
+:Cancelled
+echo [SYS] Operacion cancelada por seguridad.
+exit /b 0

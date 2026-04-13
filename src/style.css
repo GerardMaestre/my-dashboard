@@ -447,6 +447,65 @@ input:checked + .slider:before { transform: translateX(12px); }
 
 .script-desc { flex: 1; font-size: 12px; color: var(--mac-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 15px; }
 
+.script-meta-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.meta-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06);
+    color: var(--mac-text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    text-transform: uppercase;
+}
+
+.meta-badge.risk-low {
+    border-color: rgba(48, 209, 88, 0.4);
+    background: rgba(48, 209, 88, 0.16);
+    color: #7df3aa;
+}
+
+.meta-badge.risk-medium {
+    border-color: rgba(255, 159, 10, 0.45);
+    background: rgba(255, 159, 10, 0.16);
+    color: #ffd08a;
+}
+
+.meta-badge.risk-high,
+.meta-badge.risk-critical {
+    border-color: rgba(255, 69, 58, 0.45);
+    background: rgba(255, 69, 58, 0.16);
+    color: #ffb3ad;
+}
+
+.meta-badge.perm-admin {
+    border-color: rgba(255, 69, 58, 0.45);
+    background: rgba(255, 69, 58, 0.16);
+    color: #ffc6c2;
+}
+
+.meta-badge.mode-external {
+    border-color: rgba(10, 132, 255, 0.45);
+    background: rgba(10, 132, 255, 0.16);
+    color: #9cc9ff;
+}
+
+.meta-badge.mode-internal {
+    border-color: rgba(48, 209, 88, 0.35);
+    background: rgba(48, 209, 88, 0.14);
+    color: #91f6b8;
+}
+
 .live-status { display: none; align-items: center; gap: 6px; font-size: 11px; color: var(--mac-blue); margin-bottom: 12px; background: rgba(10,132,255,0.15); padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(10,132,255,0.3);}
 .live-status.active { display: flex; }
 .live-dot { width: 8px; height: 8px; background: var(--mac-blue); border-radius: 50%; animation: pulse 1s infinite; box-shadow: 0 0 8px var(--mac-blue);}

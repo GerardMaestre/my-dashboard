@@ -1,9 +1,23 @@
 # DESC: Escáner de vulnerabilidades local. Revisa si tienes puertos peligrosos expuestos a la red (FTP, SSH, RDP).
 # ARGS: Ninguno
+# RISK: medium
+# PERM: user
+# MODE: internal
 
 import socket
 import concurrent.futures
 import sys
+import sys
+try:
+    if sys.stdout is None or getattr(sys.stdout, 'name', '').upper() == 'NUL':
+        sys.stdout = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stderr = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stdin = open('CONIN$', 'r', encoding='utf-8')
+except Exception: pass
+
+if hasattr(sys.stdout, 'reconfigure'):
+    try: sys.stdout.reconfigure(encoding='utf-8')
+    except Exception: pass
 
 if sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')

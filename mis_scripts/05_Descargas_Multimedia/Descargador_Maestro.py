@@ -1,7 +1,21 @@
 # DESC: Descarga video o MP3 de más de 1000 sitios. Añade 'mp3' al lado de la URL para bajarlo como audio.
 # ARGS: URL [mp3/720p/1080p/4k]
+# RISK: medium
+# PERM: user
+# MODE: internal
 
 import sys
+import sys
+try:
+    if sys.stdout is None or getattr(sys.stdout, 'name', '').upper() == 'NUL':
+        sys.stdout = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stderr = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stdin = open('CONIN$', 'r', encoding='utf-8')
+except Exception: pass
+
+if hasattr(sys.stdout, 'reconfigure'):
+    try: sys.stdout.reconfigure(encoding='utf-8')
+    except Exception: pass
 import os
 import subprocess
 import urllib.request

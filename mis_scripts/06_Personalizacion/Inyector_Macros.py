@@ -1,8 +1,22 @@
 # DESC: Escucha tu teclado a nivel hardware y expande atajos de texto cortos (ej. //correo) a frases completas (tu_correo@gmail.com) instantáneamente en CUALQUIER programa o juego.
 # ARGS: Ninguno
+# RISK: medium
+# PERM: user
+# MODE: external
 
 import os
 import sys
+import sys
+try:
+    if sys.stdout is None or getattr(sys.stdout, 'name', '').upper() == 'NUL':
+        sys.stdout = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stderr = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stdin = open('CONIN$', 'r', encoding='utf-8')
+except Exception: pass
+
+if hasattr(sys.stdout, 'reconfigure'):
+    try: sys.stdout.reconfigure(encoding='utf-8')
+    except Exception: pass
 import json
 import subprocess
 from pathlib import Path
@@ -24,11 +38,18 @@ print("="*65)
 
 # 2. Archivo de Configuración de Macros
 APPDATA = os.environ.get("APPDATA", os.path.expanduser("~"))
-NEXUS_DIR = os.path.join(APPDATA, "NexusExecutorPro")
-if not os.path.exists(NEXUS_DIR):
-    try: os.makedirs(NEXUS_DIR)
-    except: pass
-CONFIG_FILE = os.path.join(NEXUS_DIR, "macros_config.json")
+HORUS_DIR = os.path.join(APPDATA, "HorusEngine")
+LEGACY_DIR = os.path.join(APPDATA, "NexusExecutorPro")
+
+for target_dir in (HORUS_DIR, LEGACY_DIR):
+    if not os.path.exists(target_dir):
+        try:
+            os.makedirs(target_dir)
+        except:
+            pass
+
+CONFIG_FILE = os.path.join(HORUS_DIR, "macros_config.json")
+LEGACY_CONFIG = os.path.join(LEGACY_DIR, "macros_config.json")
 
 # Macros por defecto si es la primera vez
 default_macros = {
@@ -37,6 +58,15 @@ default_macros = {
     "//atencion": "Hola, gracias por contactar. En un momento te atiendo.",
     "//gg": "Good Game Well Played! :)"
 }
+
+if not os.path.exists(CONFIG_FILE) and os.path.exists(LEGACY_CONFIG):
+    try:
+        with open(LEGACY_CONFIG, 'r', encoding='utf-8') as f:
+            legacy_data = json.load(f)
+        with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+            json.dump(legacy_data, f, indent=4, ensure_ascii=False)
+    except:
+        pass
 
 if not os.path.exists(CONFIG_FILE):
     with open(CONFIG_FILE, 'w', encoding='utf-8') as f:

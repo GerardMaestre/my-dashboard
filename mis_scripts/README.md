@@ -16,3 +16,40 @@ Entra a la carpeta correspondiente para ver el `README.md` detallado de cada una
 
 ## Instalación de dependencias (Python)
 Para que los scripts `.py` funcionen correctamente, es recomendable utilizar la carpeta `env_python` o asegurarte de ejecutar `pip install` cuando el script requiera de librerías externas.
+
+## Estandar de metadatos (Dashboard)
+
+El dashboard lee metadatos al inicio del archivo para mostrar descripcion, parametros y badges visuales.
+
+En scripts Python:
+
+```python
+# DESC: Descripcion breve para usuario final
+# ARGS: Parametros esperados
+# RISK: normal|low|medium|high|critical
+# PERM: user|admin
+# MODE: internal|external
+```
+
+En scripts Batch:
+
+```bat
+:: DESC: Descripcion breve para usuario final
+:: ARGS: Parametros esperados
+:: RISK: normal|low|medium|high|critical
+:: PERM: user|admin
+:: MODE: internal|external
+```
+
+Notas:
+- `DESC` y `ARGS` son compatibles con el formato historico.
+- `RISK`, `PERM` y `MODE` son opcionales, pero recomendados para scripts nuevos o sensibles.
+
+## Convención de seguridad
+
+Para scripts de riesgo alto o critico:
+
+1. Mostrar advertencia clara antes de ejecutar.
+2. Pedir doble confirmacion por texto (ejemplo: `SI` y una palabra final de confirmacion).
+3. Permitir cancelacion limpia sin aplicar cambios.
+4. Mostrar resumen final con resultado.

@@ -1,15 +1,46 @@
 # DESC: MODO DIOS: Escanea TODOS tus discos duros buscando clones de fotos, videos y documentos. 100% Blindado: imposible romper el sistema (sólo escanea archivos personales y salta carpetas de Windows).
 # ARGS: Ninguno (Analiza todos los discos automáticamente)
+# RISK: high
+# PERM: admin
+# MODE: external
 
 import os
 import hashlib
 import sys
+import sys
+try:
+    if sys.stdout is None or getattr(sys.stdout, 'name', '').upper() == 'NUL':
+        sys.stdout = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stderr = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stdin = open('CONIN$', 'r', encoding='utf-8')
+except Exception: pass
+
+if hasattr(sys.stdout, 'reconfigure'):
+    try: sys.stdout.reconfigure(encoding='utf-8')
+    except Exception: pass
 import shutil
 from pathlib import Path
 import ctypes
 
-if sys.stdout.encoding.lower() != 'utf-8':
+if (sys.stdout.encoding or '').lower() != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
+
+simulacion = any(arg.lower() in ("--prueba", "--dry-run") for arg in sys.argv[1:])
+confirmed = "--confirmed" in sys.argv
+if confirmed:
+    sys.argv.remove("--confirmed")
+
+
+def confirm_cleanup_flow():
+    print("[!] ADVERTENCIA: Este proceso puede mover archivos duplicados a cuarentena global.")
+    try:
+        confirm_a = input("Escribe SI para continuar: ").strip().upper()
+        if confirm_a != "SI":
+            return False
+        confirm_b = input("Escribe LIMPIAR para confirmar: ").strip().upper()
+        return confirm_b == "LIMPIAR"
+    except KeyboardInterrupt:
+        return False
 
 # --- ELEVACION (Opcional, pero recomendada para leer todos los perfiles) ---
 import atexit, tempfile, time
@@ -22,15 +53,46 @@ atexit.register(_horus_cleanup)
 if "--horus-log" in sys.argv:
     idx = sys.argv.index("--horus-log")
     log_file = sys.argv[idx + 1]
-    sys.stdout = open(log_file, "w", encoding="utf-8")
+    
+    class Tee:
+        def __init__(self, name, stream):
+            self.file = open(name, 'w', encoding='utf-8')
+            self.stream = stream
+        def write(self, data):
+            self.file.write(data)
+            self.file.flush()
+            try:
+                self.stream.write(data)
+                self.stream.flush()
+            except Exception:
+                pass
+        def flush(self):
+            self.file.flush()
+            try:
+                self.stream.flush()
+            except Exception:
+                pass
+        def isatty(self):
+            return hasattr(self.stream, 'isatty') and self.stream.isatty()
+            
+    sys.stdout = Tee(log_file, sys.stdout)
     sys.stderr = sys.stdout
     del sys.argv[idx:idx+2]
     os.environ["HORUS_LOG_FILE"] = log_file
-elif not ctypes.windll.shell32.IsUserAnAdmin():
+elif not simulacion and not ctypes.windll.shell32.IsUserAnAdmin():
+    if not simulacion and not confirmed:
+        if not confirm_cleanup_flow():
+            print("[SYS] Operacion cancelada por seguridad.", flush=True)
+            sys.exit(0)
+        confirmed = True
+
     print("[!] Recomendamos conceder permisos de Administrador para que Horus pueda leer todos los perfiles de usuario...", flush=True)
     log_file = os.path.join(tempfile.gettempdir(), f"horus_admin_{os.getpid()}.log")
     open(log_file, "w").close()
-    params = f'"{os.path.abspath(__file__)}" ' + " ".join(f'"{a}"' for a in sys.argv[1:]) + f' --horus-log "{log_file}"'
+    params = f'"{os.path.abspath(__file__)}" ' + " ".join(f'"{a}"' for a in sys.argv[1:])
+    if confirmed:
+        params += " --confirmed"
+    params += f' --horus-log "{log_file}"'
     sw_mode = 1 if sys.stdout and sys.stdout.isatty() else 0
     if ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, params, None, sw_mode) <= 32:
         print("[!] Permisos intermedios aplicados. Ejecutando escaneo normal...", flush=True)
@@ -83,12 +145,40 @@ CARPETAS_PROHIBIDAS = {
     "boot",
     "recovery",
     "perflogs",
-    "msocache"
+    "msocache",
+    "node_modules",
+    ".git",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "env_python",
+    "site-packages",
+    "dist",
+    "build",
+    "target",
+    ".gradle",
+    ".android",
+    ".cargo",
+    ".rustup",
+    ".npm",
+    ".pnpm-store",
+    ".yarn",
+    ".cache"
 }
+
+MAX_SIM_LOGS = 50
 
 print("="*65)
 print("     ⚡ HORUS ENGINE - LIMPIEZA EXTREMA GLOBAL (SEGURO) ⚡   ")
 print("="*65)
+
+if simulacion:
+    print("[i] MODO PRUEBA activo: no se moverá ningun archivo.\n")
+elif not confirmed:
+    if not confirm_cleanup_flow():
+        print("[SYS] Operacion cancelada por seguridad.")
+        sys.exit(0)
+
 print("[*] MODO DIOS ACTIVADO: Iniciando escaneo algorítmico profundo en todo el PC.")
 print("[V] Filtro de Seguridad Nuclear: ON (Sólo extrae Multimedia y Documentos).")
 print("[V] Blindaje de Sistema: ON (Windows y Programas Intocables).\n")
@@ -160,6 +250,8 @@ def hash_archivo(ruta):
 
 duplicados_totales = 0
 espacio_recuperable = 0
+sim_logs_mostrados = 0
+sim_logs_omitidos = 0
 
 for peso, rutas in candidatos.items():
     hashes = {}
@@ -192,9 +284,16 @@ for peso, rutas in candidatos.items():
                     contador += 1
                 
                 try:
-                    shutil.move(ruta, nueva_ruta)
                     visual = nombre_archivo[:30] + '...' if len(nombre_archivo) > 30 else nombre_archivo
-                    print(f" [Aislado] {visual} -> Mismo Hash que su gemelo.")
+                    if simulacion:
+                        if sim_logs_mostrados < MAX_SIM_LOGS:
+                            print(f" [Simulación] Se aislaria: {visual}")
+                            sim_logs_mostrados += 1
+                        else:
+                            sim_logs_omitidos += 1
+                    else:
+                        shutil.move(ruta, nueva_ruta)
+                        print(f" [Aislado] {visual} -> Mismo Hash que su gemelo.")
                     duplicados_totales += 1
                     espacio_recuperable += peso
                 except:
@@ -206,15 +305,25 @@ for peso, rutas in candidatos.items():
 print("\n" + "="*65)
 if duplicados_totales > 0:
     espacio_mb = espacio_recuperable / (1024*1024)
-    if espacio_mb > 1024:
-        print(f"[OK] LIMPIEZA EXTREMA ABORTADA CON ÉXITO. Se han desterrado {duplicados_totales} clones exactos.")
-        print(f"[OK] Has RECUPERADO un inmenso total de {espacio_mb/1024:.2f} GB de almacenamiento físico.")
+    if simulacion:
+        if sim_logs_omitidos > 0:
+            print(f"[i] Salida resumida: se omitieron {sim_logs_omitidos} lineas de simulacion para evitar saturacion de consola.")
+        if espacio_mb > 1024:
+            print(f"[OK] Simulación completada: se aislarian {duplicados_totales} clones exactos.")
+            print(f"[OK] Espacio potencial recuperable: {espacio_mb/1024:.2f} GB.")
+        else:
+            print(f"[OK] Simulación completada: se aislarian {duplicados_totales} archivos clónicos.")
+            print(f"[OK] Espacio potencial recuperable: {espacio_mb:.2f} MB.")
     else:
-        print(f"[OK] LIMPIEZA COMPLETADA. Se aislaron {duplicados_totales} archivos clónicos.")
-        print(f"[OK] Has RECUPERADO {espacio_mb:.2f} MB de tus discos.")
-    print("\n[i] SEGURIDAD: Los clones no han sido eliminados permanentemente del disco por precaución máxima.")
-    print("[i] Se han acumulado todos ordenadamente en la carpeta HORUS_DUPLICADOS_GLOBALES (en tu C:, D:, u otra raíz).")
-    print("[i] Busca esas carpetas desde el explorador, revisa si hay alguna foto repetida que quieras y luego bórrala entera.")
+        if espacio_mb > 1024:
+            print(f"[OK] LIMPIEZA EXTREMA ABORTADA CON ÉXITO. Se han desterrado {duplicados_totales} clones exactos.")
+            print(f"[OK] Has RECUPERADO un inmenso total de {espacio_mb/1024:.2f} GB de almacenamiento físico.")
+        else:
+            print(f"[OK] LIMPIEZA COMPLETADA. Se aislaron {duplicados_totales} archivos clónicos.")
+            print(f"[OK] Has RECUPERADO {espacio_mb:.2f} MB de tus discos.")
+        print("\n[i] SEGURIDAD: Los clones no han sido eliminados permanentemente del disco por precaución máxima.")
+        print("[i] Se han acumulado todos ordenadamente en la carpeta HORUS_DUPLICADOS_GLOBALES (en tu C:, D:, u otra raíz).")
+        print("[i] Busca esas carpetas desde el explorador, revisa si hay alguna foto repetida que quieras y luego bórrala entera.")
 else:
     print("[OK] Falso positivo volumétrico. ¡Todos los archivos que pesaban lo mismo eran totalmente distintos por dentro!")
 

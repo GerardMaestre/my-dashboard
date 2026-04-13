@@ -41,7 +41,7 @@ La arquitectura de este proyecto es rica y diversa para lograr comunicarse direc
 
 - **Interfaz Gráfica (GUI):** [Electron](https://www.electronjs.org/), JavaScript, HTML, CSS.
 - **Lógica en segundo plano:** 
-  - Scripts de **Python** (con su propio entorno preconfigurado `env_python`).
+   - Scripts de **Python** (con entorno portable autoinstalable en primer arranque en modo instalador ligero).
   - Scripts **Batch (.bat)** para interacción directa con Windows PowerShell / CMD.
 - **Rendimiento Extremo (Nativo):** **Rust** (Cargo) para acceso nativo al hardware y lectura MFT.
 
@@ -85,11 +85,39 @@ Asegúrate de tener instalados:
 Para exportar un empaquetado del software listo para instalarse o ejecutarse de forma portable en Windows:
 
 ```bash
+# Validar prerequisitos de empaquetado
+npm run verify:build
+
 # Construir instalador
 npm run build 
 
 # Construir ejecutable empacado (.exe portable)
 npm run build:portable
+
+# Build estricto (requiere mft_reader.exe compilado)
+npm run build:strict
+npm run build:portable:strict
+```
+
+### Modo instalador ligero (actual)
+
+- El build excluye `mis_scripts/env_python` para reducir tamaño del instalador.
+- En primer arranque, Horus descarga e instala Python portable y WizTree en:
+   - Instalado normal: `%APPDATA%\\HorusEngine\\runtime`
+   - Portable: `HorusData\\runtime` junto al ejecutable portable
+- Si no hay internet en el primer arranque, la app sigue funcionando con degradación controlada (fallbacks nativos y/o Python del sistema).
+
+### Validación estricta opcional para `mft_reader.exe`
+
+Si quieres obligar a que el binario Rust esté presente durante el build:
+
+```bash
+set HORUS_REQUIRE_MFT=1
+npm run build:mft
+npm run build
+
+# Alternativa sin variable de entorno manual
+npm run build:strict
 ```
 
 ---

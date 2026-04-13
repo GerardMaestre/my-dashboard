@@ -1,3 +1,9 @@
+# DESC: Escanea e instala actualizaciones disponibles usando winget de forma automatizada.
+# ARGS: Ninguno
+# RISK: medium
+# PERM: admin
+# MODE: external
+
 import os
 import sys
 import subprocess
@@ -8,8 +14,17 @@ import re
 import atexit
 
 # Forzar codificación utf-8 a la salida
+import sys
+try:
+    if sys.stdout is None or getattr(sys.stdout, 'name', '').upper() == 'NUL':
+        sys.stdout = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stderr = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stdin = open('CONIN$', 'r', encoding='utf-8')
+except Exception: pass
+
 if hasattr(sys.stdout, 'reconfigure'):
-    sys.stdout.reconfigure(encoding='utf-8')
+    try: sys.stdout.reconfigure(encoding='utf-8')
+    except Exception: pass
 
 # Colores ANSI para terminal integrada
 C_CYAN = "\033[96m"
@@ -188,12 +203,35 @@ if __name__ == "__main__":
     if "--horus-log" in sys.argv:
         idx = sys.argv.index("--horus-log")
         log_file = sys.argv[idx + 1]
-        sys.stdout = open(log_file, "w", encoding="utf-8")
+        
+        class Tee:
+            def __init__(self, name, stream):
+                self.file = open(name, 'w', encoding='utf-8')
+                self.stream = stream
+            def write(self, data):
+                self.file.write(data)
+                self.file.flush()
+                try:
+                    self.stream.write(data)
+                    self.stream.flush()
+                except Exception:
+                    pass
+            def flush(self):
+                self.file.flush()
+                try:
+                    self.stream.flush()
+                except Exception:
+                    pass
+            def isatty(self):
+                return self.stream.isatty()
+                
+        sys.stdout = Tee(log_file, sys.stdout)
         sys.stderr = sys.stdout
         del sys.argv[idx:idx+2]
         os.environ["HORUS_LOG_FILE"] = log_file
     elif not ctypes.windll.shell32.IsUserAnAdmin():
         # Detección dinámica TTY (evita el fallo invisible en External)
+        print("[!] Solicitando permisos de Administrador (Aprueba el escudo de Windows)...", flush=True)
         sw_mode = 1 if sys.stdout and sys.stdout.isatty() else 0
         log_file = os.path.join(tempfile.gettempdir(), f"horus_admin_{os.getpid()}.log")
         open(log_file, "w").close()

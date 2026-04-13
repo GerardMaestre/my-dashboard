@@ -2,6 +2,9 @@
 chcp 65001 >nul
 :: DESC: Automatiza entorno Cloud Gaming. Con menu interactivo o parametros directos.
 :: ARGS: host | client 
+:: RISK: high
+:: PERM: admin
+:: MODE: external
 
 echo [*] Solicitando permisos de Administrador...
 >nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
@@ -16,7 +19,7 @@ type nul > "%LOGF%"
 echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\getadmin.vbs"
 echo UAC.ShellExecute "cmd.exe", "/c """"%~s0"" --horus-elevated %* > ""%LOGF%"" 2>&1 & echo 1 > ""%LOGF%.done"" """, "", "runas", 0 >> "%temp%\getadmin.vbs"
 "%temp%\getadmin.vbs" & del "%temp%\getadmin.vbs"
-powershell -Command "='%LOGF%'; $done='%LOGF%.done'; $fs=$null; while($null -eq $fs -and -not (Test-Path $done)){try{$fs=New-Object System.IO.FileStream $log,'Open','Read','ReadWrite'}catch{Start-Sleep -m 50}}; if($fs){$sr=New-Object System.IO.StreamReader $fs; while(-not (Test-Path $done)){while(-not $sr.EndOfStream){Write-Host $sr.ReadLine()}; Start-Sleep -m 50}; while(-not $sr.EndOfStream){Write-Host $sr.ReadLine()}; $sr.Close(); $fs.Close()}; Remove-Item $log -ea 0; Remove-Item $done -ea 0"
+powershell -Command "$log='%LOGF%'; $done='%LOGF%.done'; $fs=$null; while($null -eq $fs -and -not (Test-Path $done)){try{$fs=New-Object System.IO.FileStream $log,'Open','Read','ReadWrite'}catch{Start-Sleep -m 50}}; if($fs){$sr=New-Object System.IO.StreamReader $fs; while(-not (Test-Path $done)){while(-not $sr.EndOfStream){Write-Host $sr.ReadLine()}; Start-Sleep -m 50}; while(-not $sr.EndOfStream){Write-Host $sr.ReadLine()}; $sr.Close(); $fs.Close()}; Remove-Item $log -ea 0; Remove-Item $done -ea 0"
 exit /B
 :HorusPayload
 
@@ -42,10 +45,20 @@ echo.
 set /p choice="Ingresa un numero (1-3): "
 
 :mode_selected
+if "%choice%"=="3" exit
+call :ConfirmHighRisk
+if errorlevel 1 goto cancelled
 if "%choice%"=="1" goto host
 if "%choice%"=="2" goto client
-if "%choice%"=="3" exit
 goto end
+
+:ConfirmHighRisk
+echo [!] ADVERTENCIA: Este flujo instala software y modifica servicios de red para cloud gaming.
+set /p "CONFIRM_A=Escribe SI para continuar: "
+if /I not "%CONFIRM_A%"=="SI" exit /b 1
+set /p "CONFIRM_B=Escribe CLOUD para confirmar: "
+if /I not "%CONFIRM_B%"=="CLOUD" exit /b 1
+exit /b 0
 
 :: =======================================
 :: RUTINA DE INSTALACION COMUN (TAILSCALE)
@@ -146,3 +159,9 @@ pause
 exit
 
 :end
+echo [X] Opcion no valida.
+exit /b 1
+
+:cancelled
+echo [SYS] Operacion cancelada por seguridad.
+exit /b 0

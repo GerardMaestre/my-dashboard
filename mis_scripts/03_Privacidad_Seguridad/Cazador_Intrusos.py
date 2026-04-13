@@ -1,8 +1,22 @@
 # DESC: Escanea tu red Wi-Fi/Local con un barrido militar para mostrar todos los dispositivos (móviles, TVs) conectados.
 # ARGS: Ninguno
+# RISK: medium
+# PERM: user
+# MODE: internal
 
 import os
 import sys
+import sys
+try:
+    if sys.stdout is None or getattr(sys.stdout, 'name', '').upper() == 'NUL':
+        sys.stdout = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stderr = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stdin = open('CONIN$', 'r', encoding='utf-8')
+except Exception: pass
+
+if hasattr(sys.stdout, 'reconfigure'):
+    try: sys.stdout.reconfigure(encoding='utf-8')
+    except Exception: pass
 import subprocess
 import re
 import threading

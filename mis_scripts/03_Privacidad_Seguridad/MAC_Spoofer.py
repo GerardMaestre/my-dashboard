@@ -1,10 +1,24 @@
 # DESC: Falsifica la dirección MAC de tu adaptador de red para evitar baneos o límites de tiempo en redes Wi-Fi públicas.
 # ARGS: Ninguno (Solicitará permisos de Administrador automáticamente)
+# RISK: high
+# PERM: admin
+# MODE: external
 
 import subprocess
 import random
 import ctypes
 import sys
+import sys
+try:
+    if sys.stdout is None or getattr(sys.stdout, 'name', '').upper() == 'NUL':
+        sys.stdout = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stderr = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stdin = open('CONIN$', 'r', encoding='utf-8')
+except Exception: pass
+
+if hasattr(sys.stdout, 'reconfigure'):
+    try: sys.stdout.reconfigure(encoding='utf-8')
+    except Exception: pass
 import re
 
 if sys.stdout.encoding.lower() != 'utf-8':
@@ -20,7 +34,29 @@ atexit.register(_horus_cleanup)
 if "--horus-log" in sys.argv:
     idx = sys.argv.index("--horus-log")
     log_file = sys.argv[idx + 1]
-    sys.stdout = open(log_file, "w", encoding="utf-8")
+    
+    class Tee:
+        def __init__(self, name, stream):
+            self.file = open(name, 'w', encoding='utf-8')
+            self.stream = stream
+        def write(self, data):
+            self.file.write(data)
+            self.file.flush()
+            try:
+                self.stream.write(data)
+                self.stream.flush()
+            except Exception:
+                pass
+        def flush(self):
+            self.file.flush()
+            try:
+                self.stream.flush()
+            except Exception:
+                pass
+        def isatty(self):
+            return hasattr(self.stream, 'isatty') and self.stream.isatty()
+            
+    sys.stdout = Tee(log_file, sys.stdout)
     sys.stderr = sys.stdout
     del sys.argv[idx:idx+2]
     os.environ["HORUS_LOG_FILE"] = log_file

@@ -7,8 +7,12 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder",
-    "build:portable": "electron-builder --win portable",
+    "verify:build": "node scripts/verify-build-prereqs.js",
+    "verify:build:strict": "node scripts/verify-build-prereqs.js --strict",
+    "build": "npm run verify:build && electron-builder",
+    "build:strict": "npm run verify:build:strict && electron-builder",
+    "build:portable": "npm run verify:build && electron-builder --win portable",
+    "build:portable:strict": "npm run verify:build:strict && electron-builder --win portable",
     "build:mft": "cargo build --manifest-path native_modules/mft_reader/Cargo.toml --release",
     "run:mft:test": "native_modules\\mft_reader\\target\\release\\mft_reader.exe scan --root C:\\ --format json"
   },
@@ -37,7 +41,16 @@
         "from": "mis_scripts",
         "to": "mis_scripts",
         "filter": [
-          "**/*"
+          "**/*",
+          "!env_python",
+          "!env_python/**",
+          "!**/__pycache__/**",
+          "!**/*.pyc",
+          "!**/ffmpeg.exe",
+          "!**/yt-dlp.exe",
+          "!tools/wiztree.zip",
+          "!tools/WizTree*.exe",
+          "!tools/locale/**"
         ]
       },
       {

@@ -52,11 +52,6 @@ export function updateAutostart(newList) {
     localStorage.setItem('nexus_autostart', JSON.stringify(autostartList));
 }
 
-export const proModePolicy = {
-	'07_Herramientas_Pro/Analizador_Espacio.py': 'internal',
-	'07_Herramientas_Pro/Desinstalador_Root.bat': 'external'
-};
-
 export let ojoDatabase = [];
 export let ojoIndexing = false;
 export let ojoIndexed = false;

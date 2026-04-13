@@ -2,6 +2,9 @@
 chcp 65001 >nul
 :: DESC: Lanza la potente herramienta de Raphi para erradicar todo el bloatware basura preinstalado en tu PC.
 :: ARGS: Ninguno
+:: RISK: high
+:: PERM: admin
+:: MODE: external
 
 echo [*] Elevando privilegios para purgar bloatware del sistema...
 >nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
@@ -23,6 +26,17 @@ exit /B
 echo ===================================================
 echo     ⚡ HORUS ENGINE - WIN DEBLOATER (RAPHI) ⚡    
 echo ===================================================
+echo [!] ADVERTENCIA: Este script ejecuta una herramienta remota con privilegios de Administrador.
+echo [!] Revisa que entiendes los cambios antes de continuar.
+set /p "CONFIRM_A=Escribe SI para continuar: "
+if /I not "%CONFIRM_A%"=="SI" goto :Cancelled
+set /p "CONFIRM_B=Escribe EJECUTAR para confirmar: "
+if /I not "%CONFIRM_B%"=="EJECUTAR" goto :Cancelled
 echo [*] Descargando el motor de desinstalación de Bloatware...
 
 powershell.exe -NoProfile -Command "& ([scriptblock]::Create((irm 'https://debloat.raphi.re/')))"
+goto :EOF
+
+:Cancelled
+echo [SYS] Operacion cancelada por seguridad.
+exit /b 0

@@ -43,7 +43,7 @@ export function getFileIconFromPath(filePath) {
 	return '📄';
 }
 
-export function getAppIcon(name) {
+function getAppIcon(name) {
 	const n = String(name || '').toLowerCase();
 	if (n.includes('chrome')) return '🌐';
 	if (n.includes('firefox')) return '🦊';
@@ -60,7 +60,7 @@ export function getAppIcon(name) {
 	return '🧩';
 }
 
-export function buildFileUrl(winPath) {
+function buildFileUrl(winPath) {
 	const p = String(winPath || '').trim();
 	if (!p) return '';
 	const normalized = p.replace(/\\/g, '/');

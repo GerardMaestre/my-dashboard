@@ -1,8 +1,22 @@
 # DESC: Cifra carpetas con seguridad de Grado Militar (AES-256 CTR) optimizado para archivos gigantes sin consumir RAM.
 # ARGS: <Ruta_Carpeta> <Contraseña>
+# RISK: high
+# PERM: user
+# MODE: external
 
 import os
 import sys
+import sys
+try:
+    if sys.stdout is None or getattr(sys.stdout, 'name', '').upper() == 'NUL':
+        sys.stdout = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stderr = open('CONOUT$', 'w', encoding='utf-8')
+        sys.stdin = open('CONIN$', 'r', encoding='utf-8')
+except Exception: pass
+
+if hasattr(sys.stdout, 'reconfigure'):
+    try: sys.stdout.reconfigure(encoding='utf-8')
+    except Exception: pass
 import shutil
 import subprocess
 
