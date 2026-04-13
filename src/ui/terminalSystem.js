@@ -16,6 +16,12 @@ export function toggleTerminal() {
 let logBuffer = [];
 let logRenderScheduled = false;
 
+// Estado persistente para el streaming
+let currentSpan = null;
+let currentTextNode = null;
+let lastTipo = null;
+let pendingClear = false;
+
 const processLogBuffer = () => {
     const terminal = document.getElementById('terminal');
     if (!terminal) {
@@ -25,39 +31,47 @@ const processLogBuffer = () => {
     }
 
     const fragment = document.createDocumentFragment();
-    let lastSpan = terminal.lastElementChild;
-    const isAtBottom = terminal.scrollHeight - terminal.scrollTop <= terminal.clientHeight + 20;
-    const now = new Date();
-    const timestamp = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
-
+    const isAtBottom = terminal.scrollHeight - terminal.scrollTop <= terminal.clientHeight + 80;
+    
+    // Si el terminal se limpió externamente, resetear referencias
+    if (terminal.childElementCount <= 1 && !terminal.querySelector('.log-line')) {
+        currentSpan = null;
+        currentTextNode = null;
+        pendingClear = false;
+    }
 
     for (let i = 0; i < logBuffer.length; i++) {
         const { mensaje, tipo } = logBuffer[i];
-        let cleanMsg = String(mensaje).replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
         
-        const parts = cleanMsg.split(/\r/);
-        for (let j = 0; j < parts.length; j++) {
-            const part = parts[j];
-            if (j > 0) {
-                if (lastSpan) {
-                    lastSpan.textContent = part;
-                } else if (part) {
-                    lastSpan = document.createElement('span');
-                    lastSpan.className = `log-line log-${tipo}`;
-                    lastSpan.textContent = part;
-                    fragment.appendChild(lastSpan);
+        // Normalización crítica: Windows \r\n -> \n para evitar borrado fantasma
+        let cleanMsg = String(mensaje)
+            .replace(/\r\n/g, '\n')
+            .replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
+        
+        let start = 0;
+        for (let j = 0; j < cleanMsg.length; j++) {
+            const char = cleanMsg[j];
+            
+            if (char === '\n' || char === '\r') {
+                const segment = cleanMsg.substring(start, j);
+                if (segment || !currentSpan) {
+                    appendToCurrentLine(segment, tipo, terminal, fragment);
                 }
-            } else if (part) {
-                lastSpan = document.createElement('span');
-                lastSpan.className = `log-line log-${tipo}`;
-                // Timestamp prefix para tracking profesional
-                const timePrefix = document.createElement('span');
-                timePrefix.className = 'log-timestamp';
-                timePrefix.textContent = `[${timestamp}] `;
-                lastSpan.appendChild(timePrefix);
-                lastSpan.appendChild(document.createTextNode(part));
-                fragment.appendChild(lastSpan);
+                
+                if (char === '\n') {
+                    currentSpan = null;
+                    currentTextNode = null;
+                    pendingClear = false;
+                } else if (char === '\r') {
+                    // Marcar para borrar solo cuando llegue el siguiente texto
+                    pendingClear = true;
+                }
+                start = j + 1;
             }
+        }
+        
+        if (start < cleanMsg.length) {
+            appendToCurrentLine(cleanMsg.substring(start), tipo, terminal, fragment);
         }
     }
 
@@ -65,14 +79,13 @@ const processLogBuffer = () => {
         terminal.appendChild(fragment);
     }
     
-    // Optimización: purga batch via Range (O(1) vs O(n) individual removes)
     const maxLines = 1000;
-    const excess = terminal.childElementCount - maxLines;
-    if (excess > 0) {
-        const range = document.createRange();
-        range.setStartBefore(terminal.firstElementChild);
-        range.setEndAfter(terminal.children[excess - 1]);
-        range.deleteContents();
+    if (terminal.childElementCount > maxLines) {
+        const excess = terminal.childElementCount - maxLines;
+        for (let i = 0; i < excess; i++) {
+            if (terminal.firstElementChild === currentSpan) break;
+            terminal.removeChild(terminal.firstElementChild);
+        }
     }
 
     if (isAtBottom) {
@@ -82,6 +95,35 @@ const processLogBuffer = () => {
     logBuffer = [];
     logRenderScheduled = false;
 };
+
+function appendToCurrentLine(text, tipo, terminal, fragment) {
+    if (!currentSpan || lastTipo !== tipo) {
+        const now = new Date();
+        const timestamp = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+        
+        currentSpan = document.createElement('span');
+        currentSpan.className = `log-line log-${tipo}`;
+        
+        const timePrefix = document.createElement('span');
+        timePrefix.className = 'log-timestamp';
+        timePrefix.textContent = `[${timestamp}] `;
+        
+        currentSpan.appendChild(timePrefix);
+        currentTextNode = document.createTextNode(text);
+        currentSpan.appendChild(currentTextNode);
+        
+        fragment.appendChild(currentSpan);
+        lastTipo = tipo;
+        pendingClear = false;
+    } else {
+        if (pendingClear && text.length > 0) {
+            currentTextNode.textContent = text;
+            pendingClear = false;
+        } else {
+            currentTextNode.textContent += text;
+        }
+    }
+}
 
 export function logTerminal(mensaje, tipo = 'system') {
     logBuffer.push({ mensaje, tipo });
@@ -107,5 +149,7 @@ export function clearTerminal() {
     const terminal = document.getElementById('terminal');
     if (terminal) {
         terminal.innerHTML = '<span class="log-system"> Log limpiado.</span>';
+        currentSpan = null;
+        currentTextNode = null;
     }
 }

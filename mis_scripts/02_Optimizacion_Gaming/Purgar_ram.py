@@ -30,7 +30,8 @@ elif not ctypes.windll.shell32.IsUserAnAdmin():
     log_file = os.path.join(tempfile.gettempdir(), f"horus_admin_{os.getpid()}.log")
     open(log_file, "w").close()
     params = f'"{os.path.abspath(__file__)}" ' + " ".join(f'"{a}"' for a in sys.argv[1:]) + f' --horus-log "{log_file}"'
-    if ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, params, None, 0) <= 32:
+    sw_mode = 1 if sys.stdout and sys.stdout.isatty() else 0
+    if ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, params, None, sw_mode) <= 32:
         print("[X] Elevación UAC rechazada.", flush=True); sys.exit(1)
     
     print("[*] Privilegios obtenidos. Ejecutando limpieza en el núcleo...", flush=True)
