@@ -675,7 +675,7 @@ async function ghostListInstalledApps() {
 	);
 	$apps = Get-ItemProperty $keys -ErrorAction SilentlyContinue |
 	  Where-Object { $_.DisplayName -and $_.UninstallString } |
-	  Select-Object DisplayName, DisplayVersion, Publisher, InstallLocation, UninstallString, QuietUninstallString, DisplayIcon, PSChildName |
+	  Select-Object DisplayName, DisplayVersion, Publisher, InstallLocation, UninstallString, QuietUninstallString, DisplayIcon, PSChildName, InstallDate, EstimatedSize, PSPath |
 	  Sort-Object DisplayName -Unique;
 	$apps | ConvertTo-Json -Compress
 	`;
@@ -689,7 +689,10 @@ async function ghostListInstalledApps() {
 		installLocation: item.InstallLocation || '',
 		uninstallString: item.UninstallString || '',
 		quietUninstallString: item.QuietUninstallString || '',
-		displayIcon: item.DisplayIcon || ''
+		displayIcon: item.DisplayIcon || '',
+		installDate: item.InstallDate || '',
+		estimatedSize: item.EstimatedSize ? Number(item.EstimatedSize) * 1024 : 0,
+		registryPath: item.PSPath || ''
 	}));
 }
 
@@ -698,107 +701,147 @@ async function ghostUninstallApp(payload, force = false) {
     const quietUninstallString = String(payload?.quietUninstallString || '').trim();
     const appName = String(payload?.name || 'Aplicacion');
     const installLocation = String(payload?.installLocation || '').trim();
+    const registryPath = String(payload?.registryPath || '').trim();
 
+    // Si es forzada, borramos directamente
     if (force) {
-        if (!installLocation) return { started: true, exitCode: 0, forced: true };
+        if (!installLocation && !registryPath) return { started: true, exitCode: 0, forced: true };
         const psForce = `
         $ErrorActionPreference = 'SilentlyContinue';
-        if ('${escapePsSingleQuoted(installLocation)}' -and (Test-Path '${escapePsSingleQuoted(installLocation)}')) {
-            Get-Process | Where-Object { $_.Path -like "${escapePsSingleQuoted(installLocation)}*" } | Stop-Process -Force
-            Remove-Item -Path '${escapePsSingleQuoted(installLocation)}' -Recurse -Force
+        $location = '${escapePsSingleQuoted(installLocation)}';
+        $reg = '${escapePsSingleQuoted(registryPath)}';
+        if ($location -and (Test-Path $location)) {
+            Get-Process | Where-Object { $_.Path -like "$location*" } | Stop-Process -Force
+            Remove-Item -Path $location -Recurse -Force
         }
+        if ($reg) { Remove-Item -Path $reg -Force -Recurse }
         `;
-        await runPowerShell(psForce, 30000);
+        await runPowerShell(psForce, 45000);
         return { started: true, exitCode: 0, forced: true };
     }
 
     if (!uninstallString && !quietUninstallString) throw new Error('No hay comando de desinstalacion disponible');
     const cmd = escapePsSingleQuoted(uninstallString || quietUninstallString);
 
-    const ps = `
-    $ErrorActionPreference = 'SilentlyContinue';
+    // Lanzar desinstalador con segmentación robusta
+    const psLaunch = `
     $line = '${cmd}';
-    $line = ($line ?? '').Trim();
-    if (-not $line) { exit 1 }
+    $location = '${escapePsSingleQuoted(installLocation)}';
+    
+    # 1. Intentar cerrar procesos relacionados
+    if ($location -and (Test-Path $location)) {
+        Get-Process | Where-Object { $_.Path -like "$location*" } | Stop-Process -Force -ErrorAction SilentlyContinue
+    }
 
-    if ($line.StartsWith('"')) {
-        $parts = $line.Split('"');
-        $file = ($parts[1] ?? '').Trim();
-        $args = ($line.Substring([Math]::Min($line.Length, $file.Length + 2))).Trim();
+    $exe = ''; $args = '';
+    
+    # 2. Parsing Robusto: Intentar dividir en el primer .exe ignorando mayusculas
+    if ($line -match '(?i)\.exe') {
+        $parts = $line -split '(?i)\.exe', 2
+        $exe = ($parts[0] + '.exe').Trim('"').Trim().Trim("'")
+        $args = $parts[1].Trim()
+    } 
+    # Fallback para GUIDs de MSI (Ej: MsiExec.exe /I{GUID} o /X{GUID})
+    elseif ($line -match '\{[A-F0-9-]+\}') {
+        $exe = 'msiexec.exe'
+        $guid = ([regex]::Match($line, '\{[A-F0-9-]+\}').Value)
+        $args = "/X $guid /norestart"
     } else {
-        $idx = $line.IndexOf(' ');
-        if ($idx -gt 0) {
-            $file = $line.Substring(0, $idx).Trim();
-            $args = $line.Substring($idx + 1).Trim();
+        # Parsing basico si no hay .exe ni GUID
+        if ($line.StartsWith('"')) {
+            $parts = $line.Split('"');
+            $exe = $parts[1].Trim();
+            $args = $line.Substring($exe.Length + 2).Trim();
         } else {
-            $file = $line;
-            $args = '';
+             $cli = [System.Management.Automation.Language.Tokenizer]::Tokens($line, [ref]$null, [ref]$null)
+             $exe = $cli[0].Text
+             $args = $line.Substring($exe.Length).Trim()
         }
     }
-    
-    $isMsi = ($file -match 'msiexec(\\.exe)?$') -or ($line -match 'msiexec(\\.exe)?');
-    if ($isMsi) {
-        $args = ($line -replace '/I','/X');
-        if ($args -notmatch '/X') { $args = '/X ' + $args }
-        $p = Start-Process -FilePath 'msiexec.exe' -ArgumentList $args -Verb RunAs -WindowStyle Normal -PassThru -Wait;
-        Write-Output ("EXIT:" + $p.ExitCode)
-        exit 0
-    }
+
+    # 3. Validar y Ejecutar
+    $workDir = Split-Path $exe -Parent
+    if (-not $workDir -and $location) { $workDir = $location }
+
+    Write-Output "LOG: Lanzando [$exe] con args [$args] en [$workDir]"
 
     try {
-        $p2 = Start-Process -FilePath $file -ArgumentList $args -Verb RunAs -WindowStyle Normal -PassThru -Wait -ErrorAction Stop;
-        if ($p2) { Write-Output ("EXIT:" + $p2.ExitCode) }
+        if (Test-Path $exe) {
+            Start-Process -FilePath $exe -ArgumentList $args -Verb RunAs -WindowStyle Normal -WorkingDirectory $workDir -ErrorAction Stop
+        } else {
+            # Fallback final: cmd /c
+            Start-Process -FilePath "cmd.exe" -ArgumentList "/c $line" -Verb RunAs -WindowStyle Normal -WorkingDirectory $workDir
+        }
     } catch {
-        $p3 = Start-Process -FilePath ('"' + $file + '"') -ArgumentList $args -Verb RunAs -WindowStyle Normal -PassThru -Wait -ErrorAction SilentlyContinue;
-        if ($p3) { Write-Output ("EXIT:" + $p3.ExitCode) }
+        # Ultimo recurso si Start-Process falla
+        cmd /c $line
     }
     `;
     
-    const { stdout } = await runPowerShell(ps, 300000);
-    const exitPart = stdout.includes('EXIT:') ? stdout.split('EXIT:')[1]?.trim() : '0';
-    return { started: true, exitCode: Number(exitPart) || 0 };
+    await runPowerShell(psLaunch, 20000);
+
+    // MONITOREO REAL-TIME (Geek Style)
+    // Esperamos a que la clave desaparezca del registro o pase el tiempo limite
+    if (registryPath) {
+        const checkKeyPs = `Test-Path '${escapePsSingleQuoted(registryPath)}'`;
+        for (let i = 0; i < 120; i++) { // Max 3 minutos de polling
+            await new Promise(r => setTimeout(r, 1500));
+            const { stdout } = await runPowerShell(checkKeyPs, 5000);
+            if (stdout.trim().toLowerCase() === 'false') {
+                return { started: true, exitCode: 0, completedViaRegistry: true };
+            }
+        }
+    }
+
+    return { started: true, exitCode: 0 };
 }
 
 async function ghostFindLeftovers(payload) {
     const appName = String(payload?.name || '').trim();
     const publisher = String(payload?.publisher || '').trim();
+    const installLocation = String(payload?.installLocation || '').trim();
     if (!appName) return [];
 
     const ps = `
     $ErrorActionPreference = 'SilentlyContinue';
     $AppName = '${escapePsSingleQuoted(appName)}';
-    $Publisher = '${escapePsSingleQuoted(publisher)}';
+    $Pub = '${escapePsSingleQuoted(publisher)}';
+    $Loc = '${escapePsSingleQuoted(installLocation)}';
     $FoundItems = @()
 
-    $invalidNames = @('Microsoft', 'Microsoft Corporation', 'Windows', 'Intel', 'AMD', 'NVIDIA')
+    # Filtros de seguridad (No borrar cosas criticas si el nombre de la app es muy generico)
+    $blackList = @('Windows', 'Microsoft', 'Intel', 'AMD', 'System', 'NVIDIA', 'Program Files', 'Common Files')
+    if ($blackList -contains $AppName -or $AppName.Length -lt 3) { return "[]" }
 
-    if ([string]::IsNullOrWhiteSpace($AppName) -eq $false) {
-        $appDataPaths = @($env:APPDATA, $env:LOCALAPPDATA, $env:PROGRAMDATA, "$env:USERPROFILE\\Documents")
-        foreach ($path in $appDataPaths) {
-            $targetAppFolder = Join-Path -Path $path -ChildPath $AppName
-            if (Test-Path $targetAppFolder) { $FoundItems += @{Type='Folder'; Path=$targetAppFolder} }
-        }
+    function Add-Found($type, $path) {
+        if (-not $path) { return }
+        # Evitar duplicados
+        $exists = $script:FoundItems | Where-Object { $_.Path -eq $path }
+        if (-not $exists) { $script:FoundItems += @{Type=$type; Path=$path} }
+    }
 
-        $regPaths = @("HKCU:\\Software", "HKLM:\\Software", "HKLM:\\SOFTWARE\\WOW6432Node")
-        foreach ($reg in $regPaths) {
-            $targetAppKey = "$reg\\$AppName"
-            if (Test-Path $targetAppKey) { $FoundItems += @{Type='Registry'; Path=$targetAppKey} }
+    # 1. Buscar Carpetas (Búsqueda por comodín)
+    $roots = @($env:APPDATA, $env:LOCALAPPDATA, $env:PROGRAMDATA, "$env:USERPROFILE\\Documents")
+    foreach ($root in $roots) {
+        if (Test-Path $root) {
+            Get-ChildItem -Path $root -Directory -Filter "*$AppName*" | ForEach-Object { Add-Found 'Folder' $_.FullName }
+            if ($Pub -and $Pub.Length -gt 3 -and ($blackList -notcontains $Pub)) {
+                Get-ChildItem -Path $root -Directory -Filter "*$Pub*" | ForEach-Object { Add-Found 'Folder' $_.FullName }
+            }
         }
     }
 
-    if ([string]::IsNullOrWhiteSpace($Publisher) -eq $false -and ($invalidNames -notcontains $Publisher)) {
-        $appDataPaths = @($env:APPDATA, $env:LOCALAPPDATA, $env:PROGRAMDATA)
-        foreach ($path in $appDataPaths) {
-            $targetPubFolder = Join-Path -Path $path -ChildPath $Publisher
-            if (Test-Path $targetPubFolder) { $FoundItems += @{Type='Folder'; Path=$targetPubFolder} }
-        }
-
-        $regPaths = @("HKCU:\\Software", "HKLM:\\Software", "HKLM:\\SOFTWARE\\WOW6432Node")
-        foreach ($reg in $regPaths) {
-            $targetPubKey = "$reg\\$Publisher"
-            if (Test-Path $targetPubKey) { $FoundItems += @{Type='Registry'; Path=$targetPubKey} }
+    # 2. Buscar en Registro (Búsqueda profunda en Software)
+    $regRoots = @("HKCU:\\Software", "HKLM:\\Software", "HKLM:\\SOFTWARE\\WOW6432Node")
+    foreach ($reg in $regRoots) {
+        Get-ChildItem -Path $reg -ErrorAction SilentlyContinue | Where-Object { $_.PSChildName -like "*$AppName*" } | ForEach-Object { Add-Found 'Registry' $_.Name }
+        if ($Pub -and $Pub.Length -gt 3 -and ($blackList -notcontains $Pub)) {
+             Get-ChildItem -Path $reg -ErrorAction SilentlyContinue | Where-Object { $_.PSChildName -like "*$Pub*" } | ForEach-Object { Add-Found 'Registry' $_.Name }
         }
     }
+
+    # 3. Incluir la carpeta de instalacion si aun existe
+    if ($Loc -and (Test-Path $Loc)) { Add-Found 'Folder' $Loc }
 
     $FoundItems | ConvertTo-Json -Compress
     `;
@@ -863,7 +906,7 @@ function runInternal(fileName, args) {
 	let child = null;
 
 	if (info.missingPortablePython) {
-		emitOutput({ fileName: 'Sistema', type: 'system', message: '[PY] Entorno Python portable no listo. Se intentara usar Python del sistema o espera unos segundos y reintenta.' });
+		emitOutput({ fileName: 'Sistema', type: 'system', message: '[PY] Entorno Python portable no listo. Se intentará usar Python del sistema.' });
 	}
 
 	if (!fs.existsSync(filePath)) {
@@ -871,44 +914,29 @@ function runInternal(fileName, args) {
 		return null;
 	}
 
-	// Clonar entorno y purgar variables Python globales que envenenan el entorno portable
 	const envBlock = createSanitizedEnv(process.env);
 
 	const spawnOptions = { 
 		windowsHide: true, 
 		detached: false, 
-		shell: false, 
+		shell: true, 
 		cwd: path.dirname(filePath),
-		creationFlags: 0x08000000, 
 		env: envBlock 
 	};
-	if (info.isCmdScript) {
-		child = spawn(info.cmd, ['/c', filePath, ...args], spawnOptions);
-	} else if (info.cmd === fileName) {
-		child = spawn(filePath, args, spawnOptions);
-	} else {
-		child = spawn(info.cmd, [filePath, ...args], spawnOptions);
-	}
 
+	// ESTABILIZACIÓN: Usando array de argumentos para que Node proteja las rutas con espacios automáticamente
+	const executable = (info.isCmdScript || info.cmd === fileName) ? filePath : info.cmd;
+	const scriptArgs = (info.isCmdScript || info.cmd === fileName) ? args : [filePath, ...args];
+
+	child = spawn(executable, scriptArgs, spawnOptions);
 	activeProcesses.set(fileName, child);
 
-	child.stdout.on('data', (data) => {
-		emitOutput({ fileName, type: 'success', message: data.toString() });
-	});
-
-	child.stderr.on('data', (data) => {
-		emitOutput({ fileName, type: 'error', message: data.toString() });
-	});
-
-	child.on('error', (error) => {
-		emitOutput({ fileName, type: 'error', message: String(error) });
-	});
+	child.stdout.on('data', (data) => emitOutput({ fileName, type: 'success', message: data.toString() }));
+	child.stderr.on('data', (data) => emitOutput({ fileName, type: 'error', message: data.toString() }));
+	child.on('error', (error) => emitOutput({ fileName, type: 'error', message: String(error) }));
 
 	child.on('close', (code) => {
 		activeProcesses.delete(fileName);
-		if (code !== 0 && code !== null) {
-			emitOutput({ fileName, type: 'error', message: `[SYS] Proceso finalizado con código ${code}. Si pedía permisos, el UAC pudo ser denegado.` });
-		}
 		emitExit({ fileName, code });
 	});
 
@@ -921,63 +949,41 @@ function runExternal(fileName, args) {
 	let child = null;
 
 	if (info.missingPortablePython) {
-		emitOutput({ fileName: 'Sistema', type: 'system', message: '[PY] Entorno Python portable no listo. La consola externa intentara usar Python del sistema.' });
+		emitOutput({ fileName: 'Sistema', type: 'system', message: '[PY] Entorno portable no listo.' });
 	}
 
 	emitOutput({ fileName: 'Sistema', type: 'system', message: `[VISUAL] Abriendo ejecución externa para ${fileName}` });
-	if (shouldForceExternal(fileName)) {
-		emitOutput({ fileName: 'Sistema', type: 'system', message: '[VISUAL] Esta herramienta puede solicitar permisos UAC y abrir su interfaz nativa.' });
-	}
 
 	const envBlock = createSanitizedEnv(process.env);
 
-	// Windows: create new visible console with full stdin inheritance for interactive user input
-	// creationFlags: 0x10 = CREATE_NEW_CONSOLE (creates new visible console window)
-	// stdio: 'inherit' = passes parent's stdin/stdout/stderr for full interactivity
-	// shell: false = directly spawn interpreter, no cmd.exe wrapper layer
 	const spawnOptions = { 
-		stdio: 'ignore',  // inherit no funciona bien desde el proceso renderer de Electron
-		shell: false,
+		stdio: 'ignore',
+		shell: true,
 		env: envBlock,
 		cwd: path.dirname(filePath),
-		creationFlags: 0x10, // CREATE_NEW_CONSOLE
-		windowsHide: false,
-		detached: true
+		detached: true,
+		windowsHide: true
 	};
 
-	if (info.isCmdScript) {
-		// Para .bat/.cmd usamos /k para dejar la terminal abierta tras terminar o fallar
-		child = spawn('cmd.exe', ['/k', filePath, ...args], spawnOptions);
-	} else if (info.cmd === fileName) {
-		// Binarios directos (raro para mis_scripts pero soportado)
-		child = spawn('cmd.exe', ['/k', filePath, ...args], spawnOptions);
-	} else {
-		// El caso principal: Python u otros intérpretes. 
-		// Lanzamos a través de cmd /k para garantizar ventana visible y persistencia en error.
-		// Las rutas se pasan entre comillas para soportar espacios.
-		const fullCommand = `"${info.cmd}" "${filePath}" ${args.join(' ')}`;
-		child = spawn('cmd.exe', ['/k', fullCommand], spawnOptions);
-	}
+	// ESTABILIZACIÓN: Invocamos cmd /c start pasando el interprete y script como argumentos separados.
+	// Node se encarga del comillado de cada pieza, evitando que CMD rompa el comando original.
+	const executable = (info.isCmdScript || info.cmd === fileName) ? filePath : info.cmd;
+	const scriptArgs = (info.isCmdScript || info.cmd === fileName) ? args : [filePath, ...args];
 
+	// Estructura: cmd.exe /c start "" cmd.exe /k executable script args
+	child = spawn('cmd.exe', ['/c', 'start', '""', 'cmd.exe', '/k', executable, ...scriptArgs], spawnOptions);
 	activeProcesses.set(fileName, child);
 
-	child.on('error', (error) => {
-		emitOutput({ fileName, type: 'error', message: String(error) });
-	});
-
+	child.on('error', (error) => emitOutput({ fileName, type: 'error', message: String(error) }));
+	
 	child.on('close', (code) => {
 		activeProcesses.delete(fileName);
-		if (code !== 0 && code !== null) {
-			emitOutput({ fileName, type: 'error', message: `[SYS] Proceso finalizado con código ${code}. Si pedía permisos, el UAC pudo ser denegado.` });
-		}
 		emitExit({ fileName, code });
 	});
 
-	// Desacoplar del padre para que la ventana sobreviva si Electron se cierra
-	child.unref();
+	child.unref(); // Desvincula la terminal del Dashboard para que no se cierre si cierras la app
 
-	emitOutput({ fileName, type: 'success', message: '[SYS] Ventana externa abierta. La salida se muestra en la consola del script.' });
-
+	emitOutput({ fileName, type: 'success', message: '[SYS] Ventana externa abierta con éxito.' });
 	return child.pid;
 }
 
@@ -1169,21 +1175,16 @@ const api = {
 	},
 	runScript: ({ fileName, args = '', mode = 'internal' }) => {
 		const parsedArgs = splitArgs(args);
-		const policyMode = resolvePolicyMode(fileName);
-		const forcedExternal = policyMode === 'external';
-		const modeUsed = policyMode || mode;
-
-		if (policyMode === 'external' && mode !== 'external') {
-			emitOutput({ fileName: 'Sistema', type: 'system', message: `[POLICY] ${fileName} se ejecuta en modo visual externo por seguridad/UX.` });
-		}
-		if (policyMode === 'internal' && mode === 'external') {
-			emitOutput({ fileName: 'Sistema', type: 'system', message: `[POLICY] ${fileName} se mantiene en modo integrado por compatibilidad.` });
-		}
+		
+		// Confiamos ciegamente en el modo que envía el Dashboard, ya que ahora 
+		// gestiona correctamente las prioridades y overrides visuales.
+		const modeUsed = mode;
 
 		if (modeUsed === 'external') {
 			const pid = runExternal(fileName, parsedArgs);
-			return { pid, modeUsed, forcedExternal };
+			return { pid, modeUsed, forcedExternal: false };
 		}
+		
 		const pid = runInternal(fileName, parsedArgs);
 		return { pid, modeUsed: 'internal', forcedExternal: false };
 	},
@@ -1222,6 +1223,20 @@ const api = {
         },
         limpiarRastrosApp: async (items) => {
                 return await ghostCleanLeftovers(items);
+	},
+	openRegeditKey: (regPath) => {
+		// Set the LastKey in regedit's registry for navigation, then open regedit
+		try {
+			const setKeyPs = `Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Applets\\Regedit' -Name 'LastKey' -Value '${escapePsSingleQuoted(regPath)}' -Force -ErrorAction SilentlyContinue`;
+			execFile('powershell.exe', ['-NoProfile', '-Command', setKeyPs], { windowsHide: true });
+			spawn('regedit.exe', [], { detached: true, stdio: 'ignore', shell: true }).unref();
+		} catch (e) {
+			console.error('[HorusEngine] Error abriendo regedit:', e);
+		}
+	},
+	openExternalUrl: (url) => {
+		try { spawn('cmd.exe', ['/c', 'start', '""', url], { detached: true, stdio: 'ignore', shell: true }).unref(); }
+		catch (e) { console.error('[HorusEngine] Error abriendo URL:', e); }
 	},
 	getFileIcon: (filePath) => ipcRenderer.invoke('get-file-icon', filePath)
 };

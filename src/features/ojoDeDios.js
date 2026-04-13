@@ -654,6 +654,9 @@ function buildTreemapDOM(itemsOrRects, container, widthPx, heightPx, depth = 1, 
 
 // ======================== APPS LOGIC ========================
 
+let appsSortColumn = 'name';
+let appsSortOrder = 'asc';
+
 function filterAppsList(query) {
 	const term = String(query || '').trim().toLowerCase();
 	if (!term) return ghostState.appsList;
@@ -663,147 +666,398 @@ function filterAppsList(query) {
 	});
 }
 
+function sortAppsList(apps) {
+	const col = appsSortColumn;
+	const dir = appsSortOrder === 'asc' ? 1 : -1;
+	return [...apps].sort((a, b) => {
+		let va, vb;
+		if (col === 'size') {
+			va = Number(a.estimatedSize) || 0;
+			vb = Number(b.estimatedSize) || 0;
+		} else if (col === 'date') {
+			va = String(a.installDate || '');
+			vb = String(b.installDate || '');
+		} else if (col === 'publisher') {
+			va = String(a.publisher || '').toLowerCase();
+			vb = String(b.publisher || '').toLowerCase();
+		} else if (col === 'version') {
+			va = String(a.version || '').toLowerCase();
+			vb = String(b.version || '').toLowerCase();
+		} else {
+			va = String(a.name || '').toLowerCase();
+			vb = String(b.name || '').toLowerCase();
+		}
+		if (va < vb) return -1 * dir;
+		if (va > vb) return 1 * dir;
+		return 0;
+	});
+}
+
+function formatInstallDate(raw) {
+	if (!raw || raw.length < 8) return '-';
+	const y = raw.substring(0, 4);
+	const m = raw.substring(4, 6);
+	const d = raw.substring(6, 8);
+	return `${d}/${m}/${y}`;
+}
+
+function formatSizeKB(bytes) {
+	if (!bytes || bytes <= 0) return '-';
+	if (bytes < 1024) return '< 1 KB';
+	if (bytes < 1048576) return (bytes / 1024).toFixed(0) + ' KB';
+	if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+	return (bytes / 1073741824).toFixed(2) + ' GB';
+}
+
 export async function cargarAppsFantasma() {
 	const btn = document.getElementById('ojo-btn-apps');
+	const loadingBar = document.getElementById('apps-loading-bar');
+	const counter = document.getElementById('apps-counter');
 	const searchInput = document.getElementById('ojo-apps-search');
-	if (btn) {
-		btn.disabled = true;
-		btn.textContent = 'Cargando...';
-	}
+
+	if (btn) { btn.disabled = true; btn.textContent = 'Escaneando...'; }
+	if (loadingBar) loadingBar.style.display = 'block';
+	if (counter) counter.textContent = 'Escaneando registro...';
+
 	try {
-        if(!window.api) return;
-		setOjoStatus('Listando aplicaciones instaladas...');
+		if (!window.api) return;
+		setOjoStatus('Leyendo registro de Windows (3 ramas)...');
 		const apps = await window.api.listarAppsInstaladas();
 		ghostState.appsList = apps;
 		const filtered = filterAppsList(searchInput?.value || '');
-		renderAppsGrid(filtered);
+		renderAppsTable(filtered);
 		ghostState.appsLoaded = true;
-		setOjoStatus(`Aplicaciones detectadas: ${apps.length}. Mostradas: ${filtered.length}.`);
+		if (counter) counter.textContent = `${apps.length} aplicaciones`;
+		setOjoStatus(`Registro leido: ${apps.length} aplicaciones detectadas.`);
 		mostrarToast(`Apps detectadas: ${apps.length}`, 'system');
 	} catch (error) {
 		setOjoStatus('No se pudo cargar la lista de aplicaciones.');
 		mostrarToast('Error cargando aplicaciones', 'error');
 		logTerminal(`[Ghost] Listar apps fallo: ${error.message || error}`, 'error');
 	} finally {
-		if (btn) {
-			btn.disabled = false;
-			btn.textContent = 'Cargar Apps';
-		}
+		if (btn) { btn.disabled = false; btn.textContent = 'Escanear'; }
+		if (loadingBar) loadingBar.style.display = 'none';
 	}
 }
 
-function renderAppsGrid(apps) {
-	const grid = document.getElementById('ojo-apps-grid');
-	if (!grid) return;
-	grid.innerHTML = '';
+function renderAppsTable(apps) {
+	const tbody = document.getElementById('apps-table-body');
+	if (!tbody) return;
+	tbody.innerHTML = '';
+
+	// Update sort header visuals
+	document.querySelectorAll('.apps-th-sortable').forEach(th => {
+		th.classList.toggle('sorted', th.getAttribute('data-sort') === appsSortColumn);
+		th.classList.toggle('sorted-desc', th.getAttribute('data-sort') === appsSortColumn && appsSortOrder === 'desc');
+	});
 
 	if (!apps || apps.length === 0) {
-		grid.innerHTML = '<div class="app-card"><div class="app-title">No hay aplicaciones detectadas.</div></div>';
+		tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:40px; color:var(--mac-text-muted);">No se encontraron aplicaciones. Pulsa Escanear para cargar.</td></tr>';
 		return;
 	}
 
+	const sorted = sortAppsList(apps);
 	const fragment = document.createDocumentFragment();
-	apps.slice(0, 300).forEach((app) => {
-		const card = document.createElement('div');
-		card.className = 'app-card';
-		const iconId = `app-icon-${Math.random().toString(36).substr(2, 9)}`;
-		const iconMarkup = getAppIconMarkup(app, iconId);
-		const safeName = safeText(app.name);
-		const safeVersion = safeText(app.version || '-');
 
+	sorted.forEach((app) => {
+		const row = document.createElement('tr');
+		row.className = 'apps-row';
+		row.id = `app-row-${app.id}`; // Add ID for real-time manipulation
+		const iconId = `app-tbl-icon-${Math.random().toString(36).substr(2, 9)}`;
+		const iconMarkup = getAppIconMarkup(app, iconId);
 		setTimeout(() => loadRealAppIcon(app, iconId), 10);
-		const safePublisher = safeText(app.publisher || 'Desconocido');
-		card.innerHTML = `
-			<div class="app-card-top">
-				<div class="app-icon">${iconMarkup}</div>
-				<div style="min-width:0;flex:1;">
-					<div class="app-title">${safeName}</div>
-					<div class="app-meta">Version: ${safeVersion}</div>
+
+		row.innerHTML = `
+			<td class="apps-td" style="flex:4;">
+				<div class="apps-td-name">
+					<span class="apps-td-icon">${iconMarkup}</span>
+					<span class="apps-td-name-text">${safeText(app.name)}</span>
 				</div>
-			</div>
-			<div class="app-meta">Proveedor: ${safePublisher}</div>
+			</td>
+			<td class="apps-td apps-td-muted" style="flex:1.5;">${safeText(app.version || '-')}</td>
+			<td class="apps-td apps-td-muted" style="flex:1.5;">${formatSizeKB(app.estimatedSize)}</td>
+			<td class="apps-td apps-td-muted" style="flex:1.5;">${formatInstallDate(app.installDate)}</td>
+			<td class="apps-td apps-td-muted" style="flex:3;">${safeText(app.publisher || 'Desconocido')}</td>
 		`;
 
-		const actions = document.createElement('div');
-		actions.style.display = 'flex';
-		actions.style.gap = '8px';
-
-		const locateBtn = document.createElement('button');
-		locateBtn.className = 'mac-action-btn edit';
-		locateBtn.textContent = 'Ruta';
-		locateBtn.addEventListener('click', () => {
-			if (app.installLocation && window.api) {
-				window.api.openGlobalPath(app.installLocation);
-			} else {
-				mostrarToast('No hay ruta de instalacion disponible', 'system');
-			}
+		// Context menu on right click
+		row.addEventListener('contextmenu', (e) => {
+			if (row.classList.contains('uninstalling')) return;
+			e.preventDefault();
+			showAppsContextMenu(e, app);
 		});
 
-		
-        const startUninstallFlux = async (force) => {
-            const confirmMsg = force ? `Forzar desinstalacion destructiva de ${app.name} (puede romper cosas)?` : `Ejecutar desinstalador de ${app.name}?`;
-            if (!window.confirm(confirmMsg)) return;
+		// Double click to uninstall
+		row.addEventListener('dblclick', () => {
+			if (row.classList.contains('uninstalling')) return;
+			startUninstallFlux(app, false);
+		});
 
-            try {
-                if(!window.api) return;
-                stdBtn.disabled = true;
-                forceBtn.disabled = true;
-                stdBtn.textContent = force ? 'Forzando...' : 'Desinstalando...';
-
-                mostrarToast(force ? 'Forzando borrado... esto puede tardar' : 'Por favor completa el desinstalador oficial', 'system');
-                const result = await window.api.desinstalarApp(app, force);
-
-                mostrarToast('Iniciando escaneo Geek (Rastros profundos)...', 'system');
-                if (!force) stdBtn.textContent = 'Escaneando...';
-                
-                const rastros = await window.api.buscarRastrosApp(app);
-
-                if (rastros && rastros.length > 0) {
-                    const rastrosList = rastros.map(r => `[${r.Type}] ${r.Path}`).join('\n');
-                    const cleanOk = window.confirm(`Geek detecto ${rastros.length} rastros huerfanos para ${app.name}!\n\n${rastrosList.substring(0, 800)}...\n\nDeseas eliminar estos elementos residuales permanentemente?`);
-                    
-                    if (cleanOk) {
-                        if (!force) stdBtn.textContent = 'Limpiando...';
-                        const cleanRes = await window.api.limpiarRastrosApp(rastros);
-                        mostrarToast(`Limpieza completada. ${cleanRes.deleted} rastros eliminados.`, 'success');
-                        logTerminal(`[Ghost] Limpieza profunda: ${app.name} | Eliminados: ${cleanRes.deleted}`, 'system');
-                    }
-                } else {
-                    mostrarToast('El desinstalador de esta app fue muy limpio. No se encontraron rastros.', 'success');
-                }
-
-                await cargarAppsFantasma();
-            } catch (error) {
-                mostrarToast(`Error al desinstalar ${app.name}`, 'error');
-                logTerminal(`[Ghost] Desinstalar fallo (${app.name}): ${error.message || error}`, 'error');
-            } finally {
-                stdBtn.disabled = false;
-                forceBtn.disabled = false;
-                stdBtn.textContent = 'Desinstalar';
-            }
-        };
-
-        const stdBtn = document.createElement('button');
-        stdBtn.className = 'mac-action-btn edit';
-        stdBtn.style.background = 'rgba(10, 132, 255, 0.2)';
-        stdBtn.style.color = '#0A84FF';
-        stdBtn.textContent = 'Desinstalar';
-        stdBtn.addEventListener('click', () => startUninstallFlux(false));
-
-        const forceBtn = document.createElement('button');
-        forceBtn.className = 'mac-action-btn stop';
-        forceBtn.textContent = 'Forzar';
-        forceBtn.title = 'Mata procesos, borra carpeta a la fuerza y limpia registro (Fuerza bruta)';
-        forceBtn.addEventListener('click', () => startUninstallFlux(true));
-
-        actions.appendChild(locateBtn);
-        actions.appendChild(stdBtn);
-        actions.appendChild(forceBtn);
-        card.appendChild(actions);
-
-		fragment.appendChild(card);
+		fragment.appendChild(row);
 	});
-	grid.appendChild(fragment);
+
+	tbody.appendChild(fragment);
+}
+
+// ======================== CONTEXT MENU ========================
+
+function showAppsContextMenu(event, app) {
+	// Remove any existing context menu
+	const old = document.getElementById('apps-context-menu');
+	if (old) old.remove();
+
+	const menu = document.createElement('div');
+	menu.id = 'apps-context-menu';
+	menu.className = 'apps-context-menu';
+
+	const items = [
+		{ label: '🗑️ Desinstalar', action: () => startUninstallFlux(app, false) },
+		{ label: '⚠️ Desinstalación Forzada', action: () => startUninstallFlux(app, true), cls: 'danger' },
+		{ type: 'separator' },
+		{ label: '📁 Abrir carpeta de instalación', action: () => {
+			if (app.installLocation && window.api) { window.api.openGlobalPath(app.installLocation); }
+			else { mostrarToast('No hay ruta de instalación disponible', 'system'); }
+		}},
+		{ label: '🔑 Abrir en el Registro (Regedit)', action: () => {
+			if (app.registryPath && window.api) {
+				// Convert PSPath format to regedit-compatible path
+				let regPath = app.registryPath
+					.replace('Microsoft.PowerShell.Core\\Registry::', '')
+					.replace(/\//g, '\\');
+				window.api.openRegeditKey(regPath);
+			} else {
+				mostrarToast('Ruta del registro no disponible', 'system');
+			}
+		}},
+		{ type: 'separator' },
+		{ label: '🔍 Buscar en Google', action: () => {
+			const q = encodeURIComponent(app.name + ' uninstall');
+			if (window.api && window.api.openExternalUrl) { window.api.openExternalUrl(`https://www.google.com/search?q=${q}`); }
+			else { window.open(`https://www.google.com/search?q=${q}`, '_blank'); }
+		}}
+	];
+
+	items.forEach(item => {
+		if (item.type === 'separator') {
+			const sep = document.createElement('div');
+			sep.className = 'ctx-separator';
+			menu.appendChild(sep);
+			return;
+		}
+		const btn = document.createElement('button');
+		btn.className = 'ctx-item' + (item.cls ? ` ctx-${item.cls}` : '');
+		btn.textContent = item.label;
+		btn.addEventListener('click', () => { menu.remove(); item.action(); });
+		menu.appendChild(btn);
+	});
+
+	// Position
+	menu.style.left = `${event.clientX}px`;
+	menu.style.top = `${event.clientY}px`;
+	document.body.appendChild(menu);
+
+	// Adjust if overflows viewport
+	requestAnimationFrame(() => {
+		const rect = menu.getBoundingClientRect();
+		if (rect.right > window.innerWidth) menu.style.left = `${window.innerWidth - rect.width - 8}px`;
+		if (rect.bottom > window.innerHeight) menu.style.top = `${window.innerHeight - rect.height - 8}px`;
+	});
+
+	// Close on click outside
+	const closeHandler = (e) => {
+		if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', closeHandler); }
+	};
+	setTimeout(() => document.addEventListener('click', closeHandler), 10);
+}
+
+// ======================== UNINSTALL + DEEP SCAN ========================
+
+async function startUninstallFlux(app, force) {
+	const row = document.getElementById(`app-row-${app.id}`);
+	const confirmMsg = force
+		? `⚠️ Desinstalación FORZADA de "${app.name}"\n\nEsto matará procesos (si los hay), borrará la carpeta de instalación y limpiará el registro.\n\n¿Continuar?`
+		: `¿Ejecutar desinstalador oficial de "${app.name}"?`;
+	
+	if (!window.confirm(confirmMsg)) return;
+
+	try {
+		if (!window.api) return;
+		
+		// 1. UI Reactiva: Marcar como desinstalando
+		if (row) row.classList.add('uninstalling');
+		mostrarToast(force ? 'Forzando borrado...' : 'Ejecutando desinstalador oficial...', 'system');
+		setOjoStatus(`Desinstalando ${app.name}...`);
+		
+		logTerminal(`[Ghost] Iniciando flujo para: ${app.name}`, 'system');
+		logTerminal(`[Ghost] Comando registro: ${app.uninstallString || app.quietUninstallString}`, 'command');
+
+		// 2. Ejecutar (el backend ahora hace polling si no es forzada)
+		const result = await window.api.desinstalarApp(app, force);
+
+		// 3. Deep Scan (Se lanza cuando el polling del registro confirma la desaparicion)
+		mostrarToast('Buscando rastros en carpetas y registro...', 'system');
+		setOjoStatus('Escaneando sistema en busca de restos residuales...');
+
+		const rastros = await window.api.buscarRastrosApp(app);
+
+		if (rastros && rastros.length > 0) {
+			showLeftoversModal(app, rastros, () => {
+				// Al finalizar (limpiar o cancelar), removemos el item de la lista real local
+				removeAppFromLocalList(app.id);
+			});
+		} else {
+			mostrarToast('Limpieza perfecta. No se encontraron rastros.', 'success');
+			setOjoStatus('Desinstalación completa sin rastros residuales.');
+			removeAppFromLocalList(app.id);
+		}
+
+	} catch (error) {
+		if (row) row.classList.remove('uninstalling');
+		mostrarToast(`Error al desinstalar ${app.name}`, 'error');
+		logTerminal(`[Ghost] Desinstalar fallo (${app.name}): ${error.message || error}`, 'error');
+	}
+}
+
+function removeAppFromLocalList(appId) {
+	ghostState.appsList = ghostState.appsList.filter(a => a.id !== appId);
+	const searchInput = document.getElementById('ojo-apps-search');
+	const filtered = filterAppsList(searchInput?.value || '');
+	renderAppsTable(filtered);
+	
+	const counter = document.getElementById('apps-counter');
+	if (counter) counter.textContent = `${ghostState.appsList.length} aplicaciones`;
+}
+
+function showLeftoversModal(app, rastros, onFinished) {
+	// Remove existing modal
+	const old = document.getElementById('leftovers-modal');
+	if (old) old.remove();
+
+	const overlay = document.createElement('div');
+	overlay.id = 'leftovers-modal';
+	overlay.className = 'modal-overlay active';
+	overlay.style.cssText = 'z-index:20000; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px);';
+
+	const modal = document.createElement('div');
+	modal.className = 'mac-modal mac-glass';
+	modal.style.cssText = 'width:600px; max-height:500px; text-align:left; display:flex; flex-direction:column; padding:0;';
+
+	const header = document.createElement('div');
+	header.style.cssText = 'padding:20px 24px 12px; border-bottom:1px solid rgba(255,255,255,0.08);';
+	header.innerHTML = `
+		<h3 style="margin:0 0 4px; font-size:16px;">🔍 Rastros encontrados para ${safeText(app.name)}</h3>
+		<p style="margin:0; font-size:12px; color:var(--mac-text-muted);">${rastros.length} elemento(s) residual(es) detectados</p>
+	`;
+
+	const body = document.createElement('div');
+	body.style.cssText = 'flex:1; overflow-y:auto; padding:12px 24px;';
+
+	const checkAll = document.createElement('label');
+	checkAll.style.cssText = 'display:flex; align-items:center; gap:8px; padding:8px 0; font-size:13px; font-weight:600; color:var(--mac-blue); cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.05); margin-bottom:8px;';
+	const checkAllBox = document.createElement('input');
+	checkAllBox.type = 'checkbox';
+	checkAllBox.checked = true;
+	checkAllBox.addEventListener('change', () => {
+		body.querySelectorAll('.leftover-check').forEach(cb => { cb.checked = checkAllBox.checked; });
+	});
+	checkAll.appendChild(checkAllBox);
+	checkAll.appendChild(document.createTextNode('Seleccionar todo'));
+	body.appendChild(checkAll);
+
+	rastros.forEach((r, i) => {
+		const row = document.createElement('label');
+		row.className = 'leftover-item';
+		row.style.cssText = 'display:flex; align-items:center; gap:8px; padding:6px 8px; font-size:12px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.03);';
+		const cb = document.createElement('input');
+		cb.type = 'checkbox';
+		cb.checked = true;
+		cb.className = 'leftover-check';
+		cb.dataset.index = i;
+
+		const icon = r.Type === 'Registry' ? '🔑' : '📁';
+		const label = document.createElement('span');
+		label.style.cssText = 'overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--mac-text-muted); flex:1;';
+		label.innerHTML = `<span class="leftover-icon">${icon}</span> <span style="color:var(--mac-text);">[${r.Type}]</span> ${r.Path}`;
+		label.title = r.Path;
+
+		row.appendChild(cb);
+		row.appendChild(label);
+		body.appendChild(row);
+	});
+
+	const footer = document.createElement('div');
+	footer.style.cssText = 'padding:12px 24px 20px; display:flex; gap:10px; border-top:1px solid rgba(255,255,255,0.08);';
+
+	const cancelBtn = document.createElement('button');
+	cancelBtn.className = 'mac-btn-outline';
+	cancelBtn.style.flex = '1';
+	cancelBtn.textContent = 'Omitir limpieza';
+	cancelBtn.addEventListener('click', () => { 
+		overlay.remove(); 
+		if(onFinished) onFinished();
+	});
+
+	const cleanBtn = document.createElement('button');
+	cleanBtn.className = 'mac-btn-primary';
+	cleanBtn.style.cssText = 'flex:1; background:var(--mac-red);';
+	cleanBtn.textContent = `Eliminar seleccionados`;
+	cleanBtn.addEventListener('click', async () => {
+		const selected = [];
+		body.querySelectorAll('.leftover-check:checked').forEach(cb => {
+			selected.push(rastros[Number(cb.dataset.index)]);
+		});
+		if (selected.length === 0) { overlay.remove(); if(onFinished) onFinished(); return; }
+
+		cleanBtn.disabled = true;
+		cleanBtn.textContent = 'Eliminando...';
+		try {
+			const res = await window.api.limpiarRastrosApp(selected);
+			mostrarToast(`Limpieza completada: ${res.deleted} rastros eliminados.`, 'success');
+			logTerminal(`[Ghost] Limpieza profunda: ${app.name} | Eliminados: ${res.deleted}`, 'system');
+		} catch (err) {
+			mostrarToast('Error durante la limpieza', 'error');
+		}
+		overlay.remove();
+		if(onFinished) onFinished();
+	});
+
+	footer.appendChild(cancelBtn);
+	footer.appendChild(cleanBtn);
+
+	modal.appendChild(header);
+	modal.appendChild(body);
+	modal.appendChild(footer);
+	overlay.appendChild(modal);
+
+	overlay.addEventListener('click', (e) => { 
+		if (e.target === overlay) {
+			overlay.remove(); 
+			if(onFinished) onFinished();
+		}
+	});
+	document.body.appendChild(overlay);
+}
+
+function exportAppsCSV() {
+	if (!ghostState.appsList || ghostState.appsList.length === 0) {
+		mostrarToast('No hay datos para exportar. Escanea primero.', 'system');
+		return;
+	}
+	const header = 'Nombre,Versión,Tamaño (bytes),Fecha,Editor,Ruta Instalación';
+	const rows = ghostState.appsList.map(a =>
+		[a.name, a.version, a.estimatedSize || '', a.installDate || '', a.publisher || '', a.installLocation || '']
+			.map(v => `"${String(v).replace(/"/g, '""')}"`)
+			.join(',')
+	);
+	const csv = [header, ...rows].join('\n');
+	const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.href = url;
+	a.download = `apps_instaladas_${new Date().toISOString().slice(0,10)}.csv`;
+	a.click();
+	URL.revokeObjectURL(url);
+	mostrarToast('Lista exportada a CSV', 'success');
 }
 
 export function bindGhostEvents() {
@@ -833,14 +1087,37 @@ export function bindGhostEvents() {
 	const appsBtn = document.getElementById('ojo-btn-apps');
 	if (appsBtn) appsBtn.addEventListener('click', cargarAppsFantasma);
 
+	// Apps table: sortable headers
+	document.querySelectorAll('.apps-th-sortable').forEach(th => {
+		th.addEventListener('click', () => {
+			const col = th.getAttribute('data-sort');
+			if (appsSortColumn === col) {
+				appsSortOrder = appsSortOrder === 'asc' ? 'desc' : 'asc';
+			} else {
+				appsSortColumn = col;
+				appsSortOrder = 'asc';
+			}
+			const searchInput = document.getElementById('ojo-apps-search');
+			const filtered = filterAppsList(searchInput?.value || '');
+			renderAppsTable(filtered);
+		});
+	});
+
+	// Apps table: search filter
 	const appsSearch = document.getElementById('ojo-apps-search');
 	if (appsSearch) {
 		appsSearch.addEventListener('input', (event) => {
 			const filtered = filterAppsList(event.target.value || '');
-			renderAppsGrid(filtered);
+			renderAppsTable(filtered);
+			const counter = document.getElementById('apps-counter');
+			if (counter) counter.textContent = `${filtered.length}/${ghostState.appsList.length} aplicaciones`;
 			setOjoStatus(`Aplicaciones filtradas: ${filtered.length}/${ghostState.appsList.length}`);
 		});
 	}
+
+	// CSV export button
+	const csvBtn = document.getElementById('btn-export-apps');
+	if (csvBtn) csvBtn.addEventListener('click', exportAppsCSV);
 
 	document.querySelectorAll('.ojo-tab-btn').forEach((btn) => {
 		btn.addEventListener('click', () => {

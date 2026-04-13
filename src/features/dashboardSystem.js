@@ -13,7 +13,12 @@ export function setRunModePolicy(policy = {}) {
 }
 
 function resolveRunMode(fileName, selectedMode) {
-	return runModePolicy[fileName] || scriptModeOverrides[fileName] || selectedMode;
+	// Prioridad 1: Override manual del usuario en esta sesión (Tus clics en el botón)
+	if (scriptModeOverrides[fileName]) return scriptModeOverrides[fileName];
+	// Prioridad 2: Política del sistema predefinida
+	if (runModePolicy[fileName]) return runModePolicy[fileName];
+	// Prioridad 3: Modo seleccionado en el selector global
+	return selectedMode;
 }
 
 function modeLabel(mode) {
@@ -109,10 +114,16 @@ export function toggleFavorite(fileName) {
 }
 
 export function toggleScriptMode(fileName) {
-	const current = scriptModeOverrides[fileName] || 'internal';
+	const globalModeSelect = document.getElementById('global-terminal-mode');
+	const defaultMode = globalModeSelect ? globalModeSelect.value : 'internal';
+	
+	// Obtenemos el estado ACTUAL real
+	const current = resolveRunMode(fileName, defaultMode);
+	// Invertimos el estado
 	const next = current === 'internal' ? 'external' : 'internal';
+	
 	scriptModeOverrides[fileName] = next;
-	cargarScripts(); // Re-render to update UI
+	cargarScripts(); // Re-renderizar la UI
 }
 
 export function toggleAutoStart(fileName) {

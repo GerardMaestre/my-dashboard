@@ -301,16 +301,58 @@
                 </div>
 
                 <div id="ojo-screen-apps" class="ojo-screen">
-                    <div class="mac-group ghost-tools-panel">
-                        <div class="mac-group-row" style="gap: 12px; justify-content: space-between;">
-                            <div class="mac-group-label">Aplicaciones Instaladas</div>
-                            <button id="ojo-btn-apps" class="mac-action-btn edit">Cargar Apps Instaladas</button>
+                    <div class="mac-group ghost-tools-panel" style="display:flex; flex-direction:column; height:100%;">
+                        <!-- Toolbar -->
+                        <div class="apps-toolbar">
+                            <div class="apps-toolbar-left">
+                                <button id="ojo-btn-apps" class="mac-action-btn run" style="gap:6px;">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                                    Escanear
+                                </button>
+                                <span id="apps-counter" class="apps-counter">0 aplicaciones</span>
+                            </div>
+                            <div class="apps-toolbar-right">
+                                <input type="text" id="ojo-apps-search" class="mac-input-search apps-table-search"
+                                    placeholder="Filtrar aplicaciones...">
+                                <button id="btn-export-apps" class="mac-action-btn edit" title="Exportar lista a CSV">CSV</button>
+                            </div>
                         </div>
-                        <div class="apps-search-wrap">
-                            <input type="text" id="ojo-apps-search" class="mac-input-search apps-search-input"
-                                placeholder="Buscar aplicacion para desinstalar...">
+
+                        <!-- Loading bar -->
+                        <div id="apps-loading-bar" class="apps-loading-bar" style="display:none;">
+                            <div class="apps-loading-fill"></div>
                         </div>
-                        <div id="ojo-apps-grid" class="apps-grid"></div>
+
+                        <!-- Table -->
+                        <div class="apps-table-wrap">
+                            <table class="apps-table" id="apps-table">
+                                <thead>
+                                    <tr>
+                                        <th class="apps-th apps-th-sortable" data-sort="name" data-order="asc" style="flex:4;">
+                                            <span>Nombre</span>
+                                            <svg class="sort-icon" viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                                        </th>
+                                        <th class="apps-th apps-th-sortable" data-sort="version" style="flex:1.5;">
+                                            <span>Versión</span>
+                                            <svg class="sort-icon" viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                                        </th>
+                                        <th class="apps-th apps-th-sortable" data-sort="size" style="flex:1.5;">
+                                            <span>Tamaño</span>
+                                            <svg class="sort-icon" viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                                        </th>
+                                        <th class="apps-th apps-th-sortable" data-sort="date" style="flex:1.5;">
+                                            <span>Fecha</span>
+                                            <svg class="sort-icon" viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                                        </th>
+                                        <th class="apps-th apps-th-sortable" data-sort="publisher" style="flex:3;">
+                                            <span>Editor</span>
+                                            <svg class="sort-icon" viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody id="apps-table-body"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
