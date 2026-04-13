@@ -37,7 +37,8 @@ function parseMetaLine(linea = '') {
 
 function normalizeMode(value = '') {
 	const mode = String(value || '').trim().toLowerCase();
-	if (mode === 'internal' || mode === 'external') return mode;
+	if (mode === 'internal' || mode === 'integrado') return 'internal';
+	if (mode === 'external' || mode === 'visual externo') return 'external';
 	return '';
 }
 
@@ -72,6 +73,7 @@ function extractScriptMeta(lines = []) {
 				break;
 			}
 			case 'MODE':
+			case 'MODO':
 				meta.mode = normalizeMode(parsed.value);
 				break;
 			default:

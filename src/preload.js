@@ -878,6 +878,7 @@ function runInternal(fileName, args) {
 		windowsHide: true, 
 		detached: false, 
 		shell: false, 
+		cwd: path.dirname(filePath),
 		creationFlags: 0x08000000, 
 		env: envBlock 
 	};
@@ -935,20 +936,27 @@ function runExternal(fileName, args) {
 	// stdio: 'inherit' = passes parent's stdin/stdout/stderr for full interactivity
 	// shell: false = directly spawn interpreter, no cmd.exe wrapper layer
 	const spawnOptions = { 
-		stdio: 'inherit',
+		stdio: 'ignore',  // inherit no funciona bien desde el proceso renderer de Electron
 		shell: false,
 		env: envBlock,
 		cwd: path.dirname(filePath),
 		creationFlags: 0x10, // CREATE_NEW_CONSOLE
-		windowsHide: false
+		windowsHide: false,
+		detached: true
 	};
 
 	if (info.isCmdScript) {
-		child = spawn(info.cmd, ['/c', filePath, ...args], spawnOptions);
+		// Para .bat/.cmd usamos /k para dejar la terminal abierta tras terminar o fallar
+		child = spawn('cmd.exe', ['/k', filePath, ...args], spawnOptions);
 	} else if (info.cmd === fileName) {
-		child = spawn(filePath, args, spawnOptions);
+		// Binarios directos (raro para mis_scripts pero soportado)
+		child = spawn('cmd.exe', ['/k', filePath, ...args], spawnOptions);
 	} else {
-		child = spawn(info.cmd, [filePath, ...args], spawnOptions);
+		// El caso principal: Python u otros intérpretes. 
+		// Lanzamos a través de cmd /k para garantizar ventana visible y persistencia en error.
+		// Las rutas se pasan entre comillas para soportar espacios.
+		const fullCommand = `"${info.cmd}" "${filePath}" ${args.join(' ')}`;
+		child = spawn('cmd.exe', ['/k', fullCommand], spawnOptions);
 	}
 
 	activeProcesses.set(fileName, child);
