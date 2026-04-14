@@ -75,7 +75,7 @@ const appManager = new AppManager(runPowerShell, safeJsonParse, escapePs);
 const networkRadar = new NetworkRadar(null, 
     () => require('../core/NetworkMonitor'), 
     () => {
-        const ThreatIntel = require('../core/ThreatIntel');
+        const { ThreatIntel } = require('../core/ThreatIntel');
         return new ThreatIntel();
     }, 
     3000
