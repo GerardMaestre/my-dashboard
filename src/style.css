@@ -744,11 +744,259 @@ input:checked + .slider:before { transform: translateX(12px); }
     gap: 12px;
 }
 
+.ojo-disk-screen {
+    height: 100%;
+}
+
+.ojo-disk-panel {
+    margin-top: 0;
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    padding: clamp(12px, 1.4vw, 18px);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(170deg, rgba(255, 255, 255, 0.06), rgba(8, 12, 20, 0.22));
+    box-shadow: 0 24px 52px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(16px) saturate(130%);
+    -webkit-backdrop-filter: blur(16px) saturate(130%);
+    transition: all 0.3s ease;
+}
+
+.ojo-disk-toolbar {
+    gap: 12px;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.ojo-disk-tools {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ojo-disk-engine-badge {
+    font-size: 10px;
+    color: #9ab6df;
+    font-weight: 500;
+    margin-left: 8px;
+    letter-spacing: 0.2px;
+}
+
+.ojo-disk-breadcrumb {
+    flex-shrink: 0;
+}
+
+.ojo-disk-loading {
+    display: none;
+    flex: 1 1 auto;
+    min-height: 0;
+    margin-bottom: clamp(10px, 1.6vh, 18px);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 14px;
+    padding: clamp(12px, 2vh, 24px);
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(180deg, rgba(8, 14, 26, 0.72), rgba(6, 11, 18, 0.55));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    transition: all 0.3s ease;
+}
+
+.ojo-disk-progress-track {
+    width: clamp(14rem, 52vw, 42rem);
+    max-width: 100%;
+    height: 12px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+
+.ojo-disk-progress-fill {
+    width: 0;
+    height: 100%;
+    background: linear-gradient(90deg, #0A84FF, #30D158);
+    border-radius: 999px;
+    box-shadow: 0 0 16px rgba(10, 132, 255, 0.42);
+    transition: width 0.08s linear, box-shadow 0.3s ease;
+}
+
+.ojo-disk-loading-text {
+    color: #78bbff;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    text-shadow: 0 0 14px rgba(10, 132, 255, 0.4);
+}
+
+.ojo-disk-content {
+    display: grid;
+    grid-template-rows: minmax(9.5rem, 26vh) minmax(0, 1fr);
+    gap: clamp(10px, 1.5vh, 16px);
+    flex: 1;
+    min-height: 0;
+    transition: all 0.3s ease;
+}
+
+#ojo-disk-content {
+    min-height: 0;
+}
+
+.ojo-disk-top-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: clamp(10px, 1vw, 14px);
+    min-height: 0;
+}
+
+.ojo-disk-card {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(3, 7, 13, 0.28));
+    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+    backdrop-filter: blur(12px) saturate(120%);
+    -webkit-backdrop-filter: blur(12px) saturate(120%);
+    transition: all 0.3s ease;
+}
+
+.ojo-disk-card:hover {
+    border-color: rgba(10, 132, 255, 0.34);
+    box-shadow: 0 22px 44px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.ojo-disk-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #9aa4b6;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.46), rgba(0, 0, 0, 0.28));
+    letter-spacing: 0.25px;
+}
+
+.ojo-disk-col-name {
+    flex: 5;
+}
+
+.ojo-disk-col-percent {
+    flex: 2;
+    text-align: center;
+}
+
+.ojo-disk-col-size {
+    flex: 2;
+    text-align: right;
+}
+
+.ojo-disk-ext-name {
+    flex: 4;
+}
+
+.ojo-disk-ext-percent {
+    flex: 2;
+    text-align: right;
+}
+
+.ojo-disk-ext-size {
+    flex: 3;
+    text-align: right;
+}
+
+.ojo-disk-list-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+    padding: 8px;
+}
+
+.ojo-disk-results-card .disk-item {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ojo-disk-results-card .disk-item:hover {
+    background: rgba(10, 132, 255, 0.2);
+    border-color: rgba(10, 132, 255, 0.42);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+
+.ojo-disk-extensions-card .disk-item {
+    cursor: default;
+}
+
+#ojo-disk-results,
+#ojo-disk-extensions {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(140, 174, 223, 0.4) rgba(255, 255, 255, 0.04);
+}
+
+#ojo-disk-results::-webkit-scrollbar,
+#ojo-disk-extensions::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+#ojo-disk-results::-webkit-scrollbar-track,
+#ojo-disk-extensions::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 999px;
+}
+
+#ojo-disk-results::-webkit-scrollbar-thumb,
+#ojo-disk-extensions::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(10, 132, 255, 0.55), rgba(10, 132, 255, 0.25));
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#ojo-disk-results::-webkit-scrollbar-thumb:hover,
+#ojo-disk-extensions::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(10, 132, 255, 0.72), rgba(10, 132, 255, 0.32));
+}
+
+.ojo-disk-treemap-card {
+    min-height: 0;
+}
+
+.ojo-disk-treemap-head {
+    justify-content: space-between;
+    padding: 7px 12px;
+}
+
 .disk-item {
-    border-radius: 10px;
-    background: rgba(0, 0, 0, 0.2);
+    border-radius: 11px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.2));
     border: 1px solid rgba(255, 255, 255, 0.08);
     padding: 10px;
+    margin-bottom: 8px;
+    transition: all 0.3s ease;
+}
+
+.disk-item:last-child {
+    margin-bottom: 0;
+}
+
+.disk-item:hover {
+    transform: translateY(-1px);
+    border-color: rgba(10, 132, 255, 0.35);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+    background: linear-gradient(145deg, rgba(10, 132, 255, 0.14), rgba(0, 0, 0, 0.24));
 }
 
 .disk-topline {
@@ -763,7 +1011,7 @@ input:checked + .slider:before { transform: translateX(12px); }
 .disk-bar-bg {
     height: 8px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.12);
     overflow: hidden;
 }
 
@@ -771,6 +1019,7 @@ input:checked + .slider:before { transform: translateX(12px); }
     height: 100%;
     border-radius: 999px;
     background: linear-gradient(90deg, #0A84FF, #30D158);
+    transition: all 0.3s ease;
 }
 
 .disk-breadcrumb {
@@ -780,34 +1029,39 @@ input:checked + .slider:before { transform: translateX(12px); }
     flex-wrap: nowrap;
     overflow-x: auto;
     padding: 8px 12px;
-    background: rgba(0,0,0,0.4);
-    border-radius: 8px;
     margin-bottom: 12px;
-    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.38), rgba(0, 0, 0, 0.22));
     scrollbar-width: none;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
 }
-.disk-breadcrumb::-webkit-scrollbar { display: none; }
+
+.disk-breadcrumb::-webkit-scrollbar {
+    display: none;
+}
 
 .disk-crumb {
     border: none;
     background: transparent;
-    color: #0A84FF;
+    color: #79b6ff;
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
     padding: 4px 8px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.3s ease;
     white-space: nowrap;
-    border-radius: 4px;
+    border-radius: 6px;
 }
 
 .disk-crumb:hover {
-    background: rgba(10, 132, 255, 0.15);
-    color: #4da3ff;
+    background: rgba(10, 132, 255, 0.18);
+    color: #d8ebff;
 }
 
 .disk-crumb-sep {
-    color: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.25);
     font-size: 14px;
     padding: 0 4px;
     pointer-events: none;
@@ -816,19 +1070,57 @@ input:checked + .slider:before { transform: translateX(12px); }
 .disk-treemap {
     position: relative;
     width: 100%;
-    margin-top: 10px;
-    background: rgba(0,0,0,0.2);
-    border-radius: 8px;
+    flex: 1;
+    min-height: 0;
+    margin-top: 0;
+    border-radius: 0 0 14px 14px;
     overflow: hidden;
+    background: radial-gradient(circle at 20% 10%, rgba(10, 132, 255, 0.14), rgba(2, 6, 14, 0.92));
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), inset 0 -40px 80px rgba(0, 0, 0, 0.25);
+    transition: all 0.3s ease;
+    isolation: isolate;
+}
+
+.disk-treemap::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(0, 0, 0, 0.12));
+    pointer-events: none;
+    z-index: 1;
+}
+
+.disk-treemap:hover {
+    box-shadow: inset 0 0 0 1px rgba(10, 132, 255, 0.4), inset 0 -40px 80px rgba(0, 0, 0, 0.35), 0 16px 40px rgba(0, 0, 0, 0.4);
 }
 
 .disk-treemap-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
     display: block;
-    width: 100%;
-    height: 100%;
-    border-radius: 10px;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: inherit;
     cursor: pointer;
-    background: rgba(0, 0, 0, 0.2);
+    background: transparent;
+}
+
+.disk-treemap canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 0;
+    border-radius: inherit;
+    background: transparent;
+    box-shadow: inset 0 0 26px rgba(0, 0, 0, 0.38);
+    transition: filter 0.3s ease;
+}
+
+.disk-treemap:hover canvas {
+    filter: saturate(1.05) contrast(1.03);
 }
 
 .disk-virtual-viewport {
@@ -842,31 +1134,6 @@ input:checked + .slider:before { transform: translateX(12px); }
 .disk-virtual-spacer {
     width: 100%;
     pointer-events: none;
-}
-
-/* ======================== RESPONSIVE ======================== */
-@media (max-width: 1000px) {
-    .content-scrollable { padding: 20px; }
-    .card-header { flex-basis: 40%; }
-    .script-desc { flex: 1; }
-}
-
-@media (max-width: 850px) {
-    .mac-sidebar { width: 70px; min-width: 70px; }
-    .logo-text, .sidebar-group-title, .sidebar-item span, .sidebar-search, .sidebar-divider, .sidebar-bottom { display: none; }
-    .sidebar-item { justify-content: center; padding: 10px 0; }
-    .sidebar-item .icon-container { margin: 0; }
-    .mac-traffic-lights { padding: 0; justify-content: center; flex-direction: column; gap: 5px; margin-top: 5px; }
-    
-    .card-header { flex-basis: 100%; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; }
-    .script-desc { flex-basis: 100%; padding: 5px 0; white-space: normal; }
-    .card-actions { margin-left: 0; width: 100%; justify-content: flex-end; }
-}
-
-@media (max-width: 600px) {
-    .mac-main-title { font-size: 14px; }
-    .content-header { padding: 0 10px; }
-    .script-item { padding: 10px; }
 }
 
 .disk-virtual-layer {
@@ -887,37 +1154,120 @@ input:checked + .slider:before { transform: translateX(12px); }
 }
 
 #treemap-tooltip {
-    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 20000;
+    display: none;
+    padding: 10px 14px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #fff;
+    max-width: min(320px, 70vw);
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 12px;
+    background: rgba(12, 18, 30, 0.78);
+    backdrop-filter: blur(16px) saturate(130%);
+    -webkit-backdrop-filter: blur(16px) saturate(130%);
     pointer-events: none;
-    transition: opacity 0.15s ease-out;
+    transition: opacity 0.15s ease-out, transform 0.2s ease;
 }
 
-.disk-treemap canvas {
-    border-radius: 8px;
-    background: #000;
-}
-    flex-direction: column;
-    justify-content: flex-start;
-    gap: 0px;
-    box-sizing: border-box;
-    overflow: hidden;
-    text-shadow: 0px 1px 3px rgba(0,0,0,0.8);
-    word-break: break-all;
-    white-space: normal;
+/* ======================== RESPONSIVE ======================== */
+@media (max-width: 1000px) {
+    .content-scrollable { padding: 20px; }
+    .card-header { flex-basis: 40%; }
+    .script-desc { flex: 1; }
 }
 
-.disk-tile-name {
-    font-size: 11px;
-    font-weight: 700;
-    line-height: 1.1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+@media (max-width: 900px) {
+    .ojo-disk-content {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .ojo-disk-top-grid {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        max-height: min(38vh, 19rem);
+        gap: 10px;
+    }
+
+    .ojo-disk-results-card,
+    .ojo-disk-extensions-card {
+        min-height: 0;
+        flex: 0.85 1 0;
+    }
+
+    .ojo-disk-treemap-card {
+        min-height: 16rem;
+        flex: 1.4 1 0;
+    }
 }
 
-.disk-tile-meta {
-    font-size: 10px;
-    opacity: 0.95;
+@media (max-width: 850px) {
+    .mac-sidebar { width: 70px; min-width: 70px; }
+    .logo-text, .sidebar-group-title, .sidebar-item span, .sidebar-search, .sidebar-divider, .sidebar-bottom { display: none; }
+    .sidebar-item { justify-content: center; padding: 10px 0; }
+    .sidebar-item .icon-container { margin: 0; }
+    .mac-traffic-lights { padding: 0; justify-content: center; flex-direction: column; gap: 5px; margin-top: 5px; }
+
+    .card-header { flex-basis: 100%; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; }
+    .script-desc { flex-basis: 100%; padding: 5px 0; white-space: normal; }
+    .card-actions { margin-left: 0; width: 100%; justify-content: flex-end; }
+
+    .ojo-disk-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .ojo-disk-tools {
+        width: 100%;
+    }
+
+    .ojo-disk-tools .mac-action-btn {
+        flex: 1;
+    }
+
+}
+
+@media (max-width: 600px) {
+    .mac-main-title { font-size: 14px; }
+    .content-header { padding: 0 10px; }
+    .script-item { padding: 10px; }
+
+    .ojo-disk-panel {
+        padding: 10px;
+    }
+
+    .ojo-disk-card-head {
+        padding: 6px 10px;
+        font-size: 10px;
+    }
+
+    .ojo-disk-progress-track {
+        width: 100%;
+    }
+
+    .disk-item {
+        padding: 8px;
+    }
+
+    .disk-topline {
+        font-size: 11px;
+    }
+
+    .ojo-disk-top-grid {
+        max-height: min(35vh, 14rem);
+    }
+
+    .ojo-disk-treemap-card {
+        min-height: 15rem;
+    }
 }
 
 /* ======================== APPS TABLE (Geek Uninstaller Style) ======================== */
@@ -1219,6 +1569,7 @@ input:checked + .slider:before { transform: translateX(12px); }
     display: flex;
     flex-direction: column;
     height: 100%;
+    min-height: 0;
 }
 
 @keyframes scanProgress {

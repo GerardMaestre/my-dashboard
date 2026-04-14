@@ -232,69 +232,55 @@
                     </div>
                 </div>
 
-                <div id="ojo-screen-disk" class="ojo-screen" style="height: 100%;">
-                    <div class="mac-group ghost-tools-panel"
-                        style="margin-bottom: 0; display: flex; flex-direction: column; height: 100%; padding: 15px;">
-                        <div class="mac-group-row" style="gap: 12px; justify-content: space-between; flex-shrink: 0;">
+                <div id="ojo-screen-disk" class="ojo-screen ojo-disk-screen">
+                    <div class="mac-group ghost-tools-panel ojo-disk-panel">
+                        <div class="mac-group-row ojo-disk-toolbar">
                             <div class="mac-group-label">Mapa de Disco <span
-                                    style="font-size:10px; color:#888; font-weight:normal; margin-left:8px;">WizTree
-                                    Engine Integrado</span></div>
-                            <div style="display:flex; gap:8px;">
+                                    class="ojo-disk-engine-badge">WizTree Engine Integrado</span></div>
+                            <div class="ojo-disk-tools">
                                 <button id="ojo-btn-disk-up" class="mac-action-btn edit">Subir nivel</button>
                                 <button id="ojo-btn-scan" class="mac-action-btn run">Raiz C:</button>
                             </div>
                         </div>
-                        <div id="ojo-disk-breadcrumb" class="disk-breadcrumb"
-                            style="flex-shrink: 0; margin-bottom: 12px;"></div>
+                        <div id="ojo-disk-breadcrumb" class="disk-breadcrumb ojo-disk-breadcrumb"></div>
 
                         <div id="ojo-disk-loading"
-                            style="display: none; flex: 1; min-height: 0; margin-bottom: 15px; align-items: center; justify-content: center; flex-direction: column; gap: 15px;">
-                            <div
-                                style="width: 300px; height: 12px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; position: relative; box-shadow: inset 0 1px 3px rgba(0,0,0,0.4);">
-                                <div id="ojo-disk-progress-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #0A84FF, #30D158); border-radius: 10px; transition: width 0.05s linear;"></div>
+                            class="ojo-disk-loading">
+                            <div class="ojo-disk-progress-track">
+                                <div id="ojo-disk-progress-fill" class="ojo-disk-progress-fill"></div>
                             </div>
-                            <div id="ojo-disk-loading-text"
-                                style="color: #0A84FF; font-size: 14px; font-weight: 500; text-shadow: 0 0 10px rgba(10,132,255,0.3);">
+                            <div id="ojo-disk-loading-text" class="ojo-disk-loading-text">
                                 Iniciando escaneo de disco... 0%
                             </div>
                         </div>
 
-                        <div id="ojo-disk-content"
-                            style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
-                            <div
-                                style="display: flex; gap: 15px; flex: 1; max-height: 300px; min-height: 200px; margin-bottom: 15px;">
-                                <div
-                                    style="flex: 7; min-width: 0; display: flex; flex-direction: column; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
-                                    <div
-                                        style="display: flex; padding: 6px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">
-                                        <div style="flex: 5;">Nombre</div>
-                                        <div style="flex: 2; text-align: center;">% de Padre</div>
-                                        <div style="flex: 2; text-align: right;">Tamaño</div>
+                        <div id="ojo-disk-content" class="ojo-disk-content">
+                            <div class="ojo-disk-top-grid">
+                                <div class="ojo-disk-card ojo-disk-results-card">
+                                    <div class="ojo-disk-card-head">
+                                        <div class="ojo-disk-col-name">Nombre</div>
+                                        <div class="ojo-disk-col-percent">% de Padre</div>
+                                        <div class="ojo-disk-col-size">Tamaño</div>
                                     </div>
-                                    <div id="ojo-disk-results" style="flex: 1; position: relative; overflow-y: auto;">
+                                    <div id="ojo-disk-results" class="ojo-disk-list-body">
                                     </div>
                                 </div>
 
-                                <div
-                                    style="flex: 3; min-width: 0; display: flex; flex-direction: column; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
-                                    <div
-                                        style="display: flex; padding: 6px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">
-                                        <div style="flex: 4;">Extensión</div>
-                                        <div style="flex: 2; text-align: right;">%</div>
-                                        <div style="flex: 3; text-align: right;">Tamaño</div>
+                                <div class="ojo-disk-card ojo-disk-extensions-card">
+                                    <div class="ojo-disk-card-head">
+                                        <div class="ojo-disk-ext-name">Extensión</div>
+                                        <div class="ojo-disk-ext-percent">%</div>
+                                        <div class="ojo-disk-ext-size">Tamaño</div>
                                     </div>
                                     <div id="ojo-disk-extensions"
-                                        style="flex: 1; overflow-y: auto; overflow-x: hidden;"></div>
+                                        class="ojo-disk-list-body ojo-disk-ext-body"></div>
                                 </div>
                             </div>
 
-                            <div
-                                style="flex: 10; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; display: flex; flex-direction: column;">
-                                <div
-                                    style="padding: 4px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.5);">
+                            <div class="ojo-disk-card ojo-disk-treemap-card">
+                                <div class="ojo-disk-card-head ojo-disk-treemap-head">
                                     Treemap Visual</div>
-                                <div id="ojo-disk-treemap" class="disk-treemap"
-                                    style="flex: 1; padding: 0px; overflow: hidden; position: relative;"></div>
+                                <div id="ojo-disk-treemap" class="disk-treemap ojo-disk-treemap-surface"></div>
                             </div>
                         </div>
                     </div>
