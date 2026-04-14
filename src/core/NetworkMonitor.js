@@ -109,8 +109,7 @@ function parseNetstatOutput(stdout) {
       remoteIp: remote.ip,
       remotePort: remote.port,
       state,
-      pid: Number(pidToken) || null,
-      timestamp: Date.now()
+      pid: Number(pidToken) || null
     });
   }
 
@@ -147,8 +146,7 @@ function detectListeningPorts(connections = [], { dangerousOnly = false } = {}) 
       service: DANGEROUS_PORTS.get(localPort) || 'CUSTOM',
       boundToAllInterfaces,
       loopbackOnly,
-      externallyExposed: boundToAllInterfaces,
-      timestamp: Date.now()
+      externallyExposed: boundToAllInterfaces
     });
   }
 
@@ -192,13 +190,16 @@ async function scanDangerousLocalPorts(listeningSnapshot = []) {
     listeningByPort.get(key).push(entry);
   }
 
-  const ports = Array.from(DANGEROUS_PORTS.keys());
+  const ports = Array.from(listeningByPort.keys()).filter((port) => DANGEROUS_PORTS.has(port));
+  if (ports.length === 0) {
+    return [];
+  }
+
   const checks = await Promise.all(ports.map(async (port) => ({
     port,
     open: await probeLocalPort(port)
   })));
 
-  const now = Date.now();
   return checks
     .filter((item) => item.open)
     .map((item) => {
@@ -213,8 +214,7 @@ async function scanDangerousLocalPorts(listeningSnapshot = []) {
         service: DANGEROUS_PORTS.get(item.port),
         listeners: listeners.map((entry) => entry.localIp),
         boundToAllInterfaces,
-        externallyExposed: boundToAllInterfaces,
-        timestamp: now
+        externallyExposed: boundToAllInterfaces
       };
     });
 }

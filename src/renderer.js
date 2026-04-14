@@ -136,43 +136,122 @@ const savedTerminalMode = localStorage.getItem('nexus_terminal_mode') || 'extern
 const globalSelector = document.getElementById('global-terminal-mode');
 if (globalSelector) globalSelector.value = savedTerminalMode;
 
-// ====== TELEMETRY & CHART.JS SETTINGS ======
-let cpuChart = null;
-let memChart = null;
+// ====== TELEMETRY SPARKLINES (Canvas nativo) ======
+const SPARKLINE_POINTS = 28;
+const MAX_CHART_DPR = 2;
+const telemetryCharts = {
+    cpu: null,
+    mem: null
+};
+let telemetryResizeRaf = null;
 
-function initCharts() {
-    const commonOpts = {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: { duration: 0 }, // For real-time updates
-        plugins: { legend: { display: false }, tooltip: { enabled: false } },
-        scales: {
-            x: { display: false },
-            y: { min: 0, max: 100, display: false }
-        },
-        elements: { point: { radius: 0 }, line: { tension: 0.4 } }
-    };
-
-    const ctxCpu = document.getElementById('chart-cpu');
-    if(ctxCpu && window.Chart) {
-        cpuChart = new Chart(ctxCpu, {
-            type: 'line',
-            data: { labels: Array(20).fill(''), datasets: [{ data: Array(20).fill(0), borderColor: '#0A84FF', borderWidth: 2, fill: true, backgroundColor: 'rgba(10, 132, 255, 0.1)' }] },
-            options: commonOpts
-        });
-    }
-
-    const ctxMem = document.getElementById('chart-mem');
-    if(ctxMem && window.Chart) {
-        memChart = new Chart(ctxMem, {
-            type: 'line',
-            data: { labels: Array(20).fill(''), datasets: [{ data: Array(20).fill(0), borderColor: '#FF9F0A', borderWidth: 2, fill: true, backgroundColor: 'rgba(255, 159, 10, 0.1)' }] },
-            options: commonOpts
-        });
-    }
+function clampPercent(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return 0;
+    if (numeric < 0) return 0;
+    if (numeric > 100) return 100;
+    return numeric;
 }
 
-initCharts();
+function createSparkline(canvasId, strokeStyle, fillStyle) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || typeof canvas.getContext !== 'function') return null;
+
+    const ctx = canvas.getContext('2d', { alpha: true, desynchronized: true });
+    if (!ctx) return null;
+
+    return {
+        canvas,
+        ctx,
+        strokeStyle,
+        fillStyle,
+        data: Array(SPARKLINE_POINTS).fill(0)
+    };
+}
+
+function ensureSparklineResolution(chart) {
+    const rect = chart.canvas.getBoundingClientRect();
+    const cssWidth = Math.max(1, Math.round(rect.width || chart.canvas.clientWidth || 1));
+    const cssHeight = Math.max(1, Math.round(rect.height || chart.canvas.clientHeight || 1));
+    const dpr = Math.min(window.devicePixelRatio || 1, MAX_CHART_DPR);
+    const targetWidth = Math.max(1, Math.round(cssWidth * dpr));
+    const targetHeight = Math.max(1, Math.round(cssHeight * dpr));
+
+    if (chart.canvas.width !== targetWidth || chart.canvas.height !== targetHeight) {
+        chart.canvas.width = targetWidth;
+        chart.canvas.height = targetHeight;
+    }
+
+    chart.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    chart.ctx.scale(dpr, dpr);
+    return { width: cssWidth, height: cssHeight };
+}
+
+function drawSparkline(chart) {
+    if (!chart) return;
+    const { width, height } = ensureSparklineResolution(chart);
+    const ctx = chart.ctx;
+
+    const pad = 3;
+    const chartWidth = Math.max(1, width - (pad * 2));
+    const chartHeight = Math.max(1, height - (pad * 2));
+    const stepX = chartWidth / Math.max(1, chart.data.length - 1);
+
+    ctx.clearRect(0, 0, width, height);
+
+    ctx.beginPath();
+    for (let idx = 0; idx < chart.data.length; idx += 1) {
+        const x = pad + (idx * stepX);
+        const y = pad + ((100 - clampPercent(chart.data[idx])) / 100) * chartHeight;
+        if (idx === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+
+    ctx.lineTo(pad + chartWidth, pad + chartHeight);
+    ctx.lineTo(pad, pad + chartHeight);
+    ctx.closePath();
+    ctx.fillStyle = chart.fillStyle;
+    ctx.fill();
+
+    ctx.beginPath();
+    for (let idx = 0; idx < chart.data.length; idx += 1) {
+        const x = pad + (idx * stepX);
+        const y = pad + ((100 - clampPercent(chart.data[idx])) / 100) * chartHeight;
+        if (idx === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+
+    ctx.strokeStyle = chart.strokeStyle;
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+}
+
+function pushSparklineValue(chart, value) {
+    if (!chart) return;
+    chart.data.shift();
+    chart.data.push(clampPercent(value));
+    drawSparkline(chart);
+}
+
+function initTelemetryCharts() {
+    telemetryCharts.cpu = createSparkline('chart-cpu', '#0A84FF', 'rgba(10, 132, 255, 0.1)');
+    telemetryCharts.mem = createSparkline('chart-mem', '#FF9F0A', 'rgba(255, 159, 10, 0.1)');
+    drawSparkline(telemetryCharts.cpu);
+    drawSparkline(telemetryCharts.mem);
+}
+
+initTelemetryCharts();
+
+window.addEventListener('resize', () => {
+    if (telemetryResizeRaf) cancelAnimationFrame(telemetryResizeRaf);
+    telemetryResizeRaf = requestAnimationFrame(() => {
+        telemetryResizeRaf = null;
+        drawSparkline(telemetryCharts.cpu);
+        drawSparkline(telemetryCharts.mem);
+    });
+});
 
 if (window.api) {
     window.api.getStorageDir();
@@ -216,27 +295,21 @@ if (window.api) {
         let lastPurgeTime = 0;
         
         window.api.onTelemetry((data) => {
-            if (cpuChart) {
-                const arr = cpuChart.data.datasets[0].data;
-                arr.shift();
-                arr.push(data.cpuLoad);
-                cpuChart.update();
-            }
-            if (memChart) {
-                const arr = memChart.data.datasets[0].data;
-                const pct = (data.memUse / data.memTotal) * 100;
-                arr.shift();
-                arr.push(pct);
-                memChart.update();
+            pushSparklineValue(telemetryCharts.cpu, Number(data.cpuLoad) || 0);
 
-                // AUTOPILOT EVENT TRIGGER: Limpiar RAM si supera el 90%
-                if (pct > 90 && Date.now() - lastPurgeTime > 300000) { // Max 1 purga automátca cada 5 minutos
-                    lastPurgeTime = Date.now();
-                    logTerminal('[AUTOPILOT TRIGGER] RAM > 90%. Lanzando purgado de emergencia...', 'error');
-                    mostrarToast('Autopilot: Purgando RAM (>90%)', 'system');
-                    ejecutar('04_Utilidades_Archivos/Purgar_ram.py', true, true);
-                }
+            const memUse = Number(data.memUse) || 0;
+            const memTotal = Number(data.memTotal) || 0;
+            const pct = memTotal > 0 ? (memUse / memTotal) * 100 : 0;
+            pushSparklineValue(telemetryCharts.mem, pct);
+
+            // AUTOPILOT EVENT TRIGGER: Limpiar RAM si supera el 90%
+            if (pct > 90 && Date.now() - lastPurgeTime > 300000) { // Max 1 purga automática cada 5 minutos
+                lastPurgeTime = Date.now();
+                logTerminal('[AUTOPILOT TRIGGER] RAM > 90%. Lanzando purgado de emergencia...', 'error');
+                mostrarToast('Autopilot: Purgando RAM (>90%)', 'system');
+                ejecutar('04_Utilidades_Archivos/Purgar_ram.py', true, true);
             }
+
             const tb = (bytes) => (bytes / (1024*1024)).toFixed(2) + ' MB/s';
             const rxEl = document.getElementById('tele-rx');
             const txEl = document.getElementById('tele-tx');

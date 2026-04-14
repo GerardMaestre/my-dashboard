@@ -73,6 +73,93 @@ function buildFileUrl(winPath) {
 // Cache de rutas del sistema (se llena al arrancar)
 let runtimeEnvCache = null;
 
+const APP_ICON_CACHE_LIMIT = 1200;
+const APP_ICON_BATCH_WINDOW_MS = 18;
+const APP_ICON_BATCH_LIMIT = 120;
+
+const appIconDataUrlCache = new Map();
+const appIconPendingByPath = new Map();
+const appIconBatchQueue = [];
+let appIconBatchTimer = null;
+
+function boundedIconCacheSet(key, value) {
+	if (appIconDataUrlCache.has(key)) {
+		appIconDataUrlCache.delete(key);
+	}
+
+	appIconDataUrlCache.set(key, value);
+
+	if (appIconDataUrlCache.size <= APP_ICON_CACHE_LIMIT) return;
+	const oldestKey = appIconDataUrlCache.keys().next().value;
+	if (oldestKey !== undefined) {
+		appIconDataUrlCache.delete(oldestKey);
+	}
+}
+
+async function flushAppIconBatchQueue() {
+	const batch = appIconBatchQueue.splice(0, APP_ICON_BATCH_LIMIT);
+	if (batch.length === 0) return;
+
+	if (appIconBatchQueue.length > 0) {
+		appIconBatchTimer = setTimeout(() => {
+			appIconBatchTimer = null;
+			flushAppIconBatchQueue().catch(() => {});
+		}, APP_ICON_BATCH_WINDOW_MS);
+	}
+
+	const paths = batch.map((entry) => entry.path);
+	let responseMap = {};
+
+	try {
+		if (window.api && typeof window.api.getFileIcons === 'function') {
+			responseMap = await window.api.getFileIcons(paths);
+		} else if (window.api && typeof window.api.getFileIcon === 'function') {
+			const pairs = await Promise.all(paths.map(async (iconPath) => {
+				const dataUrl = await window.api.getFileIcon(iconPath);
+				return [iconPath, dataUrl];
+			}));
+			responseMap = Object.fromEntries(pairs);
+		}
+	} catch (_error) {
+		responseMap = {};
+	}
+
+	for (const entry of batch) {
+		const dataUrl = typeof responseMap?.[entry.path] === 'string' ? responseMap[entry.path] : null;
+		boundedIconCacheSet(entry.path, dataUrl);
+		appIconPendingByPath.delete(entry.path);
+		entry.resolve(dataUrl);
+	}
+}
+
+function scheduleAppIconBatchFlush() {
+	if (appIconBatchTimer) return;
+	appIconBatchTimer = setTimeout(() => {
+		appIconBatchTimer = null;
+		flushAppIconBatchQueue().catch(() => {});
+	}, APP_ICON_BATCH_WINDOW_MS);
+}
+
+function requestNativeAppIcon(displayIconPath) {
+	const normalizedPath = String(displayIconPath || '').trim();
+	if (!normalizedPath) return Promise.resolve(null);
+
+	if (appIconDataUrlCache.has(normalizedPath)) {
+		return Promise.resolve(appIconDataUrlCache.get(normalizedPath));
+	}
+
+	const pending = appIconPendingByPath.get(normalizedPath);
+	if (pending) return pending;
+
+	const promise = new Promise((resolve) => {
+		appIconBatchQueue.push({ path: normalizedPath, resolve });
+		scheduleAppIconBatchFlush();
+	});
+
+	appIconPendingByPath.set(normalizedPath, promise);
+	return promise;
+}
+
 export async function initRuntimePaths() {
 	if (window.api && window.api.getRuntimePaths) {
 		try {
@@ -131,7 +218,7 @@ export async function loadRealAppIcon(app, iconId) {
 
 	if (window.api && window.api.getFileIcon) {
 		try {
-			const base64 = await window.api.getFileIcon(displayIconPath);
+			const base64 = await requestNativeAppIcon(displayIconPath);
 			if (base64) {
 				const el = document.getElementById(iconId);
 				if (el) el.outerHTML = `<img class="app-icon-img" id="${iconId}" src="${base64}" alt="icon" loading="lazy">`;

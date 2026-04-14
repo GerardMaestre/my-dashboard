@@ -56,10 +56,33 @@ function fetchIpIntel(ip) {
 }
 
 class ThreatIntel {
-    constructor({ cacheTtlMs = 25 * 60 * 1000, errorTtlMs = 4 * 60 * 1000 } = {}) {
+    constructor({ cacheTtlMs = 25 * 60 * 1000, errorTtlMs = 4 * 60 * 1000, maxCacheEntries = 1500 } = {}) {
         this.cacheTtlMs = cacheTtlMs;
         this.errorTtlMs = errorTtlMs;
+        this.maxCacheEntries = maxCacheEntries;
         this.cache = new Map();
+        this.pendingLookups = new Map();
+    }
+
+    pruneCache() {
+        const now = Date.now();
+        for (const [key, entry] of this.cache.entries()) {
+            if (!entry || entry.expiresAt <= now) {
+                this.cache.delete(key);
+            }
+        }
+
+        if (this.cache.size <= this.maxCacheEntries) {
+            return;
+        }
+
+        const overflow = this.cache.size - this.maxCacheEntries;
+        let removed = 0;
+        for (const key of this.cache.keys()) {
+            this.cache.delete(key);
+            removed += 1;
+            if (removed >= overflow) break;
+        }
     }
 
     getCached(ip) {
@@ -75,26 +98,19 @@ class ThreatIntel {
 
     setCached(ip, value, isError = false) {
         const normalized = normalizeIp(ip);
+        if (!normalized) return;
+
         this.cache.set(normalized, {
             value,
             expiresAt: Date.now() + (isError ? this.errorTtlMs : this.cacheTtlMs)
         });
+
+        if (this.cache.size > this.maxCacheEntries) {
+            this.pruneCache();
+        }
     }
 
-    async lookup(ip) {
-        const normalized = normalizeIp(ip);
-
-        if (!isValidIp(normalized)) {
-            return {
-                ok: false,
-                ip: normalized,
-                error: 'IP invalida para inteligencia de amenaza'
-            };
-        }
-
-        const cached = this.getCached(normalized);
-        if (cached) return cached;
-
+    async lookupRemote(normalized) {
         try {
             const raw = await fetchIpIntel(normalized);
 
@@ -131,6 +147,32 @@ class ThreatIntel {
             this.setCached(normalized, failResult, true);
             return failResult;
         }
+    }
+
+    async lookup(ip) {
+        const normalized = normalizeIp(ip);
+        this.pruneCache();
+
+        if (!isValidIp(normalized)) {
+            return {
+                ok: false,
+                ip: normalized,
+                error: 'IP invalida para inteligencia de amenaza'
+            };
+        }
+
+        const cached = this.getCached(normalized);
+        if (cached) return cached;
+
+        const inFlight = this.pendingLookups.get(normalized);
+        if (inFlight) return inFlight;
+
+        const promise = this.lookupRemote(normalized).finally(() => {
+            this.pendingLookups.delete(normalized);
+        });
+
+        this.pendingLookups.set(normalized, promise);
+        return promise;
     }
 }
 

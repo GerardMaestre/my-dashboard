@@ -1291,12 +1291,16 @@ const api = {
 		return () => exitListeners.delete(callback);
 	},
 	onTelemetry: (callback) => {
-		ipcRenderer.on('telemetry-update', (_event, data) => callback(data));
-		return () => ipcRenderer.removeAllListeners('telemetry-update');
+		if (typeof callback !== 'function') return () => {};
+		const listener = (_event, data) => callback(data);
+		ipcRenderer.on('telemetry-update', listener);
+		return () => ipcRenderer.removeListener('telemetry-update', listener);
 	},
 	onSpotlight: (callback) => {
-		ipcRenderer.on('toggle-spotlight', () => callback());
-		return () => ipcRenderer.removeAllListeners('toggle-spotlight');
+		if (typeof callback !== 'function') return () => {};
+		const listener = () => callback();
+		ipcRenderer.on('toggle-spotlight', listener);
+		return () => ipcRenderer.removeListener('toggle-spotlight', listener);
 	},
 	onNetworkUpdate: (callback) => {
 		if (typeof callback !== 'function') return () => {};
@@ -1372,7 +1376,11 @@ const api = {
 		try { spawn('cmd.exe', ['/c', 'start', '""', url], { detached: true, stdio: 'ignore', shell: true }).unref(); }
 		catch (e) { console.error('[HorusEngine] Error abriendo URL:', e); }
 	},
-	getFileIcon: (filePath) => ipcRenderer.invoke('get-file-icon', filePath)
+	getFileIcon: (filePath) => ipcRenderer.invoke('get-file-icon', filePath),
+	getFileIcons: async (filePaths) => {
+		const payload = Array.isArray(filePaths) ? filePaths : [];
+		return await ipcRenderer.invoke('get-file-icons-batch', payload);
+	}
 };
 
 try {
