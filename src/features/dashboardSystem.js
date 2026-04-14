@@ -89,6 +89,37 @@ function extractScriptMeta(lines = []) {
 	return meta;
 }
 
+// === 1-CLICK MODES ======
+export async function ejecutar1ClickMode(mode) {
+	const modes = {
+		gaming: [
+			'04_Utilidades_Archivos/Purgar_ram.py',
+			'02_Optimizacion_Gaming/Despertar_Nucleos.bat',
+			'06_Personalizacion/Lanzador_Cloud_Gaming.bat'
+		],
+		paranoia: [
+			'03_Privacidad_Seguridad/Identidad_Falsa.py',
+			'03_Privacidad_Seguridad/Cazador_Intrusos.py',
+			'03_Privacidad_Seguridad/Asesino_Zombies.bat'
+		],
+		mantenimiento: [
+			'01_Mantenimiento_Windows/Desinstalador_Telemetria.bat',
+			'04_Utilidades_Archivos/Limpieza_Extrema_Global.py',
+			'01_Mantenimiento_Windows/Actualizar_Aplicaciones.py'
+		]
+	};
+
+	const ruteo = modes[mode];
+	if(!ruteo) return;
+
+	mostrarToast(`Iniciando Perfil 1-Clic: ${mode.toUpperCase()}`, 'system');
+	
+	for(const script of ruteo) {
+		// Buscamos si existe en el cache de runningFiles o autopilot, si no lo lanzamos silencioso si se desea.
+		ejecutar(script, false, true); 
+	}
+}
+
 function createMetaBadge(label, variant = 'default') {
 	const badge = document.createElement('span');
 	badge.className = `meta-badge ${variant}`;

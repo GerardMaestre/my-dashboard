@@ -34,6 +34,6 @@ export function mostrarToast(mensaje, tipo = 'system') {
 
 	setTimeout(() => {
 		toast.classList.add('fadeOut');
-		setTimeout(() => toast.remove(), 300);
+		setTimeout(() => toast.remove(), 400);
 	}, 3500);
 }

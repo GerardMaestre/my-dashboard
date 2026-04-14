@@ -65,5 +65,10 @@
   "devDependencies": {
     "electron": "^29.0.0",
     "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "chart.js": "^4.5.1",
+    "d3": "^7.9.0",
+    "systeminformation": "^5.31.5"
   }
 }

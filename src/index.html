@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <title>Horus Engine</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="radar.css">
 </head>
 
 <body>
@@ -73,6 +74,20 @@
                     Activos
                 </button>
                 <div class="sidebar-divider" style="margin-top: 8px; margin-bottom: 8px;"></div>
+                <div class="sidebar-group-title">Modos Especiales</div>
+                <button class="sidebar-item" onclick="ejecutar1ClickMode('gaming')">
+                    <span class="icon-container" style="background:linear-gradient(135deg, #FF453A, #FF375F);">🎮</span>
+                    Gaming Extremo
+                </button>
+                <button class="sidebar-item" onclick="ejecutar1ClickMode('paranoia')">
+                    <span class="icon-container" style="background:linear-gradient(135deg, #1C1C1E, #3A3A3C);">🕵️‍♂️</span>
+                    Modo Paranoia
+                </button>
+                <button class="sidebar-item" onclick="ejecutar1ClickMode('mantenimiento')">
+                    <span class="icon-container" style="background:linear-gradient(135deg, #5E5CE6, #7D7AFF);">🌙</span>
+                    Mantenimiento Nocturno
+                </button>
+                <div class="sidebar-divider" style="margin-top: 8px; margin-bottom: 8px;"></div>
                 <div class="sidebar-group-title">Centro Pro</div>
                 <button class="sidebar-item" onclick="abrirOjoDeDios('search')">
                     <span class="icon-container" style="background:linear-gradient(135deg, #0A84FF, #36C7FF);">🔎</span>
@@ -118,30 +133,57 @@
             </header>
 
             <div class="content-scrollable">
-                <div class="mac-group global-settings-group">
-                    <div class="mac-group-row">
-                        <div class="mac-group-label" style="display:flex; align-items:center; gap:8px;">
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="var(--mac-blue)"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
-                            Consola por defecto
-                        </div>
-                        <div class="mac-group-control">
-                            <select id="global-terminal-mode" class="mac-select" style="min-width: 120px;" onchange="changeGlobalTerminalMode()">
-                                <option value="internal">Integrada</option>
-                                <option value="external" selected>Externa (Win)</option>
-                            </select>
-                        </div>
+                <div class="mac-group global-settings-group stagger-fade-in telemetry-hud" style="animation-delay: 0.1s; display:flex; padding: 15px; align-items:center; justify-content:space-between; flex-wrap:wrap; gap: 20px;">
+                    <div style="flex:1; min-width:200px;">
+                        <h4 style="margin-bottom:8px; font-size:12px; color:var(--mac-text-muted);">CPU Load (%)</h4>
+                        <canvas id="chart-cpu" style="height:60px; max-height:60px;"></canvas>
                     </div>
-                    <div class="mac-group-row">
-                        <div class="mac-group-label" style="display:flex; align-items:center; gap:8px;">
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="#30D158"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-                            Parámetros Extra
-                        </div>
-                        <div class="mac-group-control">
-                            <input type="text" id="script-args" class="mac-input-clean"
-                                placeholder="-flag --valor...">
+                    <div style="flex:1; min-width:200px;">
+                        <h4 style="margin-bottom:8px; font-size:12px; color:var(--mac-text-muted);">RAM Usage (GB)</h4>
+                        <canvas id="chart-mem" style="height:60px; max-height:60px;"></canvas>
+                    </div>
+                    <div style="flex:1; min-width:200px;">
+                        <h4 style="margin-bottom:8px; font-size:12px; color:var(--mac-text-muted);">Red (<span style="color:var(--mac-green)">Bajada</span> / <span style="color:var(--mac-blue)">Subida</span>)</h4>
+                        <div style="display:flex; justify-content:space-around; align-items:center; height:60px; background:rgba(0,0,0,0.2); border-radius:8px;">
+                            <div style="text-align:center;"><div id="tele-rx" style="font-size:18px; font-weight:bold; color:var(--mac-green);">0 MB/s</div></div>
+                            <div style="text-align:center;"><div id="tele-tx" style="font-size:18px; font-weight:bold; color:var(--mac-blue);">0 MB/s</div></div>
                         </div>
                     </div>
                 </div>
+
+                <section class="network-radar-panel stagger-fade-in" style="animation-delay: 0.16s;">
+                    <header class="network-radar-header">
+                        <h3 class="network-radar-title">Radar de Red Visual</h3>
+                        <div class="network-radar-controls">
+                            <button id="network-radar-rules-btn" class="network-radar-control-btn" type="button">Reglas</button>
+                            <button id="network-radar-export-btn" class="network-radar-control-btn" type="button">Historial CSV</button>
+                        </div>
+                    </header>
+                    <div id="network-radar-status" class="network-radar-status">Inicializando sensor de amenazas...</div>
+                    <div id="network-radar" class="network-radar-canvas" aria-label="Radar de conexiones de red en tiempo real">
+                        <div id="network-node-modal" class="network-node-modal hidden" aria-live="polite"></div>
+                        <div id="network-radar-rules-modal" class="network-radar-rules-modal hidden" aria-live="polite">
+                            <div class="network-radar-rules-card">
+                                <h4>Reglas de Deteccion</h4>
+                                <p>Configura IPs, paises y ASN de alto riesgo para marcar nodos en rojo.</p>
+
+                                <label for="network-rules-ips">IPs Watchlist (una por linea)</label>
+                                <textarea id="network-rules-ips" rows="4" spellcheck="false"></textarea>
+
+                                <label for="network-rules-countries">Paises de riesgo (ISO2, separados por coma)</label>
+                                <input id="network-rules-countries" type="text" placeholder="RU, KP, IR">
+
+                                <label for="network-rules-asn">Palabras clave ASN/ISP (coma)</label>
+                                <input id="network-rules-asn" type="text" placeholder="hosted, datacenter, vpn">
+
+                                <div class="network-radar-rules-actions">
+                                    <button id="network-rules-cancel" class="network-radar-control-btn" type="button">Cancelar</button>
+                                    <button id="network-rules-save" class="network-radar-control-btn is-primary" type="button">Guardar Reglas</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
 
                 <ul id="script-list" class="mac-grouped-list">
                 </ul>
@@ -174,11 +216,19 @@
                         </button>
                     </div>
                 </div>
-                <div class="drawer-content">
-                    <div class="terminal-wrapper">
+                <div class="drawer-content" style="display:flex; flex-direction:column; height: 100%;">
+                    <div class="terminal-wrapper" style="flex:1; margin-bottom: 5px;">
                         <div id="terminal" class="mac-terminal mac-glass">
                             <span class="log-system"> Sistema Horus inicializado. Listo para operar.</span>
                         </div>
+                    </div>
+                    <!-- Terminal Input 2.0 -->
+                    <div style="display:flex; gap:10px; padding: 0 10px 10px 10px;">
+                        <div style="flex:1; display:flex; align-items:center; background:rgba(0,0,0,0.4); border-radius:8px; padding: 2px 10px; border: 1px solid rgba(255,255,255,0.05);">
+                            <span style="color:var(--mac-green); font-weight:bold; margin-right:8px; font-family:'Fira Code', monospace;">$</span>
+                            <input type="text" id="terminal-input" placeholder="Escribe un comando... (ej. descargar, limpiar)" autocomplete="off" style="width:100%; border:none; background:transparent; color:var(--mac-text); font-family:'Fira Code', monospace; outline:none; font-size:13px;">
+                        </div>
+                        <button class="mac-action-btn run" onclick="ejecutarComandoTerminal()">Ejecutar</button>
                     </div>
                 </div>
             </footer>
@@ -187,52 +237,41 @@
 
     <div id="toast-container" class="toast-container"></div>
 
-    <div id="modal-ojo-dios" class="modal-overlay" onclick="if(event.target===this) cerrarOjoDeDios()"
-        style="z-index: 10000; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px);">
-        <div class="modal-content mac-window"
-            style="width: calc(100vw - 40px); max-width: none; height: calc(100vh - 40px); background: rgba(30, 30, 30, 0.90); border: 1px solid rgba(255,255,255,0.1); padding: 0; display: flex; flex-direction: column; opacity: 1; transform: scale(1); border-radius: 12px;">
-            <div
-                style="padding: 20px; display: flex; flex-direction: column; gap: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); -webkit-app-region: drag;">
-                <div
-                    style="display: flex; justify-content: space-between; align-items: center; -webkit-app-region: no-drag;">
-                    <h2
-                        style="margin: 0; font-size: 20px; font-weight: 500; display: flex; align-items: center; gap: 10px;">
-                        <span style="color: #FF9500; font-size:24px;">👁</span> Ojo Total <span
-                            style="font-size: 11px; color: #888; font-weight: normal; margin-top:4px;">3 pantallas
-                            dedicadas</span>
+    <div id="modal-ojo-dios" class="modal-overlay ojo-dios-overlay" onclick="if(event.target===this) cerrarOjoDeDios()">
+        <div class="modal-content mac-window ojo-dios-modal mac-glass">
+            <div class="ojo-dios-header">
+                <div class="ojo-dios-header-drag">
+                    <h2>
+                        <span class="icon-emoji">👁</span> Ojo Total 
+                        <span class="subtitle">3 pantallas dedicadas</span>
                     </h2>
-                    <button class="mac-btn close" onclick="cerrarOjoDeDios()"
-                        style="width: 14px; height: 14px; margin:0;" title="Cerrar Ojo Total (Esc)"></button>
+                    <button class="mac-btn close" onclick="cerrarOjoDeDios()" title="Cerrar Ojo Total (Esc)"></button>
                 </div>
                 <div class="ojo-tabs" style="-webkit-app-region: no-drag;">
                     <button class="ojo-tab-btn active" data-ojo-screen="search">Busqueda Global</button>
                     <button class="ojo-tab-btn" data-ojo-screen="disk">Mapa de Disco</button>
                     <button class="ojo-tab-btn" data-ojo-screen="apps">Desinstalador Apps</button>
                 </div>
-                <div id="ojo-status" style="font-size: 13px; color: #0A84FF; -webkit-app-region: no-drag;">Preparando
-                    indice global...</div>
+                <div id="ojo-status" class="ojo-status-text">Preparando indice global...</div>
             </div>
 
-            <div style="flex: 1; overflow-y: auto; padding: 10px 20px 20px 20px; -webkit-app-region: no-drag;"
-                id="ojo-results-container">
-                <div id="ojo-screen-search" class="ojo-screen active">
-                    <div class="mac-group ghost-tools-panel" style="margin-bottom: 14px;">
+            <div class="ojo-dios-body" id="ojo-results-container">
+                <div id="ojo-screen-search" class="ojo-screen active stagger-fade-in" style="animation-delay: 0.1s">
+                    <div class="mac-group ghost-tools-panel">
                         <div class="mac-group-row">
                             <div class="mac-group-label">Buscador Global</div>
                         </div>
                         <div style="padding: 12px 12px 0 12px;">
                             <input type="text" id="ojo-input"
                                 placeholder="Busca archivos, carpetas y rutas en milisegundos..."
-                                class="mac-input-search"
-                                style="font-size: 18px; padding: 12px 14px; border-radius: 12px; background: rgba(0,0,0,0.5);">
+                                class="mac-input-search premium-search">
                         </div>
-                        <ul id="ojo-results"
-                            style="list-style: none; padding: 10px 10px 12px 10px; margin: 0; display: flex; flex-direction: column; gap: 6px;">
+                        <ul id="ojo-results" class="ojo-results-list">
                         </ul>
                     </div>
                 </div>
 
-                <div id="ojo-screen-disk" class="ojo-screen ojo-disk-screen">
+                <div id="ojo-screen-disk" class="ojo-screen ojo-disk-screen stagger-fade-in" style="animation-delay: 0.1s">
                     <div class="mac-group ghost-tools-panel ojo-disk-panel">
                         <div class="mac-group-row ojo-disk-toolbar">
                             <div class="mac-group-label">Mapa de Disco <span
@@ -286,8 +325,8 @@
                     </div>
                 </div>
 
-                <div id="ojo-screen-apps" class="ojo-screen">
-                    <div class="mac-group ghost-tools-panel" style="display:flex; flex-direction:column; height:100%;">
+                <div id="ojo-screen-apps" class="ojo-screen stagger-fade-in" style="animation-delay: 0.1s">
+                    <div class="mac-group ghost-tools-panel apps-panel">
                         <!-- Toolbar -->
                         <div class="apps-toolbar">
                             <div class="apps-toolbar-left">
@@ -371,8 +410,32 @@
 
     <div id="settings-modal" class="modal-overlay" onclick="if(event.target===this) closeSettings()">
         <div class="mac-modal mac-glass" style="width: 400px; text-align: left;">
-            <h3 style="margin-bottom: 20px;">Configuracion Horus</h3>
+            <h3 style="margin-bottom: 20px;">Configuracion Global Horus</h3>
+            
             <div class="mac-form-group">
+                <div class="mac-group-label" style="display:flex; align-items:center; gap:8px;">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="var(--mac-blue)"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
+                    Consola por defecto
+                </div>
+                <div class="mac-group-control" style="margin-top:5px; margin-bottom:15px;">
+                    <select id="global-terminal-mode" class="mac-input" style="width: 100%;" onchange="changeGlobalTerminalMode()">
+                        <option value="internal">Integrada</option>
+                        <option value="external" selected>Externa (Win)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="mac-form-group">
+                <div class="mac-group-label" style="display:flex; align-items:center; gap:8px;">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="#30D158"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                    Parámetros Extra
+                </div>
+                <div class="mac-group-control" style="margin-top:5px;">
+                    <input type="text" id="script-args" class="mac-input" style="width: 100%;" placeholder="-flag --valor...">
+                </div>
+            </div>
+
+            <div class="mac-form-group" style="margin-top:20px;">
                 <label>Tema de Interfaz Visual:</label>
                 <select id="theme-selector" class="mac-input" style="width: 100%;" onchange="changeTheme()">
                     <option value="dark">MacOS Dark (Por defecto)</option>
@@ -386,6 +449,20 @@
         </div>
     </div>
 
+    <!-- Spotlight Overlay -->
+    <div id="spotlight-overlay" class="modal-overlay ojo-dios-overlay" onclick="if(event.target===this) toggleSpotlight()">
+        <div style="background: rgba(30, 30, 30, 0.85); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border-radius: 12px; padding: 15px; width: 600px; max-width: 90vw; transform: translateY(-100px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 24px 60px rgba(0,0,0,0.6);">
+            <div style="display:flex; align-items:center; gap: 15px;">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="var(--mac-text-muted)"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                <input type="text" id="spotlight-input" class="premium-search" placeholder="Escribe un comando... (Ctrl+Space para cerrar)" autocomplete="off" style="flex:1; border:none; background:transparent; font-size:24px; color:var(--mac-text); outline:none;">
+            </div>
+            <ul id="spotlight-results" class="ojo-results-list" style="margin-top: 15px; max-height: 300px; overflow-y: auto;">
+            </ul>
+        </div>
+    </div>
+
+    <script src="../node_modules/chart.js/dist/chart.umd.js"></script>
+    <script src="../node_modules/d3/dist/d3.min.js"></script>
     <script type="module" src="renderer.js"></script>
 </body>
 

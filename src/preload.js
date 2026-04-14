@@ -1290,6 +1290,44 @@ const api = {
 		exitListeners.add(callback);
 		return () => exitListeners.delete(callback);
 	},
+	onTelemetry: (callback) => {
+		ipcRenderer.on('telemetry-update', (_event, data) => callback(data));
+		return () => ipcRenderer.removeAllListeners('telemetry-update');
+	},
+	onSpotlight: (callback) => {
+		ipcRenderer.on('toggle-spotlight', () => callback());
+		return () => ipcRenderer.removeAllListeners('toggle-spotlight');
+	},
+	onNetworkUpdate: (callback) => {
+		if (typeof callback !== 'function') return () => {};
+		const listener = (_event, connections) => {
+			callback(Array.isArray(connections) ? connections : []);
+		};
+		ipcRenderer.on('network-update', listener);
+		return () => ipcRenderer.removeListener('network-update', listener);
+	},
+	onNetworkExposureUpdate: (callback) => {
+		if (typeof callback !== 'function') return () => {};
+		const listener = (_event, exposures) => {
+			callback(Array.isArray(exposures) ? exposures : []);
+		};
+		ipcRenderer.on('network-exposure-update', listener);
+		return () => ipcRenderer.removeListener('network-exposure-update', listener);
+	},
+	onNetworkListenersUpdate: (callback) => {
+		if (typeof callback !== 'function') return () => {};
+		const listener = (_event, listeners) => {
+			callback(Array.isArray(listeners) ? listeners : []);
+		};
+		ipcRenderer.on('network-listeners-update', listener);
+		return () => ipcRenderer.removeListener('network-listeners-update', listener);
+	},
+	blockIP: async (ip) => {
+		return await ipcRenderer.invoke('block-ip', ip);
+	},
+	lookupIpIntel: async (ip) => {
+		return await ipcRenderer.invoke('ip-intel-lookup', ip);
+	},
 	windowControl: (action) => ipcRenderer.send('window-control', action),
 	getGhostEngineStatus: async () => ({
 		everythingAvailable: !!findExistingTool(toolCandidates.es),
