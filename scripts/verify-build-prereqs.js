@@ -39,7 +39,7 @@ function checkRequiredPath(relativePath, description) {
 function run() {
 	logInfo('Validando prerequisitos de empaquetado...');
 
-	checkRequiredPath('src/main.js', 'Entry principal de Electron');
+	checkRequiredPath('src/main/index.js', 'Entry principal de Electron');
 	checkRequiredPath('src/preload.js', 'Bridge preload');
 	checkRequiredPath('mis_scripts', 'Directorio de scripts');
 	checkRequiredPath('assets/icon.ico', 'Icono de aplicacion');
