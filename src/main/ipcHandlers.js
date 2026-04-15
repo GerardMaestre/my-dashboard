@@ -6,6 +6,55 @@ const logger = require('./utils/logger');
 
 const activeProcesses = new Map(); // Para rastrear PIDs y estados
 
+function normalizeArgs(args) {
+    if (Array.isArray(args)) {
+        return args
+            .map((value) => String(value ?? '').trim())
+            .filter((value) => value.length > 0);
+    }
+
+    if (typeof args === 'string') {
+        const trimmed = args.trim();
+        return trimmed ? [trimmed] : [];
+    }
+
+    return [];
+}
+
+function normalizeMode(mode) {
+    return String(mode || 'internal').toLowerCase() === 'external' ? 'external' : 'internal';
+}
+
+function normalizeDeclaredMode(value = '') {
+    const mode = String(value || '').trim().toLowerCase();
+    if (mode === 'external' || mode === 'externo' || mode === 'visual externo') return 'external';
+    if (mode === 'internal' || mode === 'interno' || mode === 'integrado') return 'internal';
+    return '';
+}
+
+function readDeclaredMode(filePath) {
+    try {
+        const content = fs.readFileSync(filePath, 'utf8');
+        const lines = content.substring(0, 1200).split(/\r?\n/);
+
+        for (const raw of lines) {
+            const line = String(raw || '').trim();
+            if (!line) continue;
+
+            const clean = line.replace(/^\s*(#|::|\/\/)+\s*/, '');
+            const match = clean.match(/^(MODE|MODO)\s*:\s*(.+)$/i);
+            if (!match) continue;
+
+            const parsed = normalizeDeclaredMode(match[2]);
+            if (parsed) return parsed;
+        }
+    } catch (_error) {
+        // Ignore metadata parse errors and fallback to requested mode.
+    }
+
+    return '';
+}
+
 function registerIpcHandlers(managers) {
     const { diskManager, appManager, networkRadar, trayIcon, uac, config, taskQueue, scheduler } = managers;
 
@@ -100,20 +149,51 @@ function registerIpcHandlers(managers) {
         const filePath = path.join(config.storageDir, fileName.replace(/\//g, path.sep));
         const ext = path.extname(fileName).toLowerCase();
         let executable = filePath;
-        let scriptArgs = Array.isArray(args) ? args : [args];
+        let scriptArgs = normalizeArgs(args);
+        const requestedMode = normalizeMode(mode);
+        const declaredMode = readDeclaredMode(filePath);
+        const normalizedMode = (requestedMode === 'external' || declaredMode === 'external') ? 'external' : 'internal';
 
         if (ext === '.py') {
             executable = path.join(config.pythonEnvPath, 'python.exe');
+            if (!fs.existsSync(executable)) executable = 'python';
             scriptArgs = [filePath, ...scriptArgs];
         } else if (ext === '.bat' || ext === '.cmd') {
             executable = 'cmd.exe';
             scriptArgs = ['/c', filePath, ...scriptArgs];
         }
 
+        // External mode: force a visible cmd window and keep it open for output inspection.
+        if (normalizedMode === 'external') {
+            try {
+                const launcher = spawn(
+                    'cmd.exe',
+                    ['/c', 'start', '""', 'cmd.exe', '/d', '/k', executable, ...scriptArgs],
+                    {
+                        cwd: path.dirname(filePath),
+                        shell: false,
+                        windowsHide: true,
+                        detached: true,
+                        stdio: 'ignore'
+                    }
+                );
+
+                launcher.unref();
+                return {
+                    pid: launcher.pid || null,
+                    forcedExternal: normalizedMode === 'external',
+                    mode: 'external'
+                };
+            } catch (e) {
+                logger.error(`Error al lanzar terminal externa para ${fileName}: ${e.message}`);
+                return { pid: null, error: e.message };
+            }
+        }
+
         const spawnOptions = { 
             shell: true, 
             cwd: path.dirname(filePath), 
-            windowsHide: mode === 'internal' 
+            windowsHide: true
         };
         
         try {

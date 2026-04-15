@@ -2,6 +2,7 @@ import { ghostState, autopilotTasks, runningFiles, silentRuns, isFirstLoad, setI
 import { obtenerInfoArchivo, safeId } from '../core/utils.js';
 import { logTerminal } from '../ui/terminalSystem.js';
 import { mostrarToast } from '../ui/toastSystem.js';
+import { isDesktop, listScriptsBridge, readScriptMetaBridge, runScriptBridge, isRunningBridge, stopScriptBridge } from '../renderer/hybridBridge.js';
 
 let selectedIndex = -1;
 let currentFilter = 'all';
@@ -93,19 +94,12 @@ async function preloadScriptMetadata(files = []) {
 	const metadataByFile = new Map();
 	if (!Array.isArray(files) || files.length === 0) return metadataByFile;
 
-	if (!window.api || typeof window.api.readScriptMeta !== 'function') {
-		for (const file of files) {
-			metadataByFile.set(file, extractScriptMeta([]));
-		}
-		return metadataByFile;
-	}
-
 	const batchSize = 24;
 	for (let i = 0; i < files.length; i += batchSize) {
 		const batch = files.slice(i, i + batchSize);
 		const entries = await Promise.all(batch.map(async (file) => {
 			try {
-				const lineas = await window.api.readScriptMeta(file);
+				const lineas = await readScriptMetaBridge(file);
 				return [file, extractScriptMeta(lineas)];
 			} catch (err) {
 				console.error('No se pudo leer el archivo:', file, err);
@@ -163,7 +157,7 @@ function createMetaBadge(label, variant = 'default') {
 }
 
 export function openScript(fileName) {
-	if (window.api && window.api.editScript) window.api.editScript(fileName);
+	if (isDesktop && window.api && window.api.editScript) window.api.editScript(fileName);
 }
 
 export function toggleFavorite(fileName) {
@@ -212,7 +206,7 @@ export async function cargarScripts() {
 
 	let files = [];
 	try {
-        if (window.api) files = await window.api.listScripts();
+		files = await listScriptsBridge();
 		console.info(`[Startup] listScripts returned ${files.length} entries`);
 	} catch (err) {
 		logTerminal(`[Error] No se pudo leer mis_scripts: ${err}`, 'error');
@@ -521,14 +515,15 @@ export function alternarBotones(fileName, ejecutando) {
 }
 
 export async function matarProceso(fileName) {
-	if (window.api) {
-        // AÑADIDO AWAIT AQUI
-        const res = await window.api.stopScript(fileName);
-        if (res && res.stopped) {
-		    logTerminal(`[!] Operación abortada: ${fileName}`, 'error');
-		    alternarBotones(fileName, false);
-            runningFiles.delete(fileName); // Limpiamos la caché visual
-        }
+	try {
+		const res = await stopScriptBridge(fileName);
+		if (res && res.stopped) {
+			logTerminal(`[!] Operación abortada: ${fileName}`, 'error');
+			alternarBotones(fileName, false);
+			runningFiles.delete(fileName);
+		}
+	} catch (error) {
+		logTerminal(`[Error] No se pudo detener ${fileName}: ${error.message}`, 'error');
 	}
 }
 
@@ -546,9 +541,7 @@ export async function ejecutar(fileName, isAuto = false, isSilent = false) {
 	}
 
 	if (isExternal) {
-        if (!window.api) return;
-        // AÑADIDO AWAIT AQUI
-		const result = await window.api.runScript({ fileName, args, mode: modeToUse });
+		const result = await runScriptBridge({ fileName, args, mode: modeToUse });
 		if (!isSilent) {
 			if (result && result.forcedExternal) {
 				mostrarToast('Herramienta Pro ejecutada en modo visual', 'system');
@@ -557,14 +550,11 @@ export async function ejecutar(fileName, isAuto = false, isSilent = false) {
 		}
 		return;
 	}
-    
-	if (window.api) {
-        // AÑADIDO AWAIT AQUI
-        const isAlreadyRunning = await window.api.isRunning(fileName);
-        if (isAlreadyRunning) {
-		    if (!isSilent) logTerminal(`[!] Ya está en ejecución: ${fileName}`, 'error');
-		    return;
-        }
+
+	const isAlreadyRunning = await isRunningBridge(fileName);
+	if (isAlreadyRunning) {
+		if (!isSilent) logTerminal(`[!] Ya está en ejecución: ${fileName}`, 'error');
+		return;
 	}
 
 	if (isSilent) silentRuns.add(fileName);
@@ -572,18 +562,24 @@ export async function ejecutar(fileName, isAuto = false, isSilent = false) {
 	runningFiles.add(fileName);
 	if (currentFilter === 'active') aplicarFiltros();
     
-    if (window.api) {
-        // AÑADIDO AWAIT AQUI
-	    const result = await window.api.runScript({ fileName, args, mode: modeToUse });
-	    if (!result || result.pid === null) {
-		    runningFiles.delete(fileName);
-		    alternarBotones(fileName, false);
-		    if (!isSilent) {
-			    logTerminal(`[SYS] No se pudo iniciar: ${fileName}`, 'error');
-			    mostrarToast(`Error al iniciar ${fileName.split('/').pop()}`, 'error');
-		    }
-	    }
-    }
+	try {
+		const result = await runScriptBridge({ fileName, args, mode: modeToUse });
+		if (!result || result.pid === null) {
+			runningFiles.delete(fileName);
+			alternarBotones(fileName, false);
+			if (!isSilent) {
+				logTerminal(`[SYS] No se pudo iniciar: ${fileName}`, 'error');
+				mostrarToast(`Error al iniciar ${fileName.split('/').pop()}`, 'error');
+			}
+		}
+	} catch (error) {
+		runningFiles.delete(fileName);
+		alternarBotones(fileName, false);
+		if (!isSilent) {
+			logTerminal(`[SYS] Error lanzando ${fileName}: ${error.message}`, 'error');
+			mostrarToast(`Error al iniciar ${fileName.split('/').pop()}`, 'error');
+		}
+	}
 }
 
 export function aplicarFiltros() {

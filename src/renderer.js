@@ -11,6 +11,7 @@ import { initRadarSystem } from './ui/RadarSystem.js';
 import { createSparkline, drawSparkline, pushSparklineValue } from './renderer/telemetry.js';
 import { initSpotlight } from './renderer/spotlight.js';
 import { initIpcListeners } from './renderer/ipcListeners.js';
+import { initHybridBridge, isDesktop } from './renderer/hybridBridge.js';
 
 window.__horusRendererModuleLoaded = true;
 console.error('[StartupProbe] renderer.js module evaluated');
@@ -70,6 +71,9 @@ setTimeout(() => {
 async function initApp() {
     startupTrace('initApp start');
     try {
+        const bridgeInfo = await initHybridBridge();
+        startupTrace(`bridge initialized (${bridgeInfo.isDesktop ? 'desktop' : 'mobile'}:${bridgeInfo.connected ? 'connected' : 'offline'})`);
+
         initTheme();
         startupTrace('theme initialized');
         setupTabs();
@@ -87,12 +91,13 @@ async function initApp() {
         });
         startupTrace('radar initialized');
 
-        if (window.api) {
-            startupTrace('window.api available');
+        await cargarScripts();
+        startupTrace('scripts loaded');
+
+        if (isDesktop && window.api) {
+            startupTrace('desktop IPC available');
             await initRuntimePaths();
             startupTrace('runtime paths loaded');
-            await cargarScripts();
-            startupTrace('scripts loaded');
             cargarMotoresFantasma();
             startupTrace('ghost engines loaded');
             bindGhostEvents();
@@ -104,8 +109,8 @@ async function initApp() {
                 startupTrace('ensureEnvironment scheduled');
             }
         } else {
-            console.warn('[HorusEngine] API bridge unavailable. Running in limited mode.');
-            startupTrace('window.api missing - limited mode');
+            console.warn('[HorusEngine] Running in mobile remote mode. Some desktop-only modules are disabled.');
+            startupTrace('mobile remote mode enabled');
         }
     } catch (error) {
         console.error('[HorusEngine] Critical Initialization Error:', error);

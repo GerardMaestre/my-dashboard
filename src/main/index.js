@@ -11,6 +11,7 @@ const DiskManager = require('./systems/diskManager');
 const AppManager = require('./systems/appManager');
 const NetworkRadar = require('./systems/networkRadar');
 const TelemetryManager = require('./systems/telemetryManager');
+const RemoteServer = require('./systems/remoteServer');
 const TrayIcon = require('./ui/trayIcon');
 const taskQueue = require('./autopilot/queue');
 const scheduler = require('./autopilot/scheduler');
@@ -71,7 +72,10 @@ function escapePs(v) { return String(v || '').replace(/'/g, "''"); }
 // --- INICIALIZACIÓN DE MOTORES ---
 
 const diskManager = new DiskManager(appDataNexus, toolCandidates);
-const appManager = new AppManager(runPowerShell, safeJsonParse, escapePs);
+const appManager = new AppManager(runPowerShell, safeJsonParse, escapePs, {
+    storageDir,
+    pythonExe: path.join(pythonEnvPath, 'python.exe')
+});
 const networkRadar = new NetworkRadar(null, 
     () => require('../core/NetworkMonitor'), 
     () => {
@@ -81,6 +85,10 @@ const networkRadar = new NetworkRadar(null,
     3000
 );
 const telemetryManager = new TelemetryManager(null, 2000);
+const remoteServer = new RemoteServer(
+    { diskManager, appManager, networkRadar, telemetryManager, config },
+    { host: '0.0.0.0', port: 3000, telemetryIntervalMs: 2000 }
+);
 
 // --- CICLO DE VIDA DE ELECTRON ---
 
@@ -208,6 +216,9 @@ if (!gotTheLock) {
             // 3. Registrar IPC
             registerIpcHandlers({ diskManager, appManager, networkRadar, uac, config, taskQueue, scheduler });
 
+            // 4. Exponer dashboard remoto para navegador móvil (WiFi/LAN)
+            remoteServer.start();
+
             // 5. Configurar Autopilot Inicial
             scheduler.schedule('ram-purge', '6-hours', 6 * 60 * 60 * 1000, async () => {
                 logger.info('[Autopilot] Purgando RAM programada...');
@@ -235,6 +246,7 @@ if (!gotTheLock) {
         
         app.on('before-quit', () => {
             isQuitting = true;
+            remoteServer.stop().catch((error) => logger.error(`[RemoteServer] Stop failed: ${error.message}`));
             logger.info('--- HORUS ENGINE SHUTDOWN ---');
         });
     }

@@ -67,6 +67,38 @@ class AppManager {
             spawnArgs = ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, ...parsedArgs];
         }
 
+        if (mode === 'external') {
+            return await new Promise((resolve, reject) => {
+                try {
+                    const launcher = spawn(
+                        'cmd.exe',
+                        ['/c', 'start', '""', 'cmd.exe', '/d', '/k', executable, ...spawnArgs],
+                        {
+                            cwd: path.dirname(scriptPath),
+                            windowsHide: true,
+                            detached: true,
+                            shell: false,
+                            stdio: 'ignore'
+                        }
+                    );
+
+                    launcher.once('error', (error) => reject(error instanceof Error ? error : new Error(String(error))));
+                    launcher.once('spawn', () => {
+                        launcher.unref();
+                        resolve({
+                            started: true,
+                            pid: launcher.pid || null,
+                            command: scriptPath,
+                            mode,
+                            child: null
+                        });
+                    });
+                } catch (error) {
+                    reject(error instanceof Error ? error : new Error(String(error)));
+                }
+            });
+        }
+
         return await new Promise((resolve, reject) => {
             let settled = false;
 
@@ -122,6 +154,10 @@ class AppManager {
                 rejectOnce(error);
             }
         });
+    }
+
+    async runScript(command, args, options = {}) {
+        return this.executeScript(command, args, options);
     }
 
     async ghostListInstalledApps() {
