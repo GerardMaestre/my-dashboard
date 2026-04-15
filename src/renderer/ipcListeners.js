@@ -1,7 +1,7 @@
-import { logTerminal } from './ui/terminalSystem.js';
-import { mostrarToast } from './ui/toastSystem.js';
-import { alternarBotones, aplicarFiltros, ejecutar } from './features/dashboardSystem.js';
-import { runningFiles, silentRuns } from './core/state.js';
+import { logTerminal } from '../ui/terminalSystem.js';
+import { mostrarToast } from '../ui/toastSystem.js';
+import { alternarBotones, aplicarFiltros, ejecutar } from '../features/dashboardSystem.js';
+import { runningFiles, silentRuns } from '../core/state.js';
 import { pushSparklineValue } from './telemetry.js';
 
 export function initIpcListeners(telemetryCharts) {

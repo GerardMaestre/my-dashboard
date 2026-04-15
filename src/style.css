@@ -1367,6 +1367,112 @@ input:checked + .slider:before { transform: translateX(12px); }
     }
 }
 
+@media (max-width: 768px) {
+    .mac-window {
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    .mac-sidebar {
+        width: 100%;
+        min-width: 0;
+        height: auto;
+        max-height: 40vh;
+        border-right: none;
+        border-bottom: 1px solid var(--mac-border);
+        padding-top: 10px;
+    }
+
+    .sidebar-search,
+    .sidebar-divider,
+    .sidebar-bottom,
+    .sidebar-group-title {
+        display: block;
+    }
+
+    .sidebar-nav {
+        max-height: 220px;
+        overflow-y: auto;
+    }
+
+    .mac-content {
+        width: 100%;
+        min-height: 0;
+        height: auto;
+        overflow: hidden;
+    }
+
+    .content-scrollable {
+        padding: 14px;
+        overflow-y: auto;
+    }
+
+    #script-list,
+    .mac-grouped-list {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .script-item {
+        padding: 16px;
+    }
+
+    .script-info-container {
+        padding: 0;
+        min-width: 0;
+    }
+
+    .card-actions {
+        width: 100%;
+        margin-left: 0;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .card-actions .mac-action-btn,
+    .script-btn {
+        width: 100%;
+        min-height: 50px;
+        font-size: 16px;
+        margin-bottom: 10px;
+        touch-action: manipulation;
+    }
+
+    .card-actions .mac-action-btn:last-child,
+    .script-btn:last-child {
+        margin-bottom: 0;
+    }
+
+    .telemetry-hud,
+    .network-radar-panel {
+        padding: 16px !important;
+        border-radius: 14px;
+    }
+
+    .telemetry-hud {
+        flex-direction: column;
+        align-items: stretch !important;
+    }
+
+    .telemetry-hud > div,
+    .network-radar-panel,
+    .mac-group,
+    .apps-panel,
+    .apps-table-wrap {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    #chart-cpu,
+    #chart-mem,
+    .network-radar-canvas {
+        width: 100% !important;
+    }
+}
+
 /* ======================== APPS TABLE (Geek Uninstaller Style) ======================== */
 
 .apps-toolbar {
@@ -1867,6 +1973,405 @@ input:checked + .slider:before { transform: translateX(12px); }
     text-overflow: ellipsis;
     text-shadow: 0px 2px 4px rgba(0,0,0,0.5); /* Sombra difuminada para lectura */
     pointer-events: none;
-}. o j o - d i s k - t r e e m a p - s u r f a c e  
-   m i n - h e i g h t :   5 0 0 p x ;   d i s p l a y :   b l o c k ;   p o s i t i o n :   r e l a t i v e ;   w i d t h :   1 0 0 % ;   b o r d e r - r a d i u s :   8 p x ;   o v e r f l o w :   h i d d e n ;    
- 
+}
+
+.ojo-disk-treemap-surface {
+    min-height: 500px;
+    display: block;
+    position: relative;
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* ======================== RESET MOVIL AGRESIVO ======================== */
+@media (max-width: 768px) {
+    html,
+    body {
+        display: flex !important;
+        flex-direction: column !important;
+        height: auto !important;
+        min-height: 100dvh !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+    }
+
+    .dashboard-container,
+    .main-wrapper,
+    .app-container,
+    .mac-window,
+    .mac-content,
+    .mac-sidebar,
+    .sidebar,
+    .content-scrollable,
+    .sidebar-nav,
+    .terminal-drawer,
+    .drawer-content,
+    .network-radar-panel,
+    .radar-container,
+    .terminal,
+    .terminal-wrapper,
+    .script-list,
+    #script-list,
+    .mac-grouped-list {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        min-height: auto !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        position: relative !important;
+        top: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        left: auto !important;
+        transform: none !important;
+        box-sizing: border-box !important;
+    }
+
+    .mac-sidebar {
+        border-right: 0 !important;
+        border-bottom: 1px solid var(--mac-border) !important;
+    }
+
+    .panel,
+    .card,
+    .mac-group,
+    .script-item,
+    .terminal-drawer,
+    .network-radar-panel,
+    .radar-container,
+    .apps-panel,
+    .apps-table-wrap,
+    .terminal,
+    .script-list,
+    #script-list,
+    .mac-grouped-list {
+        width: 100% !important;
+        box-sizing: border-box !important;
+        margin: 0 0 20px 0 !important;
+        height: auto !important;
+        min-height: auto !important;
+    }
+
+    .mac-grouped-list,
+    .script-list,
+    #script-list,
+    .card-actions,
+    .ojo-disk-top-grid,
+    .apps-grid {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+    }
+
+    .terminal-drawer.collapsed {
+        transform: none !important;
+    }
+
+    .drawer-header {
+        position: relative !important;
+    }
+
+    .mac-action-btn,
+    .script-btn,
+    button {
+        touch-action: manipulation;
+    }
+
+    .content-header,
+    .content-title-drag,
+    .content-actions,
+    .mac-group-row,
+    .card-header,
+    .autostart-row,
+    .apps-toolbar,
+    .apps-toolbar-left,
+    .apps-toolbar-right,
+    .network-radar-header,
+    .network-radar-controls {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        justify-content: flex-start !important;
+        gap: 10px !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: auto !important;
+        position: relative !important;
+    }
+
+    .content-header,
+    .content-scrollable {
+        padding: 12px !important;
+    }
+
+    .card-header,
+    .script-info-container,
+    .script-desc,
+    .script-args-info,
+    .file-name,
+    .apps-table-search {
+        min-width: 0 !important;
+        width: 100% !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere !important;
+        text-overflow: clip !important;
+    }
+
+    .mac-traffic-lights {
+        flex-direction: row !important;
+        justify-content: flex-start !important;
+        gap: 8px !important;
+        margin: 0 0 10px 0 !important;
+        padding: 0 !important;
+    }
+
+    .sidebar-item {
+        justify-content: flex-start !important;
+        padding: 10px 12px !important;
+        text-align: left !important;
+    }
+
+    .sidebar-item span {
+        display: inline-flex !important;
+    }
+
+    #script-list,
+    .mac-grouped-list {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 14px !important;
+    }
+
+    .script-item {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+        padding: 14px !important;
+    }
+
+    .script-item > * {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .card-header,
+    .script-info-container,
+    .script-desc,
+    .autostart-row,
+    .card-actions {
+        flex: 0 0 auto !important;
+        flex-basis: auto !important;
+        margin-left: 0 !important;
+        min-height: 0 !important;
+    }
+
+    .script-info-container {
+        padding: 0 !important;
+    }
+
+    .script-desc {
+        padding: 0 !important;
+    }
+
+    .autostart-row {
+        justify-content: flex-start !important;
+        gap: 10px !important;
+        flex-wrap: wrap !important;
+    }
+
+    .card-actions {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+
+    .card-actions {
+        margin-left: 0 !important;
+    }
+
+    .card-actions .mac-action-btn {
+        width: 100% !important;
+        min-height: 48px !important;
+        margin: 0 !important;
+    }
+
+    .terminal-drawer,
+    .drawer-content,
+    .terminal-wrapper,
+    .mac-terminal {
+        max-height: none !important;
+        height: auto !important;
+        min-height: auto !important;
+    }
+
+    .network-radar-canvas {
+        height: 240px !important;
+        min-height: 240px !important;
+    }
+
+    .network-node-modal {
+        position: relative !important;
+        transform: none !important;
+        inset: auto !important;
+        margin-top: 10px !important;
+    }
+
+    .network-radar-rules-modal {
+        position: relative !important;
+        inset: auto !important;
+        margin-top: 12px !important;
+    }
+}
+
+    /* ======================== LANDSCAPE MOBILE FIX ======================== */
+    @media (orientation: landscape) and (max-width: 1100px) and (max-height: 700px) {
+        html,
+        body {
+            height: 100dvh !important;
+            min-height: 100dvh !important;
+            overflow: hidden !important;
+        }
+
+        .mac-window {
+            display: flex !important;
+            flex-direction: row !important;
+            height: 100dvh !important;
+            overflow: hidden !important;
+        }
+
+        .mac-sidebar {
+            width: 84px !important;
+            min-width: 84px !important;
+            max-width: 84px !important;
+            height: 100dvh !important;
+            border-right: 1px solid var(--mac-border) !important;
+            border-bottom: 0 !important;
+            padding-top: 8px !important;
+        }
+
+        .sidebar-search,
+        .sidebar-divider,
+        .sidebar-bottom,
+        .sidebar-group-title,
+        .sidebar-item span {
+            display: none !important;
+        }
+
+        .sidebar-nav {
+            padding: 0 6px !important;
+            gap: 6px !important;
+            overflow-y: auto !important;
+        }
+
+        .sidebar-item {
+            justify-content: center !important;
+            padding: 10px 0 !important;
+            min-height: 44px !important;
+        }
+
+        .sidebar-item .icon-container {
+            margin: 0 !important;
+        }
+
+        .mac-traffic-lights {
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin: 2px 0 12px 0 !important;
+            padding: 0 !important;
+            gap: 6px !important;
+        }
+
+        .mac-content {
+            min-width: 0 !important;
+            width: auto !important;
+            height: 100dvh !important;
+            overflow: hidden !important;
+        }
+
+        .content-header {
+            height: 46px !important;
+            min-height: 46px !important;
+            padding: 0 12px !important;
+        }
+
+        .content-scrollable {
+            height: calc(100dvh - 46px) !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            padding: 10px 12px !important;
+        }
+
+        .telemetry-hud {
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 10px !important;
+        }
+
+        .telemetry-hud > div {
+            min-width: 0 !important;
+        }
+
+        .network-radar-header {
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+        }
+
+        .network-radar-controls {
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: flex-end !important;
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+        }
+
+        .network-radar-canvas {
+            height: 220px !important;
+            min-height: 220px !important;
+        }
+
+        #script-list,
+        .mac-grouped-list {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+        }
+
+        .script-item {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+            margin-bottom: 0 !important;
+        }
+
+        .card-header,
+        .script-info-container,
+        .autostart-row,
+        .card-actions {
+            width: 100% !important;
+            flex-basis: auto !important;
+            margin-left: 0 !important;
+            min-height: 0 !important;
+        }
+
+        .card-actions {
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        }
+
+        .card-actions .mac-action-btn {
+            min-height: 44px !important;
+            font-size: 14px !important;
+        }
+
+        .terminal-drawer {
+            display: none !important;
+        }
+    }
+

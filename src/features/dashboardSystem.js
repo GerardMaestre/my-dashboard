@@ -89,6 +89,41 @@ function extractScriptMeta(lines = []) {
 	return meta;
 }
 
+async function preloadScriptMetadata(files = []) {
+	const metadataByFile = new Map();
+	if (!Array.isArray(files) || files.length === 0) return metadataByFile;
+
+	if (!window.api || typeof window.api.readScriptMeta !== 'function') {
+		for (const file of files) {
+			metadataByFile.set(file, extractScriptMeta([]));
+		}
+		return metadataByFile;
+	}
+
+	const batchSize = 24;
+	for (let i = 0; i < files.length; i += batchSize) {
+		const batch = files.slice(i, i + batchSize);
+		const entries = await Promise.all(batch.map(async (file) => {
+			try {
+				const lineas = await window.api.readScriptMeta(file);
+				return [file, extractScriptMeta(lineas)];
+			} catch (err) {
+				console.error('No se pudo leer el archivo:', file, err);
+				return [file, extractScriptMeta([])];
+			}
+		}));
+
+		for (const [file, meta] of entries) {
+			metadataByFile.set(file, meta);
+			if (meta.mode && !scriptModeOverrides[file]) {
+				scriptModeOverrides[file] = meta.mode;
+			}
+		}
+	}
+
+	return metadataByFile;
+}
+
 // === 1-CLICK MODES ======
 export async function ejecutar1ClickMode(mode) {
 	const modes = {
@@ -141,7 +176,7 @@ export function toggleFavorite(fileName) {
 		mostrarToast('Habilidad anclada en Favoritos', 'success');
 	}
 	updateFavorites(newFavs);
-	cargarScripts(); // Re-render for sorting
+	cargarScripts().catch((error) => console.error('[HorusEngine] Error recargando scripts:', error));
 }
 
 export function toggleScriptMode(fileName) {
@@ -154,7 +189,7 @@ export function toggleScriptMode(fileName) {
 	const next = current === 'internal' ? 'external' : 'internal';
 	
 	scriptModeOverrides[fileName] = next;
-	cargarScripts(); // Re-renderizar la UI
+	cargarScripts().catch((error) => console.error('[HorusEngine] Error recargando scripts:', error));
 }
 
 export function toggleAutoStart(fileName) {
@@ -168,14 +203,17 @@ export function toggleAutoStart(fileName) {
 }
 
 export async function cargarScripts() {
+	const loadStart = performance.now();
+	console.info('[Startup] cargarScripts start');
 	const list = document.getElementById('script-list');
     if (!list) return;
 	list.innerHTML = '';
-	scriptModeOverrides = {};
+	scriptModeOverrides = { ...scriptModeOverrides };
 
 	let files = [];
 	try {
         if (window.api) files = await window.api.listScripts();
+		console.info(`[Startup] listScripts returned ${files.length} entries`);
 	} catch (err) {
 		logTerminal(`[Error] No se pudo leer mis_scripts: ${err}`, 'error');
 		return;
@@ -213,6 +251,9 @@ export async function cargarScripts() {
 	}
 
 	const sortedFolders = Object.keys(groups).sort((a, b) => a.localeCompare(b));
+	const metaStart = performance.now();
+	const metadataByFile = await preloadScriptMetadata(validFiles);
+	console.info(`[Startup] preloadScriptMetadata done in ${Math.round(performance.now() - metaStart)}ms`);
 
 	for (const folder of sortedFolders) {
 		const header = document.createElement('li');
@@ -228,17 +269,7 @@ export async function cargarScripts() {
 			const info = obtenerInfoArchivo(file);
 			const isAutoActive = !!autopilotTasks[file];
 			const isAutostart = autostartList.includes(file);
-			let meta = extractScriptMeta([]);
-
-			if (window.api) {
-			    try {
-				    const lineas = await window.api.readScriptMeta(file);
-				    meta = extractScriptMeta(lineas);
-				    if (meta.mode) scriptModeOverrides[file] = meta.mode;
-			    } catch (err) {
-				    console.error('No se pudo leer el archivo: ', file, err);
-			    }
-            }
+			const meta = metadataByFile.get(file) || extractScriptMeta([]);
 
 			if (isFirstLoad && isAutostart) {
 				pendingAutostarts.push(file);
@@ -434,6 +465,7 @@ export async function cargarScripts() {
 		splash.classList.add('hidden');
 		setTimeout(() => splash.remove(), 1000);
 	}
+	console.info(`[Startup] cargarScripts done in ${Math.round(performance.now() - loadStart)}ms`);
 }
 
 // UX: Badge de conteo en sidebar
@@ -488,20 +520,23 @@ export function alternarBotones(fileName, ejecutando) {
 	}
 }
 
-export function matarProceso(fileName) {
-	if (window.api && window.api.stopScript(fileName)) {
-		logTerminal(`[!] Operación abortada: ${fileName}`, 'error');
-		alternarBotones(fileName, false);
+export async function matarProceso(fileName) {
+	if (window.api) {
+        // AÑADIDO AWAIT AQUI
+        const res = await window.api.stopScript(fileName);
+        if (res && res.stopped) {
+		    logTerminal(`[!] Operación abortada: ${fileName}`, 'error');
+		    alternarBotones(fileName, false);
+            runningFiles.delete(fileName); // Limpiamos la caché visual
+        }
 	}
 }
 
-export function ejecutar(fileName, isAuto = false, isSilent = false) {
+export async function ejecutar(fileName, isAuto = false, isSilent = false) {
     const argsInput = document.getElementById('script-args');
 	const args = argsInput ? argsInput.value.trim() : '';
-	
 	const globalModeSelect = document.getElementById('global-terminal-mode');
 	const defaultMode = globalModeSelect ? globalModeSelect.value : 'internal';
-
 	const modeToUse = resolveRunMode(fileName, defaultMode);
 	const isExternal = modeToUse === 'external';
 
@@ -512,18 +547,24 @@ export function ejecutar(fileName, isAuto = false, isSilent = false) {
 
 	if (isExternal) {
         if (!window.api) return;
-		const result = window.api.runScript({ fileName, args, mode: modeToUse });
+        // AÑADIDO AWAIT AQUI
+		const result = await window.api.runScript({ fileName, args, mode: modeToUse });
 		if (!isSilent) {
 			if (result && result.forcedExternal) {
-				mostrarToast('Herramienta Pro ejecutada en modo visual externo', 'system');
+				mostrarToast('Herramienta Pro ejecutada en modo visual', 'system');
 			}
-			mostrarToast(`Lanzado en modo visual: ${fileName.split('/').pop()}`, 'success');
+			mostrarToast(`Lanzado: ${fileName.split('/').pop()}`, 'success');
 		}
 		return;
 	}
-	if (window.api && window.api.isRunning(fileName)) {
-		if (!isSilent) logTerminal(`[!] Ya está en ejecución: ${fileName}`, 'error');
-		return;
+    
+	if (window.api) {
+        // AÑADIDO AWAIT AQUI
+        const isAlreadyRunning = await window.api.isRunning(fileName);
+        if (isAlreadyRunning) {
+		    if (!isSilent) logTerminal(`[!] Ya está en ejecución: ${fileName}`, 'error');
+		    return;
+        }
 	}
 
 	if (isSilent) silentRuns.add(fileName);
@@ -532,7 +573,8 @@ export function ejecutar(fileName, isAuto = false, isSilent = false) {
 	if (currentFilter === 'active') aplicarFiltros();
     
     if (window.api) {
-	    const result = window.api.runScript({ fileName, args, mode: modeToUse });
+        // AÑADIDO AWAIT AQUI
+	    const result = await window.api.runScript({ fileName, args, mode: modeToUse });
 	    if (!result || result.pid === null) {
 		    runningFiles.delete(fileName);
 		    alternarBotones(fileName, false);

@@ -84,14 +84,18 @@ const telemetryManager = new TelemetryManager(null, 2000);
 
 // --- CICLO DE VIDA DE ELECTRON ---
 
+// --- CICLO DE VIDA DE ELECTRON ---
 const gotTheLock = app.requestSingleInstanceLock();
+
 if (!gotTheLock) {
     app.quit();
 } else {
-    if (!uac.isAdmin()) {
+    // PARCHE: Solo pedir Admin si la app está compilada, para evitar cuelgues en npm start
+    const isPackaged = app.isPackaged;
+    if (isPackaged && !uac.isAdmin()) {
         uac.requestElevation();
     } else {
-        logger.info('--- HORUS ENGINE START (ADMIN MODE) ---');
+        logger.info('--- HORUS ENGINE START ---');
         
         app.on('ready', () => {
             mainWindow = new BrowserWindow({
@@ -102,8 +106,94 @@ if (!gotTheLock) {
                 }
             });
 
+            mainWindow.webContents.on('did-fail-load', (_event, code, description, url) => {
+                logger.error(`[Renderer] did-fail-load ${code} ${description} (${url})`);
+            });
+
+            mainWindow.webContents.on('render-process-gone', (_event, details) => {
+                logger.error(`[Renderer] render-process-gone: ${details.reason}`);
+            });
+
+            mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+                const tag = level >= 2 ? 'error' : 'info';
+                logger[tag](`[RendererConsole] ${sourceId}:${line} ${message}`);
+            });
+
+            mainWindow.webContents.on('did-finish-load', () => {
+                setTimeout(() => {
+                    if (!mainWindow || mainWindow.isDestroyed()) return;
+                    const moduleProbeScript = `
+                        (async () => {
+                            const modules = [
+                                './ui/windowSystem.js',
+                                './ui/terminalSystem.js',
+                                './ui/toastSystem.js',
+                                './features/dashboardSystem.js',
+                                './features/autopilotSystem.js',
+                                './features/ojoDeDios.js',
+                                './core/utils.js',
+                                './ui/RadarSystem.js',
+                                './renderer/telemetry.js',
+                                './renderer/spotlight.js',
+                                './renderer/ipcListeners.js',
+                                './renderer.js'
+                            ];
+
+                            const out = [];
+                            for (const mod of modules) {
+                                try {
+                                    await import(mod);
+                                    out.push(mod + '::ok');
+                                } catch (e) {
+                                    out.push(mod + '::fail::' + (e && e.message ? e.message : String(e)));
+                                }
+                            }
+                            return out;
+                        })();
+                    `;
+
+                    mainWindow.webContents.executeJavaScript(moduleProbeScript, true)
+                        .then((rows) => {
+                            for (const row of rows || []) {
+                                if (String(row).includes('::fail::')) {
+                                    logger.error(`[ModuleProbe] ${row}`);
+                                }
+                            }
+                        })
+                        .catch((error) => {
+                            logger.error(`[ModuleProbe] executeJavaScript failed: ${error.message}`);
+                        });
+                }, 1800);
+
+                setTimeout(() => {
+                    if (!mainWindow || mainWindow.isDestroyed()) return;
+                    mainWindow.webContents.executeJavaScript(`({
+                        rendererLoaded: !!window.__horusRendererModuleLoaded,
+                        splashPresent: !!document.getElementById('splash-screen'),
+                        scriptCount: document.scripts.length
+                    })`, true)
+                        .then((state) => {
+                            logger.info(`[StartupProbe] rendererLoaded=${state.rendererLoaded} splashPresent=${state.splashPresent} scripts=${state.scriptCount}`);
+                        })
+                        .catch((error) => {
+                            logger.error(`[StartupProbe] executeJavaScript failed: ${error.message}`);
+                        });
+                }, 5000);
+            });
+
+            networkRadar.setMainWindow(mainWindow);
+            telemetryManager.setMainWindow(mainWindow);
+
             mainWindow.loadFile(path.join(__dirname, '..', 'index.html'));
-            mainWindow.once('ready-to-show', () => mainWindow.show());
+            mainWindow.once('ready-to-show', () => {
+                mainWindow.show();
+
+                // Defer heavy subsystems until the UI is already visible.
+                setImmediate(() => {
+                    networkRadar.start();
+                    telemetryManager.start();
+                });
+            });
 
             // 2. Iniciar Tray
             const tray = new TrayIcon(mainWindow, path.join(__dirname, '..', '..', 'assets', 'icon.ico'), 
@@ -117,13 +207,6 @@ if (!gotTheLock) {
 
             // 3. Registrar IPC
             registerIpcHandlers({ diskManager, appManager, networkRadar, uac, config, taskQueue, scheduler });
-
-            // 4. Iniciar Motores
-            networkRadar.setMainWindow(mainWindow);
-            networkRadar.start();
-            
-            telemetryManager.setMainWindow(mainWindow);
-            telemetryManager.start();
 
             // 5. Configurar Autopilot Inicial
             scheduler.schedule('ram-purge', '6-hours', 6 * 60 * 60 * 1000, async () => {
@@ -139,6 +222,15 @@ if (!gotTheLock) {
             logger.info('[Main] Lifecycle initialization complete.');
         });
 
+        // PARCHE CRÍTICO: Despertar la app si intentas abrirla de nuevo y estaba en la bandeja
+        app.on('second-instance', () => {
+            if (mainWindow) {
+                if (mainWindow.isMinimized()) mainWindow.restore();
+                mainWindow.show();
+                mainWindow.focus();
+            }
+        });
+
         app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
         
         app.on('before-quit', () => {
@@ -147,3 +239,4 @@ if (!gotTheLock) {
         });
     }
 }
+

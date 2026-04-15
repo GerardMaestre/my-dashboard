@@ -1,11 +1,127 @@
 const { spawn } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 const logger = require('../utils/logger');
 
 class AppManager {
-    constructor(runPowerShell, safeJsonParse, escapePsSingleQuoted) {
+    constructor(runPowerShell, safeJsonParse, escapePsSingleQuoted, options = {}) {
         this.runPowerShell = runPowerShell;
         this.safeJsonParse = safeJsonParse;
         this.escapePsSingleQuoted = escapePsSingleQuoted;
+        this.storageDir = options.storageDir || process.cwd();
+        this.pythonExe = options.pythonExe || '';
+    }
+
+    normalizeMode(mode) {
+        return String(mode || 'internal').toLowerCase() === 'external' ? 'external' : 'internal';
+    }
+
+    normalizeArgs(args) {
+        if (Array.isArray(args)) {
+            return args.map((value) => String(value));
+        }
+
+        if (typeof args === 'string') {
+            const trimmed = args.trim();
+            return trimmed ? [trimmed] : [];
+        }
+
+        return [];
+    }
+
+    resolveScriptPath(command) {
+        const normalized = String(command || '').trim();
+        if (!normalized) {
+            throw new Error('Command is required');
+        }
+
+        const safeRelative = normalized.replace(/[\\/]+/g, path.sep);
+        const candidate = path.isAbsolute(safeRelative)
+            ? safeRelative
+            : path.join(this.storageDir, safeRelative);
+
+        if (!fs.existsSync(candidate)) {
+            throw new Error(`Script not found: ${normalized}`);
+        }
+
+        return candidate;
+    }
+
+    async executeScript(command, args, options = {}) {
+        const scriptPath = this.resolveScriptPath(command);
+        const ext = path.extname(scriptPath).toLowerCase();
+        const parsedArgs = this.normalizeArgs(args);
+        const mode = this.normalizeMode(options.mode);
+
+        let executable = scriptPath;
+        let spawnArgs = parsedArgs;
+
+        if (ext === '.py') {
+            executable = this.pythonExe && fs.existsSync(this.pythonExe) ? this.pythonExe : 'python';
+            spawnArgs = [scriptPath, ...parsedArgs];
+        } else if (ext === '.bat' || ext === '.cmd') {
+            executable = 'cmd.exe';
+            spawnArgs = ['/c', scriptPath, ...parsedArgs];
+        } else if (ext === '.ps1') {
+            executable = 'powershell.exe';
+            spawnArgs = ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, ...parsedArgs];
+        }
+
+        return await new Promise((resolve, reject) => {
+            let settled = false;
+
+            const rejectOnce = (error) => {
+                if (settled) return;
+                settled = true;
+                reject(error instanceof Error ? error : new Error(String(error)));
+            };
+
+            try {
+                const child = spawn(executable, spawnArgs, {
+                    cwd: path.dirname(scriptPath),
+                    windowsHide: mode !== 'external',
+                    shell: false
+                });
+
+                child.once('error', rejectOnce);
+
+                if (child.stdout) {
+                    child.stdout.on('data', (data) => {
+                        if (typeof options.onOutput === 'function') {
+                            options.onOutput({ type: 'success', message: data.toString() });
+                        }
+                    });
+                }
+
+                if (child.stderr) {
+                    child.stderr.on('data', (data) => {
+                        if (typeof options.onOutput === 'function') {
+                            options.onOutput({ type: 'error', message: data.toString() });
+                        }
+                    });
+                }
+
+                child.on('close', (code) => {
+                    if (typeof options.onExit === 'function') {
+                        options.onExit({ code: Number.isInteger(code) ? code : -1 });
+                    }
+                });
+
+                child.once('spawn', () => {
+                    if (settled) return;
+                    settled = true;
+                    resolve({
+                        started: true,
+                        pid: child.pid || null,
+                        command: scriptPath,
+                        mode,
+                        child
+                    });
+                });
+            } catch (error) {
+                rejectOnce(error);
+            }
+        });
     }
 
     async ghostListInstalledApps() {

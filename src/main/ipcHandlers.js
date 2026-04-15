@@ -30,16 +30,56 @@ function registerIpcHandlers(managers) {
 
     ipcMain.handle('list-scripts', async () => {
         if (!fs.existsSync(config.storageDir)) return [];
-        const getFiles = async (dir, base = '') => {
-            const dirents = fs.readdirSync(dir, { withFileTypes: true });
-            const files = await Promise.all(dirents.map((dirent) => {
+        const ignoredDirs = new Set([
+            'env_python',
+            'node_modules',
+            '.git',
+            '__pycache__',
+            '.venv',
+            'venv',
+            'lib',
+            'libs',
+            'site-packages',
+            'scripts',
+            'target'
+        ]);
+
+        const maxResults = 12000;
+
+        const getFiles = (dir, base = '', acc = []) => {
+            if (acc.length >= maxResults) return acc;
+
+            let dirents = [];
+            try {
+                dirents = fs.readdirSync(dir, { withFileTypes: true });
+            } catch (error) {
+                return acc;
+            }
+
+            for (const dirent of dirents) {
+                if (acc.length >= maxResults) break;
+
                 const res = path.resolve(dir, dirent.name);
                 const rel = path.posix.join(base, dirent.name);
-                return dirent.isDirectory() ? getFiles(res, rel) : rel;
-            }));
-            return Array.prototype.concat(...files).filter(f => f.match(/\.(py|bat|cmd|sh|exe)$/i));
+                const normalizedRel = rel.toLowerCase();
+                const lowerName = dirent.name.toLowerCase();
+
+                if (dirent.isDirectory()) {
+                    if (ignoredDirs.has(lowerName)) continue;
+                    if (normalizedRel.includes('/env_python/') || normalizedRel.includes('/node_modules/')) continue;
+                    getFiles(res, rel, acc);
+                    continue;
+                }
+
+                if (/\.(py|bat|cmd|sh|exe)$/i.test(dirent.name)) {
+                    acc.push(rel);
+                }
+            }
+
+            return acc;
         };
-        return await getFiles(config.storageDir);
+
+        return getFiles(config.storageDir);
     });
 
     ipcMain.handle('read-script-meta', async (_event, fileName) => {
@@ -171,18 +211,23 @@ function registerIpcHandlers(managers) {
         const pythonExe = path.join(config.pythonEnvPath, 'python.exe');
         const wiztreeExe = path.join(config.toolsDir, 'WizTree64.exe');
 
+        // Función auxiliar segura local
+        const runPS = (cmd) => new Promise(res => {
+            const p = spawn('powershell.exe', ['-NoProfile', '-Command', cmd], { windowsHide: true });
+            p.on('close', res);
+        });
+
         if (!fs.existsSync(pythonExe)) {
             event.sender.send('setup-progress', { status: 'Instalando Python...', percent: 10 });
-            // Lógica abreviada de descarga PS (reutilizada de main.js original)
             const psZap = `$ProgressPreference = 'SilentlyContinue'; New-Item -ItemType Directory -Path "${config.pythonEnvPath}" -Force; $zip = Join-Path "${config.pythonEnvPath}" "python.zip"; Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.11.8/python-3.11.8-embed-amd64.zip" -OutFile $zip; Expand-Archive -Path $zip -DestinationPath "${config.pythonEnvPath}" -Force; Remove-Item $zip;`;
-            try { await managers.appManager.runPowerShell(psZap); } catch (e) { logger.error('Fail Python spawn'); }
+            await runPS(psZap);
             event.sender.send('setup-progress', { status: 'Python Listo', percent: 50 });
         }
 
         if (!fs.existsSync(wiztreeExe)) {
             event.sender.send('setup-progress', { status: 'Instalando WizTree...', percent: 60 });
             const psWiz = `$ProgressPreference = 'SilentlyContinue'; New-Item -ItemType Directory -Path "${config.toolsDir}" -Force; $zip = Join-Path "${config.toolsDir}" "wiztree.zip"; Invoke-WebRequest -Uri "https://diskanalyzer.com/files/wiztree_4_21_portable.zip" -OutFile $zip; Expand-Archive -Path $zip -DestinationPath "${config.toolsDir}" -Force; Remove-Item $zip;`;
-            try { await managers.appManager.runPowerShell(psWiz); } catch (e) { logger.error('Fail WizTree spawn'); }
+            await runPS(psWiz);
             event.sender.send('setup-progress', { status: 'Entorno Listo', percent: 100 });
         }
         return { ok: true };
