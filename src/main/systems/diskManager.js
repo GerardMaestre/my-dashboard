@@ -1,5 +1,7 @@
 const path = require('path');
+const os = require('os');
 const fs = require('fs');
+const readline = require('readline');
 const { execFile } = require('child_process');
 const logger = require('../utils/logger');
 
@@ -9,135 +11,188 @@ class DiskManager {
         this.toolCandidates = toolCandidates;
         this.diskScanCache = new Map();
         this.MAX_SCAN_CACHE_SIZE = 3;
-        this.snapshotDir = path.join(this.appDataNexus, 'scan-snapshots');
-        this.MAX_SNAPSHOT_FILES = 8;
-        this.DEFAULT_PREVIEW_ITEMS = 1200;
-        this.MAX_PREVIEW_ITEMS = 5000;
-    }
-
-    ensureDir(dirPath) {
-        try {
-            if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
-            return true;
-        } catch (error) {
-            logger.error(`[DiskManager] No se pudo crear ${dirPath}: ${error.message}`);
-            return false;
-        }
+        this.MAX_ITEMS = 30;
     }
 
     findExistingTool(paths) {
-        for (const candidate of paths) {
-            if (fs.existsSync(candidate)) return candidate;
+        for (const candidate of paths || []) {
+            if (candidate && fs.existsSync(candidate)) return candidate;
         }
         return null;
     }
 
-    normalizeItemLimit(limitValue) {
-        const parsed = Number.parseInt(limitValue, 10);
-        if (!Number.isFinite(parsed)) return this.DEFAULT_PREVIEW_ITEMS;
-        return Math.max(50, Math.min(this.MAX_PREVIEW_ITEMS, parsed));
+    normalizeRootPath(rootPath) {
+        const rawRoot = String(rootPath || 'C:\\').trim() || 'C:\\';
+        let resolved = path.win32.resolve(rawRoot);
+        if (!resolved.endsWith('\\')) resolved += '\\';
+        return path.win32.normalize(resolved);
     }
 
-    buildPreviewPayload(scanResult, options = {}) {
-        const totalItems = Array.isArray(scanResult?.items) ? scanResult.items.length : 0;
-        const maxItems = this.normalizeItemLimit(options?.maxItems);
-        const previewItems = totalItems > 0 ? scanResult.items.slice(0, maxItems) : [];
-        const snapshotPath = this.persistScanSnapshot(scanResult?.root || '', scanResult?.items || []);
+    normalizeItemLimit() {
+        return this.MAX_ITEMS;
+    }
+
+    parseWizTreeLine(line) {
+        if (!line || line.length < 5 || line[0] !== '"') return null;
+
+        let idx = 1;
+        let fullPath = '';
+        while (idx < line.length) {
+            const current = line[idx];
+            if (current === '"') {
+                if (line[idx + 1] === '"') {
+                    fullPath += '"';
+                    idx += 2;
+                    continue;
+                }
+                break;
+            }
+            fullPath += current;
+            idx += 1;
+        }
+
+        if (idx >= line.length) return null;
+
+        const remaining = line.slice(idx + 1);
+        const columns = remaining.startsWith(',')
+            ? remaining.slice(1).split(',')
+            : remaining.split(',');
+
+        const sizeBytes = Number(columns[0]) || 0;
+        const attributes = Number(columns[columns.length - 3]) || 0;
+        const isDirectory = (attributes & 16) === 16;
 
         return {
-            engine: scanResult?.engine || 'wiztree',
-            root: scanResult?.root || '',
-            items: previewItems,
-            totalItems,
-            itemsTruncated: totalItems > previewItems.length,
-            snapshotPath,
-            extensions: Array.isArray(scanResult?.extensions) ? scanResult.extensions : [],
-            totalSize: Number(scanResult?.totalSize) || 0
+            fullPath: fullPath.replace(/\\\\/g, '\\'),
+            sizeBytes,
+            isDirectory
         };
     }
 
-    persistScanSnapshot(root, items) {
-        try {
-            this.ensureDir(this.snapshotDir);
-            const safeRoot = String(root || 'scan')
-                .replace(/[:\\/]+/g, '_')
-                .replace(/[^a-zA-Z0-9_-]+/g, '')
-                .slice(0, 40) || 'scan';
-            const fileName = `wiz-${safeRoot}-${Date.now()}.json`;
-            const fullPath = path.join(this.snapshotDir, fileName);
-            fs.writeFileSync(fullPath, JSON.stringify({ createdAt: Date.now(), items: Array.isArray(items) ? items : [] }), 'utf8');
-            this.pruneOldSnapshots();
-            return fullPath;
-        } catch (error) {
-            logger.warn(`[DiskManager] No se pudo persistir snapshot de disco: ${error.message}`);
-            return '';
+    isImmediateChildFolder(fullPath, normalizedRoot) {
+        const normalizedFullPath = path.win32.normalize(String(fullPath || '')).replace(/[\\/]+$/, '');
+        const normalizedRootBase = normalizedRoot.replace(/[\\/]+$/, '');
+        const rootPrefix = `${normalizedRootBase}\\`;
+
+        if (!normalizedFullPath.toLowerCase().startsWith(rootPrefix.toLowerCase())) {
+            return false;
         }
+
+        const relative = normalizedFullPath.slice(rootPrefix.length);
+        if (!relative) return false;
+        return !relative.includes('\\');
     }
 
-    pruneOldSnapshots() {
-        try {
-            if (!fs.existsSync(this.snapshotDir)) return;
-            const files = fs.readdirSync(this.snapshotDir)
-                .filter((name) => name.toLowerCase().endsWith('.json'))
-                .map((name) => {
-                    const fullPath = path.join(this.snapshotDir, name);
-                    let mtimeMs = 0;
-                    try {
-                        mtimeMs = fs.statSync(fullPath).mtimeMs || 0;
-                    } catch (_error) {
-                        mtimeMs = 0;
-                    }
-                    return { fullPath, mtimeMs };
-                })
-                .sort((a, b) => b.mtimeMs - a.mtimeMs);
+    async parseRootFoldersFromCsv(csvPath, normalizedRoot, sender) {
+        const folderMap = new Map();
+        const stream = fs.createReadStream(csvPath, { encoding: 'utf8' });
+        const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
 
-            if (files.length <= this.MAX_SNAPSHOT_FILES) return;
+        let isHeader = true;
+        let lineCount = 0;
+        let lastProgressTs = Date.now();
 
-            for (let index = this.MAX_SNAPSHOT_FILES; index < files.length; index += 1) {
-                try {
-                    fs.unlinkSync(files[index].fullPath);
-                } catch (_error) {
-                    // noop
+        for await (const line of rl) {
+            if (isHeader) {
+                isHeader = false;
+                continue;
+            }
+
+            lineCount += 1;
+            const parsed = this.parseWizTreeLine(line);
+            if (!parsed || !parsed.isDirectory) continue;
+
+            if (!this.isImmediateChildFolder(parsed.fullPath, normalizedRoot)) continue;
+
+            const normalizedPath = path.win32.normalize(parsed.fullPath).replace(/[\\/]+$/, '');
+            const previous = folderMap.get(normalizedPath);
+            if (!previous || parsed.sizeBytes > previous.sizeBytes) {
+                folderMap.set(normalizedPath, {
+                    fullPath: normalizedPath,
+                    name: path.win32.basename(normalizedPath) || normalizedPath,
+                    sizeBytes: Number(parsed.sizeBytes) || 0,
+                    isDir: true,
+                    depth: 1
+                });
+            }
+
+            if (lineCount % 40000 === 0) {
+                const now = Date.now();
+                if (now - lastProgressTs >= 300) {
+                    sender.send('disk-progress', { phase: 'parsing', percent: 55 + Math.min(35, Math.round(lineCount / 120000)) });
+                    lastProgressTs = now;
                 }
             }
-        } catch (_error) {
-            // noop
         }
+
+        return Array.from(folderMap.values()).sort((a, b) => b.sizeBytes - a.sizeBytes);
     }
 
-    readDiskSnapshotPage(snapshotPath, offset = 0, limit = this.DEFAULT_PREVIEW_ITEMS) {
-        try {
-            const resolvedSnapshotDir = path.resolve(this.snapshotDir);
-            const resolvedPath = path.resolve(String(snapshotPath || ''));
-            const normalizedDir = `${resolvedSnapshotDir}${path.sep}`.toLowerCase();
-            const normalizedPath = resolvedPath.toLowerCase();
+    async runWizTreeExport(wiztreeExe, normalizedRoot, csvPath) {
+        return await new Promise((resolve, reject) => {
+            const args = [
+                normalizedRoot,
+                `/export=${csvPath}`,
+                '/exportencoding=UTF8',
+                '/admin=0'
+            ];
 
-            if (!normalizedPath.startsWith(normalizedDir)) {
-                return { items: [], totalItems: 0, offset: 0, limit: 0, hasMore: false, error: 'Invalid snapshot path' };
-            }
+            execFile(
+                wiztreeExe,
+                args,
+                {
+                    windowsHide: true,
+                    timeout: 180000,
+                    maxBuffer: 1024 * 1024
+                },
+                (error) => {
+                    if (error) {
+                        reject(error);
+                        return;
+                    }
+                    resolve();
+                }
+            );
+        });
+    }
 
-            if (!fs.existsSync(resolvedPath)) {
-                return { items: [], totalItems: 0, offset: 0, limit: 0, hasMore: false, error: 'Snapshot not found' };
-            }
+    buildCompactPayload(normalizedRoot, allRootFolders) {
+        const topFolders = allRootFolders.slice(0, this.normalizeItemLimit());
+        const maxSize = Math.max(1, ...topFolders.map((item) => Number(item.sizeBytes) || 0));
+        const totalSize = topFolders.reduce((sum, item) => sum + (Number(item.sizeBytes) || 0), 0);
 
-            const raw = fs.readFileSync(resolvedPath, 'utf8');
-            const parsed = JSON.parse(raw);
-            const allItems = Array.isArray(parsed?.items) ? parsed.items : [];
-            const safeOffset = Math.max(0, Number.parseInt(offset, 10) || 0);
-            const safeLimit = this.normalizeItemLimit(limit);
-            const pageItems = allItems.slice(safeOffset, safeOffset + safeLimit);
-
+        const items = topFolders.map((item, index) => {
+            const sizeBytes = Number(item.sizeBytes) || 0;
+            const percent = (sizeBytes / maxSize) * 100;
             return {
-                items: pageItems,
-                totalItems: allItems.length,
-                offset: safeOffset,
-                limit: safeLimit,
-                hasMore: (safeOffset + pageItems.length) < allItems.length
+                id: `wiz-root-${index}`,
+                fullPath: item.fullPath,
+                name: item.name,
+                sizeBytes,
+                isDir: true,
+                depth: 1,
+                percent: Number(percent.toFixed(2))
             };
-        } catch (error) {
-            logger.warn(`[DiskManager] No se pudo leer snapshot paginado: ${error.message}`);
-            return { items: [], totalItems: 0, offset: 0, limit: 0, hasMore: false, error: error.message };
+        });
+
+        return {
+            engine: 'wiztree',
+            root: normalizedRoot,
+            items,
+            totalItems: items.length,
+            itemsTruncated: false,
+            snapshotPath: '',
+            extensions: [],
+            totalSize
+        };
+    }
+
+    cacheResult(cacheKey, payload) {
+        if (this.diskScanCache.size >= this.MAX_SCAN_CACHE_SIZE) {
+            const first = this.diskScanCache.keys().next().value;
+            this.diskScanCache.delete(first);
         }
+        this.diskScanCache.set(cacheKey, payload);
     }
 
     async ghostSearchFiles(query, limit = 120) {
@@ -150,119 +205,73 @@ class DiskManager {
                         else resolve({ stdout: out || '' });
                     });
                 });
-                return stdout.split(/\r?\n/).filter(Boolean).map((f, i) => ({ id: `es-${i}`, name: path.basename(f), fullPath: f }));
-            } catch (e) {
-                logger.error(`[DiskManager] Everything search failed: ${e.message}`);
+
+                return stdout
+                    .split(/\r?\n/)
+                    .filter(Boolean)
+                    .map((filePath, index) => ({
+                        id: `es-${index}`,
+                        name: path.basename(filePath),
+                        fullPath: filePath
+                    }));
+            } catch (error) {
+                logger.error(`[DiskManager] Everything search failed: ${error.message}`);
             }
         }
+
         return [];
     }
 
-    async ghostScanDisk(sender, rootPath, options) {
-        const safeRoot = String(rootPath || 'C:\\');
-        const normRoot = path.normalize(safeRoot).toLowerCase();
-        if (!options?.forceFresh && this.diskScanCache.has(normRoot)) {
-            logger.info(`[DiskManager] Returning cached scan for ${normRoot}`);
-            const cached = this.diskScanCache.get(normRoot);
-            const requestedLimit = this.normalizeItemLimit(options?.maxItems);
+    async ghostScanDisk(sender, rootPath, options = {}) {
+        const normalizedRoot = this.normalizeRootPath(rootPath);
+        const cacheKey = normalizedRoot.toLowerCase();
 
-            if (cached?.snapshotPath && requestedLimit !== (cached.items?.length || 0)) {
-                const page = this.readDiskSnapshotPage(cached.snapshotPath, 0, requestedLimit);
-                if (Array.isArray(page?.items) && page.items.length > 0) {
-                    return {
-                        ...cached,
-                        items: page.items,
-                        itemsTruncated: !!page.hasMore
-                    };
-                }
-            }
-
-            return cached;
+        if (!options.forceFresh && this.diskScanCache.has(cacheKey)) {
+            sender.send('disk-progress', { phase: 'cached', percent: 100 });
+            return this.diskScanCache.get(cacheKey);
         }
 
         const wiztreeExe = this.findExistingTool(this.toolCandidates.wiztree);
         if (!wiztreeExe) {
-            logger.error(`[DiskManager] WizTree not found`);
+            logger.error('[DiskManager] WizTree not found');
             return { error: 'WizTree not found' };
         }
 
-        const driveLetter = safeRoot.substring(0, 1).toUpperCase();
-        const tempCsv = path.join(this.appDataNexus, `export-${driveLetter}.csv`);
-        this.ensureDir(this.appDataNexus);
+        const tmpCsvPath = path.join(os.tmpdir(), `horus-wiztree-${Date.now()}-${process.pid}.csv`);
 
-        logger.info(`[DiskManager] Starting WizTree scan for ${driveLetter}:`);
-        sender.send('disk-progress', { phase: 'scan', percent: 10 });
-        
-        await new Promise(r => execFile(wiztreeExe, [`${driveLetter}:\\`, `/export=${tempCsv}`, '/admin=0'], { windowsHide: true }, r));
+        try {
+            sender.send('disk-progress', { phase: 'scan', percent: 10 });
+            await this.runWizTreeExport(wiztreeExe, normalizedRoot, tmpCsvPath);
 
-        sender.send('disk-progress', { phase: 'parsing', percent: 50 });
-        
-        const parsedResult = await this.parseWizTreeCSV(tempCsv, normRoot, sender);
-        const result = this.buildPreviewPayload(parsedResult, options);
-        
-        if (this.diskScanCache.size >= this.MAX_SCAN_CACHE_SIZE) {
-            const first = this.diskScanCache.keys().next().value;
-            this.diskScanCache.delete(first);
+            sender.send('disk-progress', { phase: 'parsing', percent: 50 });
+            const allRootFolders = await this.parseRootFoldersFromCsv(tmpCsvPath, normalizedRoot, sender);
+
+            sender.send('disk-progress', { phase: 'finalize', percent: 92 });
+            const payload = this.buildCompactPayload(normalizedRoot, allRootFolders);
+            this.cacheResult(cacheKey, payload);
+
+            sender.send('disk-progress', { phase: 'done', percent: 100 });
+            return payload;
+        } catch (error) {
+            logger.error(`[DiskManager] WizTree scan failed: ${error.message}`);
+            return { error: error.message };
+        } finally {
+            fs.promises.unlink(tmpCsvPath).catch(() => {});
         }
-        this.diskScanCache.set(normRoot, result);
-        return result;
     }
 
-    async parseWizTreeCSV(filePath, normRoot, sender) {
-        const readline = require('readline');
-        const items = [];
-        const extMap = new Map();
-        let totalSize = 0;
-        
-        const fileStream = fs.createReadStream(filePath, { encoding: 'utf8' });
-        const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
+    readDiskSnapshotPage(_snapshotPath, offset = 0, limit = 1200) {
+        const safeOffset = Math.max(0, Number.parseInt(offset, 10) || 0);
+        const safeLimit = Math.max(1, Number.parseInt(limit, 10) || 1200);
 
-        let isFirst = true;
-        let i = 0;
-        let lastProgressTs = Date.now();
-
-        for await (const line of rl) {
-            if (isFirst) { isFirst = false; continue; }
-            const firstComma = line.indexOf('",');
-            if (firstComma === -1) continue;
-
-            const fullPath = line.substring(1, firstComma).replace(/\\\\/g, '\\');
-            const rest = line.substring(firstComma + 2).split(',');
-            const sizeBytes = Number(rest[0]) || 0;
-            const attributes = Number(rest[rest.length - 3]) || 0;
-            const isDir = (attributes & 16) !== 0;
-
-            if (fullPath.toLowerCase().startsWith(normRoot)) {
-                const depth = (fullPath.split('\\').length) - (normRoot.split('\\').length) + 1;
-                
-                // FILTRADO AGRESIVO (Optimization requested)
-                if (isDir || depth <= 2 || sizeBytes > 5 * 1024 * 1024) {
-                    if (depth <= 5) {
-                        items.push({ id: `wiz-${i}`, fullPath, name: path.basename(fullPath), sizeBytes, isDir, depth });
-                    }
-                }
-            }
-
-            if (!isDir) {
-                totalSize += sizeBytes;
-                const ext = path.extname(fullPath).toLowerCase() || 'otros';
-                extMap.set(ext, (extMap.get(ext) || 0) + sizeBytes);
-            }
-            i++;
-            if (i % 50000 === 0) {
-                const now = Date.now();
-                if (now - lastProgressTs >= 350) {
-                    sender.send('disk-progress', { phase: 'parsing', percent: 50 + (i / 200000) * 40 });
-                    lastProgressTs = now;
-                }
-            }
-        }
-
-        const extensions = Array.from(extMap.entries())
-            .map(([ext, size]) => ({ ext, sizeBytes: size, percent: (size * 100 / (totalSize || 1)).toFixed(1) }))
-            .sort((a, b) => b.sizeBytes - a.sizeBytes).slice(0, 50);
-
-        return { engine: 'wiztree', root: normRoot, items, extensions, totalSize };
+        return {
+            items: [],
+            totalItems: 0,
+            offset: safeOffset,
+            limit: safeLimit,
+            hasMore: false,
+            error: 'Snapshot paging disabled in compact disk mode'
+        };
     }
 
     async scanGlobalFilesChunked(sender) {

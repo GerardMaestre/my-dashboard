@@ -92,10 +92,11 @@ async function initApp() {
         initSpotlight(ejecutar);
         startupTrace('spotlight initialized');
 
-        initRadarSystem({
+        const radarSystem = initRadarSystem({
             containerId: 'network-radar', statusId: 'network-radar-status', modalId: 'network-node-modal',
             onNotify: (m, t) => mostrarToast(m, t), onLog: (m, t) => logTerminal(m, t)
         });
+        window.__radarSystem = radarSystem;
         startupTrace('radar initialized');
 
         await cargarScripts();

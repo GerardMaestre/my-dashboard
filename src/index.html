@@ -155,35 +155,10 @@
 
                 <section class="network-radar-panel stagger-fade-in" style="animation-delay: 0.16s;">
                     <header class="network-radar-header">
-                        <h3 class="network-radar-title">Radar de Red Visual</h3>
-                        <div class="network-radar-controls">
-                            <button id="network-radar-rules-btn" class="network-radar-control-btn" type="button">Reglas</button>
-                            <button id="network-radar-export-btn" class="network-radar-control-btn" type="button">Historial CSV</button>
-                        </div>
+                        <h3 class="network-radar-title">Heatmap de Disco (Top 30)</h3>
                     </header>
-                    <div id="network-radar-status" class="network-radar-status">Inicializando sensor de amenazas...</div>
-                    <div id="network-radar" class="network-radar-canvas" aria-label="Radar de conexiones de red en tiempo real">
-                        <div id="network-node-modal" class="network-node-modal hidden" aria-live="polite"></div>
-                        <div id="network-radar-rules-modal" class="network-radar-rules-modal hidden" aria-live="polite">
-                            <div class="network-radar-rules-card">
-                                <h4>Reglas de Deteccion</h4>
-                                <p>Configura IPs, paises y ASN de alto riesgo para marcar nodos en rojo.</p>
-
-                                <label for="network-rules-ips">IPs Watchlist (una por linea)</label>
-                                <textarea id="network-rules-ips" rows="4" spellcheck="false"></textarea>
-
-                                <label for="network-rules-countries">Paises de riesgo (ISO2, separados por coma)</label>
-                                <input id="network-rules-countries" type="text" placeholder="RU, KP, IR">
-
-                                <label for="network-rules-asn">Palabras clave ASN/ISP (coma)</label>
-                                <input id="network-rules-asn" type="text" placeholder="hosted, datacenter, vpn">
-
-                                <div class="network-radar-rules-actions">
-                                    <button id="network-rules-cancel" class="network-radar-control-btn" type="button">Cancelar</button>
-                                    <button id="network-rules-save" class="network-radar-control-btn is-primary" type="button">Guardar Reglas</button>
-                                </div>
-                            </div>
-                        </div>
+                    <div id="network-radar-status" class="network-radar-status">Heatmap en espera: ejecuta un escaneo de disco.</div>
+                    <div id="network-radar" class="network-radar-canvas radar-view" aria-label="Mapa de calor de carpetas mas pesadas">
                     </div>
                 </section>
 
@@ -477,7 +452,6 @@
         </div>
     </div>
 
-    <script src="../node_modules/d3/dist/d3.min.js"></script>
     <script>
         window.addEventListener('error', (event) => {
             console.error(`[BootError] ${event.message} @ ${event.filename}:${event.lineno}:${event.colno}`);

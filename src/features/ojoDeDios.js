@@ -3,7 +3,6 @@ import { safeText, formatBytes, getFileIconFromPath, getAppIconMarkup, loadRealA
 import { logTerminal } from '../ui/terminalSystem.js';
 import { mostrarToast } from '../ui/toastSystem.js';
 
-let treemapComputeWorker = null;
 let treemapCanvas = null;
 let treemapCtx = null;
 let treemapRects = []; // Guardaremos los rects actuales para interacci├│n
@@ -45,19 +44,8 @@ function requestTreemapRedraw() {
 	});
 }
 
-function getTreemapWorker() {
-	if (!treemapComputeWorker) treemapComputeWorker = new Worker("./workers/treemapWorker.js");
-	return treemapComputeWorker;
-}
-
 function resetTreemapWorker() {
-	if (!treemapComputeWorker) return;
-	try {
-		treemapComputeWorker.terminate();
-	} catch (_) {
-		// noop
-	}
-	treemapComputeWorker = null;
+	return;
 }
 
 function getTreemapTooltip() {
@@ -473,6 +461,12 @@ export async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false
 		setTimeout(() => {
 			ghostState.currentDiskPayload = payloadForRender || null;
 			ghostState.currentDiskRoot = targetRoot;
+			const heatmapItems = Array.isArray(payloadForRender?.items) ? payloadForRender.items.slice(0, 30) : [];
+			if (window.__radarSystem && typeof window.__radarSystem.renderHeatmap === 'function') {
+				window.__radarSystem.renderHeatmap(heatmapItems);
+			} else {
+				window.dispatchEvent(new CustomEvent('disk-heatmap:update', { detail: { items: heatmapItems } }));
+			}
 			renderEscaneoDisco(payloadForRender);
 			ghostState.diskScanned = true;
 			const engine = (payloadForRender?.engine || 'native').toUpperCase();
@@ -528,149 +522,38 @@ function renderEscaneoDisco(payload) {
 		return;
 	}
 
- 	if (treemap) {
-        treemap.innerHTML = ''; 
-        treemap.style.display = 'block'; 
-        treemap.style.position = 'relative';
+	if (treemap) {
+		treemap.style.display = 'block';
+		treemap.style.position = 'relative';
 
-        const canvas = document.createElement('canvas');
-        canvas.id = 'ojo-disk-canvas';
-        canvas.style.width = '100%';
-        canvas.style.height = '100%';
-        canvas.style.display = 'block';
-        treemap.appendChild(canvas);
+		const topItems = items.slice(0, 30);
+		const maxSize = Math.max(1, ...topItems.map((item) => Number(item.sizeBytes) || 0));
 
-        treemapCanvas = canvas;
-        treemapCtx = canvas.getContext('2d', { alpha: false });
+		const rows = topItems.map((item, index) => {
+			const sizeBytes = Number(item.sizeBytes) || 0;
+			const widthPercent = Math.max(1, Math.min(100, (sizeBytes / maxSize) * 100));
+			const toneClass = widthPercent > 70 ? 'is-hot' : (widthPercent > 30 ? 'is-warm' : 'is-cool');
 
-		const workerItems = items.slice(0, 1000);
-		treemapItemsRaw = indexTreemapItems(workerItems, []); // Incluye toda la jerarqu├¡a con ├¡ndices estables
+			return `
+				<article class="heatmap-item">
+					<div class="heatmap-item-top">
+						<span class="heatmap-rank">#${index + 1}</span>
+						<span class="heatmap-name">${safeText(item.name || item.fullPath)}</span>
+						<span class="heatmap-size">${formatBytes(sizeBytes)}</span>
+					</div>
+					<div class="heatmap-item-meta">
+						<span class="heatmap-path">${safeText(item.fullPath || '')}</span>
+						<span class="heatmap-percent">${widthPercent.toFixed(1)}%</span>
+					</div>
+					<div class="heatmap-bar-container">
+						<div class="heatmap-bar ${toneClass}" style="width:${widthPercent.toFixed(2)}%"></div>
+					</div>
+				</article>
+			`;
+		}).join('');
 
-        const worker = getTreemapWorker();
-		const workerSeq = ghostState.diskScanSeq;
-        worker.onmessage = (e) => {
-			if (workerSeq !== ghostState.diskScanSeq) return;
-            const { buffer, count } = e.data;
-            if (!buffer) return;
-
-            // Procesamos el buffer recibido y PRE-CALCULAMOS estilos
-            treemapRects = [];
-            for (let i = 0; i < count; i++) {
-                const offset = i * 8;
-                const r = {
-                    x: buffer[offset + 0],
-                    y: buffer[offset + 1],
-                    w: buffer[offset + 2],
-                    h: buffer[offset + 3],
-                    isDir: buffer[offset + 4] === 1,
-                    hue: buffer[offset + 5],
-                    depth: buffer[offset + 6],
-                    itemIndex: buffer[offset + 7]
-                };
-
-                // Pre-calculo de colores para evitar el loop de render
-                const item = treemapItemsRaw[r.itemIndex] || null;
-                const baseColor = getColorForNode(item, r.isDir, r.hue, r.depth);
-                const isFolder = item?.isDir || r.isDir;
-                r.saturatedColor = boostHexSaturation(baseColor, isFolder ? 0.08 : 0.12);
-                r.darkenedColor = darkenHexByPercent(r.saturatedColor, isFolder ? 0.2 : 0.3);
-                
-                treemapRects.push(r);
-            }
-
-            // Ya vienen ordenados por profundidad desde el worker (DFS Order)
-            drawTreemapContent();
-        };
-
-		let lastLayoutWidth = 0;
-		let lastLayoutHeight = 0;
-
-		const updateCanvasSize = (nextWidth, nextHeight) => {
-			const safeWidth = Math.max(1, Math.round(Number(nextWidth) || 0));
-			const safeHeight = Math.max(1, Math.round(Number(nextHeight) || 0));
-			const dpr = window.devicePixelRatio || 1;
-			const pixelWidth = Math.round(safeWidth * dpr);
-			const pixelHeight = Math.round(safeHeight * dpr);
-
-			if (canvas.width === pixelWidth && canvas.height === pixelHeight && treemapScale === dpr) {
-				return false;
-			}
-
-			canvas.width = pixelWidth;
-			canvas.height = pixelHeight;
-			treemapCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-			treemapScale = dpr;
-			return true;
-		};
-
-		const recomputeTreemap = (nextWidth, nextHeight, force = false) => {
-			if (workerSeq !== ghostState.diskScanSeq) return;
-
-			const safeWidth = Math.max(1, Math.round(Number(nextWidth) || 0));
-			const safeHeight = Math.max(1, Math.round(Number(nextHeight) || 0));
-			const widthChanged = safeWidth !== lastLayoutWidth;
-			const heightChanged = safeHeight !== lastLayoutHeight;
-
-			if (!force && !widthChanged && !heightChanged) {
-				return;
-			}
-
-			lastLayoutWidth = safeWidth;
-			lastLayoutHeight = safeHeight;
-			if (updateCanvasSize(safeWidth, safeHeight)) {
-				requestTreemapRedraw();
-			}
-
-			worker.postMessage({
-				items: workerItems,
-				width: safeWidth,
-				height: safeHeight,
-				maxDepth: 7
-			});
-		};
-
-		let pendingResizeWidth = treemap.clientWidth;
-		let pendingResizeHeight = treemap.clientHeight;
-
-		const scheduleRecompute = (nextWidth, nextHeight, force = false) => {
-			pendingResizeWidth = Math.max(1, Math.round(Number(nextWidth) || treemap.clientWidth || 1));
-			pendingResizeHeight = Math.max(1, Math.round(Number(nextHeight) || treemap.clientHeight || 1));
-
-			if (ghostState.treemapResizeTimer) {
-				clearTimeout(ghostState.treemapResizeTimer);
-			}
-
-			ghostState.treemapResizeTimer = setTimeout(() => {
-				ghostState.treemapResizeTimer = null;
-				recomputeTreemap(pendingResizeWidth, pendingResizeHeight, force);
-			}, TREEMAP_RESIZE_DEBOUNCE_MS);
-		};
-
-		recomputeTreemap(treemap.clientWidth, treemap.clientHeight, true);
-
-		// ResizeObserver con debounce para evitar r├ífagas de postMessage al worker.
-		ghostState.treemapResizeObs = new ResizeObserver((entries) => {
-			for (let entry of entries) {
-				if (workerSeq !== ghostState.diskScanSeq) return;
-				if (entry.target !== treemap) continue;
-				scheduleRecompute(entry.contentRect.width, entry.contentRect.height, false);
-			}
-		});
-		ghostState.treemapResizeObs.observe(treemap);
-
-		ghostState.treemapWindowResizeHandler = () => {
-			if (workerSeq !== ghostState.diskScanSeq) return;
-			const rect = treemap.getBoundingClientRect();
-			scheduleRecompute(rect.width, rect.height, false);
-		};
-		window.addEventListener('resize', ghostState.treemapWindowResizeHandler, { passive: true });
-
-        // Eventos del Canvas
-        canvas.addEventListener('mousemove', handleCanvasMouseMove);
-        canvas.addEventListener('mouseleave', handleCanvasMouseLeave);
-        canvas.addEventListener('click', handleCanvasClick);
-        canvas.addEventListener('contextmenu', handleCanvasContextMenu);
-    }
+		treemap.innerHTML = `<div class="radar-heatmap">${rows}</div>`;
+	}
 
 	const fragment = document.createDocumentFragment();
 	items.slice(0, 220).forEach((item) => {

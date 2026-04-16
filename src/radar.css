@@ -1,3 +1,10 @@
+@charset "UTF-8";
+
+* {
+    font-family: 'Segoe UI', 'Inter', Roboto, sans-serif;
+    text-rendering: optimizeLegibility;
+}
+
 .network-radar-panel {
     border-radius: 14px;
     border: 1px solid rgba(83, 219, 255, 0.22);
@@ -284,6 +291,107 @@
 .network-node-destroy-btn:hover {
     filter: brightness(1.08);
     box-shadow: 0 0 0 2px rgba(255, 124, 117, 0.22);
+}
+
+.radar-heatmap {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.heatmap-empty {
+    padding: 18px;
+    color: #8ecce7;
+    font-size: 12px;
+    letter-spacing: 0.2px;
+}
+
+.heatmap-item {
+    border: 1px solid rgba(128, 212, 255, 0.22);
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: linear-gradient(180deg, rgba(13, 26, 43, 0.85), rgba(5, 14, 26, 0.78));
+    box-shadow: inset 0 1px 0 rgba(145, 225, 255, 0.1);
+}
+
+.heatmap-item-top,
+.heatmap-item-meta {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.heatmap-item-meta {
+    margin-top: 4px;
+    margin-bottom: 8px;
+}
+
+.heatmap-rank {
+    color: #95d8f2;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.heatmap-name {
+    color: #ebf8ff;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.heatmap-size {
+    color: #8fe5ff;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.heatmap-path {
+    grid-column: 1 / 3;
+    color: #6fb6d2;
+    font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.heatmap-percent {
+    color: #9de9c2;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.heatmap-bar-container {
+    position: relative;
+    width: 100%;
+    height: 9px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+
+.heatmap-bar {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.35s ease, filter 0.25s ease;
+    will-change: width;
+}
+
+.heatmap-bar.is-hot {
+    background: linear-gradient(90deg, #ff6a66, #ff2b2b);
+}
+
+.heatmap-bar.is-warm {
+    background: linear-gradient(90deg, #ffcb70, #ff8f2d);
+}
+
+.heatmap-bar.is-cool {
+    background: linear-gradient(90deg, #5fd89e, #2dbd7f);
 }
 
 @media (max-width: 900px) {
