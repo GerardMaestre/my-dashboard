@@ -254,24 +254,40 @@ class NetworkMonitor {
     this.logger = logger;
     this.timerRef = null;
     this.isScanning = false;
+    this.loopActive = false;
     this.ipcRegistered = false;
   }
 
   start() {
-    if (this.timerRef) return;
+    if (this.loopActive) return;
+    this.loopActive = true;
 
-    // Primer barrido inmediato para no esperar al primer intervalo.
-    this.scanActiveConnections();
-
-    this.timerRef = setInterval(() => {
-      this.scanActiveConnections();
-    }, this.intervalMs);
+    // Primer barrido inmediato; los siguientes se programan al finalizar cada ciclo.
+    this.runLoop().catch((error) => {
+      this.logger.error('[NetworkMonitor] Loop error:', error?.message || error);
+    });
   }
 
   stop() {
+    this.loopActive = false;
     if (!this.timerRef) return;
-    clearInterval(this.timerRef);
+    clearTimeout(this.timerRef);
     this.timerRef = null;
+  }
+
+  async runLoop() {
+    if (!this.loopActive) return;
+
+    await this.scanActiveConnections();
+
+    if (!this.loopActive) return;
+
+    this.timerRef = setTimeout(() => {
+      this.timerRef = null;
+      this.runLoop().catch((error) => {
+        this.logger.error('[NetworkMonitor] Loop error:', error?.message || error);
+      });
+    }, this.intervalMs);
   }
 
   async scanActiveConnections() {

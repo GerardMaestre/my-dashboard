@@ -429,6 +429,29 @@ export async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false
 			const raw = Number(progress && progress.percent ? progress.percent : 0);
 			syncLoadingProgress(phase, raw);
 		}, { forceFresh });
+
+		let payloadForRender = payload || null;
+		if (
+			payloadForRender &&
+			payloadForRender.itemsTruncated &&
+			payloadForRender.snapshotPath &&
+			window.api &&
+			typeof window.api.leerPaginaDisco === 'function'
+		) {
+			const page = await window.api.leerPaginaDisco(
+				payloadForRender.snapshotPath,
+				0,
+				1200
+			);
+
+			if (Array.isArray(page?.items) && page.items.length > 0) {
+				payloadForRender = {
+					...payloadForRender,
+					items: page.items,
+					totalItems: Number(page.totalItems) || Number(payloadForRender.totalItems) || page.items.length
+				};
+			}
+		}
 		
 		if (scanSeq !== ghostState.diskScanSeq) return;
 
@@ -448,11 +471,13 @@ export async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false
 		// y sepa exactamente cu├íntos p├¡xeles de ancho y alto tiene la pantalla
 		// antes de ponerse a calcular el tama├▒o de los cuadrados del mapa.
 		setTimeout(() => {
-			ghostState.currentDiskPayload = payload || null;
+			ghostState.currentDiskPayload = payloadForRender || null;
 			ghostState.currentDiskRoot = targetRoot;
-			renderEscaneoDisco(payload);
+			renderEscaneoDisco(payloadForRender);
 			ghostState.diskScanned = true;
-			setOjoStatus(`Mapa listo para ${targetRoot} (${(payload?.engine || 'native').toUpperCase()}).`);
+			const engine = (payloadForRender?.engine || 'native').toUpperCase();
+			const totalItems = Number(payloadForRender?.totalItems) || Number(payloadForRender?.items?.length) || 0;
+			setOjoStatus(`Mapa listo para ${targetRoot} (${engine}) · nodos: ${totalItems.toLocaleString()}`);
 		}, keepCurrentView ? 0 : 50);
 	} catch (err) {
 		console.error(err);

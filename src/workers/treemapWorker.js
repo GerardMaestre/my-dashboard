@@ -64,15 +64,22 @@ function calculateRecursive(items, mathRect, renderRect, depth, maxDepth, result
     const scale = totalArea / totalSize;
     
     // Mapear candidatos a áreas
-    const nodes = candidates.map(c => ({
-        ...c,
-        area: c.size * scale
-    }));
+    const nodes = new Array(candidates.length);
+    for (let nodeIndex = 0; nodeIndex < candidates.length; nodeIndex++) {
+        const candidate = candidates[nodeIndex];
+        nodes[nodeIndex] = {
+            item: candidate.item,
+            size: candidate.size,
+            index: candidate.index,
+            area: candidate.size * scale
+        };
+    }
 
     const levelRects = squarify(nodes, mathRect.x, mathRect.y, mathRect.w, mathRect.h);
 
     // 4. Procesar resultados y recursión
-    for (const r of levelRects) {
+    for (let rectIndex = 0; rectIndex < levelRects.length; rectIndex++) {
+        const r = levelRects[rectIndex];
         if (r.w * r.h < minPixelArea) continue; // LoD: ignorar cosas minúsculas
 
         const isDir = !!(r.item.isDir || (r.item.children && r.item.children.length > 0));
@@ -126,7 +133,7 @@ function squarify(nodes, x, y, w, h) {
             continue;
         }
 
-        if (worstAspectRatio([...row, node], side) <= worstAspectRatio(row, side)) {
+        if (worstAspectRatio(row, side, node) <= worstAspectRatio(row, side)) {
             row.push(node);
         } else {
             rect = layoutRow(row, rect, rects);
@@ -137,17 +144,41 @@ function squarify(nodes, x, y, w, h) {
     return rects;
 }
 
-function worstAspectRatio(row, side) {
-    if (!row.length) return Infinity;
-    const areas = row.map(n => n.area);
-    const sum = areas.reduce((a, b) => a + b, 0);
-    const max = Math.max(...areas);
-    const min = Math.min(...areas);
-    return Math.max((side ** 2 * max) / (sum ** 2), (sum ** 2) / (side ** 2 * min));
+function worstAspectRatio(row, side, extraNode = null) {
+    const baseLength = row.length;
+    const count = baseLength + (extraNode ? 1 : 0);
+    if (!count) return Infinity;
+
+    let sum = 0;
+    let max = 0;
+    let min = Infinity;
+
+    for (let i = 0; i < baseLength; i++) {
+        const area = row[i].area;
+        sum += area;
+        if (area > max) max = area;
+        if (area < min) min = area;
+    }
+
+    if (extraNode) {
+        const area = extraNode.area;
+        sum += area;
+        if (area > max) max = area;
+        if (area < min) min = area;
+    }
+
+    if (sum <= 0 || min <= 0) return Infinity;
+
+    const sideSq = side * side;
+    const sumSq = sum * sum;
+    return Math.max((sideSq * max) / sumSq, sumSq / (sideSq * min));
 }
 
 function layoutRow(row, rect, rects) {
-    const rowArea = row.reduce((s, n) => s + n.area, 0);
+    let rowArea = 0;
+    for (let i = 0; i < row.length; i++) {
+        rowArea += row[i].area;
+    }
     const isHorizontal = rect.w >= rect.h;
     
     if (isHorizontal) {
@@ -172,7 +203,9 @@ function layoutRow(row, rect, rects) {
 }
 
 function getCategoryFromExtension(name) {
-    const ext = name.split('.').pop().toLowerCase();
+    const value = String(name || '');
+    const dotIndex = value.lastIndexOf('.');
+    const ext = dotIndex >= 0 ? value.slice(dotIndex + 1).toLowerCase() : '';
     switch (ext) {
         case 'jpg': case 'jpeg': case 'png': case 'gif': case 'webp': return 1; // Imágenes
         case 'mp4': case 'mkv': case 'avi': case 'mov': return 2; // Vídeo

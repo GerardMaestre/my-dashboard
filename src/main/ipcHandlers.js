@@ -262,6 +262,10 @@ function registerIpcHandlers(managers) {
         return await diskManager.ghostScanDisk(event.sender, rootPath, options);
     });
 
+    ipcMain.handle('ghost-read-disk-snapshot-page', async (_event, snapshotPath, offset, limit) => {
+        return diskManager.readDiskSnapshotPage(snapshotPath, offset, limit);
+    });
+
     ipcMain.handle('ghost-uninstall-app', async (_event, payload, force) => {
         return await appManager.ghostUninstallApp(payload, force);
     });

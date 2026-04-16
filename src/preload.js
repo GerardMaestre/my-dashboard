@@ -31,9 +31,21 @@ const api = {
 	
     // Mapeo de disco ahora por chunks
 	scanGlobalFiles: (callback, progressCallback) => {
-        ipcRenderer.on('scan-chunk', (_event, chunk) => callback(chunk));
-        ipcRenderer.on('scan-progress', (_event, count) => progressCallback(count));
-        ipcRenderer.invoke('scan-global-files-chunked');
+		const safeCallback = typeof callback === 'function' ? callback : () => {};
+		const safeProgress = typeof progressCallback === 'function' ? progressCallback : () => {};
+
+		const onChunk = (_event, chunk) => safeCallback(chunk);
+		const onProgress = (_event, count) => safeProgress(count);
+
+		ipcRenderer.on('scan-chunk', onChunk);
+		ipcRenderer.on('scan-progress', onProgress);
+
+		return ipcRenderer
+			.invoke('scan-global-files-chunked')
+			.finally(() => {
+				ipcRenderer.removeListener('scan-chunk', onChunk);
+				ipcRenderer.removeListener('scan-progress', onProgress);
+			});
 	},
 
 	runScript: (payload) => ipcRenderer.invoke('run-script', payload),
@@ -82,6 +94,8 @@ const api = {
         ipcRenderer.removeListener('disk-progress', listener);
         return result;
     },
+	leerPaginaDisco: async (snapshotPath, offset = 0, limit = 1200) =>
+		ipcRenderer.invoke('ghost-read-disk-snapshot-page', snapshotPath, offset, limit),
 	listarAppsInstaladas: async () => ipcRenderer.invoke('ghost-list-apps'),
 	desinstalarApp: async (payload, force) => ipcRenderer.invoke('ghost-uninstall-app', payload, force),
 	buscarRastrosApp: async (payload) => ipcRenderer.invoke('ghost-find-leftovers', payload),
