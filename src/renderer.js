@@ -6,6 +6,7 @@ import { toggleAutopilot, cerrarAutopilot, iniciarAutopilot, initAutopilotLoop }
 import { abrirOjoDeDios, cerrarOjoDeDios, bindGhostEvents, cargarMotoresFantasma } from './features/ojoDeDios.js';
 import { initRuntimePaths } from './core/utils.js';
 import { initRadarSystem } from './ui/RadarSystem.js';
+import { initSettingsControls, changeGlobalTerminalMode } from './core/settingsManager.js';
 
 // New Modules
 import { createSparkline, drawSparkline, pushSparklineValue } from './renderer/telemetry.js';
@@ -35,6 +36,10 @@ window.cerrarAutopilot = cerrarAutopilot;
 window.iniciarAutopilot = iniciarAutopilot;
 window.abrirOjoDeDios = abrirOjoDeDios;
 window.cerrarOjoDeDios = cerrarOjoDeDios;
+window.changeGlobalTerminalMode = () => {
+    changeGlobalTerminalMode();
+    cargarScripts().catch((error) => console.error('[HorusEngine] Error refreshing scripts after mode change:', error));
+};
 
 // --- INITIALIZATION ---
 
@@ -76,6 +81,8 @@ async function initApp() {
 
         initTheme();
         startupTrace('theme initialized');
+        initSettingsControls();
+        startupTrace('settings initialized');
         setupTabs();
         startupTrace('tabs initialized');
         initAutopilotLoop();

@@ -1,20 +1,98 @@
-const { ipcMain, BrowserWindow, app } = require('electron');
+const { ipcMain, BrowserWindow, app, Notification } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const logger = require('./utils/logger');
 
 const activeProcesses = new Map(); // Para rastrear PIDs y estados
+const ALLOWED_SCRIPT_EXTENSIONS = new Set(['.py', '.bat', '.cmd', '.sh', '.exe']);
+const MAX_ARGS_COUNT = 16;
+const MAX_ARG_LENGTH = 260;
+const MAX_SCRIPT_RELATIVE_LENGTH = 320;
+const MAX_SEARCH_QUERY_LENGTH = 180;
+const MAX_SEARCH_LIMIT = 12000;
+const MAX_NOTIFICATION_TITLE_LENGTH = 80;
+const MAX_NOTIFICATION_BODY_LENGTH = 240;
+
+const IPV4_LOOKUP_REGEX = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
+const IPV6_LOOKUP_REGEX = /^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$/;
+
+function sanitizeLookupIp(ip) {
+    const normalized = String(ip || '').trim().replace(/^\[/, '').replace(/]$/, '').split('%')[0];
+    if (!normalized) return '';
+    if (IPV4_LOOKUP_REGEX.test(normalized)) return normalized;
+    if (IPV6_LOOKUP_REGEX.test(normalized)) return normalized;
+    return '';
+}
+
+function sanitizeSearchQuery(query) {
+    const normalized = String(query || '').trim().slice(0, MAX_SEARCH_QUERY_LENGTH);
+    if (!normalized) return '';
+    if (/[\u0000-\u001f]/.test(normalized)) return '';
+    return normalized;
+}
+
+function sanitizeSearchLimit(limit, fallback = 120) {
+    const parsed = Number.parseInt(limit, 10);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.max(1, Math.min(MAX_SEARCH_LIMIT, parsed));
+}
+
+function sanitizeNotificationText(value, maxLength) {
+    const normalized = String(value ?? '')
+        .replace(/[\u0000-\u001f]/g, ' ')
+        .trim()
+        .slice(0, maxLength);
+
+    return normalized;
+}
+
+function resolveSafeStoragePath(storageDir, fileName) {
+    const normalizedRelative = String(fileName || '').replace(/\\/g, '/').replace(/^\/+/, '').trim();
+    if (!normalizedRelative) {
+        throw new Error('fileName is required');
+    }
+
+    if (normalizedRelative.length > MAX_SCRIPT_RELATIVE_LENGTH) {
+        throw new Error('fileName is too long');
+    }
+
+    if (normalizedRelative.includes('\0')) {
+        throw new Error('fileName contains invalid characters');
+    }
+
+    const segments = normalizedRelative.split('/');
+    if (segments.some((segment) => !segment || segment === '.' || segment === '..')) {
+        throw new Error('Invalid script path');
+    }
+
+    const absolutePath = path.resolve(storageDir, normalizedRelative.replace(/\//g, path.sep));
+    const resolvedRoot = path.resolve(storageDir);
+    const normalizedRoot = `${resolvedRoot}${path.sep}`.toLowerCase();
+    const normalizedAbsolute = absolutePath.toLowerCase();
+
+    if (!normalizedAbsolute.startsWith(normalizedRoot)) {
+        throw new Error('Script path escapes storage root');
+    }
+
+    return { relativePath: normalizedRelative, absolutePath };
+}
 
 function normalizeArgs(args) {
+    const sanitizeArg = (value) => String(value ?? '')
+        .replace(/[\u0000-\u001f]/g, ' ')
+        .trim()
+        .slice(0, MAX_ARG_LENGTH);
+
     if (Array.isArray(args)) {
         return args
-            .map((value) => String(value ?? '').trim())
+            .slice(0, MAX_ARGS_COUNT)
+            .map((value) => sanitizeArg(value))
             .filter((value) => value.length > 0);
     }
 
     if (typeof args === 'string') {
-        const trimmed = args.trim();
+        const trimmed = sanitizeArg(args);
         return trimmed ? [trimmed] : [];
     }
 
@@ -132,7 +210,14 @@ function registerIpcHandlers(managers) {
     });
 
     ipcMain.handle('read-script-meta', async (_event, fileName) => {
-        const filePath = path.join(config.storageDir, fileName.replace(/\//g, path.sep));
+        let resolved = null;
+        try {
+            resolved = resolveSafeStoragePath(config.storageDir, fileName);
+        } catch (_error) {
+            return [];
+        }
+
+        const filePath = resolved.absolutePath;
         if (!fs.existsSync(filePath)) return [];
         try {
             const content = fs.readFileSync(filePath, 'utf8');
@@ -141,13 +226,42 @@ function registerIpcHandlers(managers) {
     });
 
     ipcMain.handle('edit-script', async (_event, fileName) => {
-        const filePath = path.join(config.storageDir, fileName.replace(/\//g, path.sep));
-        spawn('notepad.exe', [filePath]);
+        let resolved = null;
+        try {
+            resolved = resolveSafeStoragePath(config.storageDir, fileName);
+        } catch (error) {
+            return { ok: false, error: error.message };
+        }
+
+        if (!fs.existsSync(resolved.absolutePath)) {
+            return { ok: false, error: 'Script not found' };
+        }
+
+        spawn('notepad.exe', [resolved.absolutePath], { windowsHide: true });
+        return { ok: true };
     });
 
-    ipcMain.handle('run-script', async (event, { fileName, args, mode }) => {
-        const filePath = path.join(config.storageDir, fileName.replace(/\//g, path.sep));
-        const ext = path.extname(fileName).toLowerCase();
+    ipcMain.handle('run-script', async (event, payload = {}) => {
+        const { fileName, args, mode } = payload;
+        let resolved = null;
+        try {
+            resolved = resolveSafeStoragePath(config.storageDir, fileName);
+        } catch (error) {
+            return { pid: null, error: error.message };
+        }
+
+        const safeFileName = resolved.relativePath;
+        const filePath = resolved.absolutePath;
+
+        if (!fs.existsSync(filePath)) {
+            return { pid: null, error: 'Script not found' };
+        }
+
+        const ext = path.extname(safeFileName).toLowerCase();
+        if (!ALLOWED_SCRIPT_EXTENSIONS.has(ext)) {
+            return { pid: null, error: `Unsupported script extension: ${ext || 'unknown'}` };
+        }
+
         let executable = filePath;
         let scriptArgs = normalizeArgs(args);
         const requestedMode = normalizeMode(mode);
@@ -182,45 +296,60 @@ function registerIpcHandlers(managers) {
                 return {
                     pid: launcher.pid || null,
                     forcedExternal: normalizedMode === 'external',
-                    mode: 'external'
+                    mode: 'external',
+                    fileName: safeFileName
                 };
             } catch (e) {
-                logger.error(`Error al lanzar terminal externa para ${fileName}: ${e.message}`);
+                logger.error(`Error al lanzar terminal externa para ${safeFileName}: ${e.message}`);
                 return { pid: null, error: e.message };
             }
         }
 
         const spawnOptions = { 
-            shell: true, 
+            shell: false,
             cwd: path.dirname(filePath), 
             windowsHide: true
         };
         
         try {
             const child = spawn(executable, scriptArgs, spawnOptions);
-            activeProcesses.set(fileName, child);
+            activeProcesses.set(safeFileName, child);
 
-            child.stdout.on('data', d => event.sender.send('process-output', { fileName, type: 'success', message: d.toString() }));
-            child.stderr.on('data', d => event.sender.send('process-output', { fileName, type: 'error', message: d.toString() }));
+            child.stdout.on('data', d => event.sender.send('process-output', { fileName: safeFileName, type: 'success', message: d.toString() }));
+            child.stderr.on('data', d => event.sender.send('process-output', { fileName: safeFileName, type: 'error', message: d.toString() }));
             child.on('close', code => {
-                activeProcesses.delete(fileName);
-                event.sender.send('process-exit', { fileName, code });
+                activeProcesses.delete(safeFileName);
+                event.sender.send('process-exit', { fileName: safeFileName, code });
             });
             
-            return { pid: child.pid };
+            return { pid: child.pid, fileName: safeFileName };
         } catch (e) {
-            logger.error(`Error al ejecutar script ${fileName}: ${e.message}`);
+            logger.error(`Error al ejecutar script ${safeFileName}: ${e.message}`);
             return { pid: null, error: e.message };
         }
     });
 
-    ipcMain.handle('is-running', async (_event, fileName) => activeProcesses.has(fileName));
+    ipcMain.handle('is-running', async (_event, fileName) => {
+        try {
+            const resolved = resolveSafeStoragePath(config.storageDir, fileName);
+            return activeProcesses.has(resolved.relativePath);
+        } catch (_error) {
+            return false;
+        }
+    });
 
     ipcMain.handle('stop-script', async (_event, fileName) => {
-        const child = activeProcesses.get(fileName);
+        let resolved = null;
+        try {
+            resolved = resolveSafeStoragePath(config.storageDir, fileName);
+        } catch (_error) {
+            return { stopped: false };
+        }
+
+        const child = activeProcesses.get(resolved.relativePath);
         if (child) {
             child.kill();
-            activeProcesses.delete(fileName);
+            activeProcesses.delete(resolved.relativePath);
             return { stopped: true };
         }
         return { stopped: false };
@@ -251,7 +380,10 @@ function registerIpcHandlers(managers) {
     }));
 
     ipcMain.handle('ghost-search-files', async (_event, query, limit) => {
-        return await diskManager.ghostSearchFiles(query, limit);
+        const safeQuery = sanitizeSearchQuery(query);
+        if (!safeQuery || safeQuery.length < 2) return [];
+        const safeLimit = sanitizeSearchLimit(limit, 120);
+        return await diskManager.ghostSearchFiles(safeQuery, safeLimit);
     });
 
     ipcMain.handle('ghost-list-apps', async () => {
@@ -288,7 +420,14 @@ function registerIpcHandlers(managers) {
     });
 
     ipcMain.handle('ip-intel-lookup', async (_event, ip) => {
-        return await networkRadar.ipIntelLookup(ip);
+        const safeIp = sanitizeLookupIp(ip);
+        if (!safeIp) {
+            return {
+                ok: false,
+                error: 'IP invalida'
+            };
+        }
+        return await networkRadar.ipIntelLookup(safeIp);
     });
 
     ipcMain.handle('ensure-environment', async (event) => {
@@ -315,6 +454,34 @@ function registerIpcHandlers(managers) {
             event.sender.send('setup-progress', { status: 'Entorno Listo', percent: 100 });
         }
         return { ok: true };
+    });
+
+    ipcMain.handle('show-native-notification', async (_event, payload = {}) => {
+        const title = sanitizeNotificationText(payload.title, MAX_NOTIFICATION_TITLE_LENGTH);
+        const body = sanitizeNotificationText(payload.body, MAX_NOTIFICATION_BODY_LENGTH);
+        const silent = payload && payload.silent === true;
+
+        if (!title || !body) {
+            return { ok: false, error: 'title and body are required' };
+        }
+
+        if (!Notification.isSupported()) {
+            return { ok: false, error: 'Native notifications are not supported' };
+        }
+
+        try {
+            const notification = new Notification({
+                title,
+                body,
+                silent,
+                icon: path.join(__dirname, '..', '..', 'assets', 'icon.ico')
+            });
+            notification.show();
+            return { ok: true };
+        } catch (error) {
+            logger.error(`[Notification] Failed to show native notification: ${error.message}`);
+            return { ok: false, error: error.message };
+        }
     });
 
     ipcMain.on('window-control', (event, action) => {

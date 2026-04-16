@@ -22,7 +22,21 @@ function getRemoteOrigin() {
         return window.location.origin;
     }
 
-    const configuredHost = String(localStorage.getItem('horus_remote_host') || '').trim();
+    let configuredHost = '';
+    try {
+        const rawSettings = localStorage.getItem('nexus_settings_v1');
+        if (rawSettings) {
+            const parsed = JSON.parse(rawSettings);
+            configuredHost = String(parsed?.remoteHost || '').trim();
+        }
+    } catch (_error) {
+        configuredHost = '';
+    }
+
+    if (!configuredHost) {
+        configuredHost = String(localStorage.getItem('horus_remote_host') || '').trim();
+    }
+
     if (configuredHost) {
         if (/^https?:\/\//i.test(configuredHost)) return configuredHost;
         return `http://${configuredHost}`;

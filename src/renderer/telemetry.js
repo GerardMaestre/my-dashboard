@@ -1,5 +1,8 @@
+import '../../node_modules/chart.js/dist/chart.umd.js';
+
+const ChartCtor = globalThis.Chart;
+
 const SPARKLINE_POINTS = 28;
-const MAX_CHART_DPR = 2;
 
 function clampPercent(value) {
     const numeric = Number(value);
@@ -10,83 +13,92 @@ function clampPercent(value) {
 }
 
 export function createSparkline(canvasId, strokeStyle, fillStyle) {
+    if (typeof ChartCtor !== 'function') {
+        console.error('Chart.js UMD did not initialize correctly.');
+        return null;
+    }
+
     const canvas = document.getElementById(canvasId);
     if (!canvas || typeof canvas.getContext !== 'function') return null;
 
     const ctx = canvas.getContext('2d', { alpha: true, desynchronized: true });
     if (!ctx) return null;
 
+    const data = Array(SPARKLINE_POINTS).fill(0);
+    const labels = Array.from({ length: SPARKLINE_POINTS }, (_value, index) => index + 1);
+
+    const chart = new ChartCtor(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                data,
+                borderColor: strokeStyle,
+                backgroundColor: fillStyle,
+                fill: true,
+                borderWidth: 2,
+                pointRadius: 0,
+                pointHoverRadius: 0,
+                tension: 0.35
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            normalized: true,
+            parsing: false,
+            events: [],
+            plugins: {
+                legend: { display: false },
+                tooltip: { enabled: false }
+            },
+            scales: {
+                x: {
+                    display: false,
+                    grid: { display: false },
+                    border: { display: false }
+                },
+                y: {
+                    display: false,
+                    min: 0,
+                    max: 100,
+                    grid: { display: false },
+                    border: { display: false }
+                }
+            }
+        }
+    });
+
     return {
         canvas,
-        ctx,
+        chart,
         strokeStyle,
         fillStyle,
-        data: Array(SPARKLINE_POINTS).fill(0)
+        data
     };
 }
 
 export function ensureSparklineResolution(chart) {
+    if (!chart || !chart.chart) return { width: 0, height: 0 };
+    chart.chart.resize();
     const rect = chart.canvas.getBoundingClientRect();
-    const cssWidth = Math.max(1, Math.round(rect.width || chart.canvas.clientWidth || 1));
-    const cssHeight = Math.max(1, Math.round(rect.height || chart.canvas.clientHeight || 1));
-    const dpr = Math.min(window.devicePixelRatio || 1, MAX_CHART_DPR);
-    const targetWidth = Math.max(1, Math.round(cssWidth * dpr));
-    const targetHeight = Math.max(1, Math.round(cssHeight * dpr));
-
-    if (chart.canvas.width !== targetWidth || chart.canvas.height !== targetHeight) {
-        chart.canvas.width = targetWidth;
-        chart.canvas.height = targetHeight;
-    }
-
-    chart.ctx.setTransform(1, 0, 0, 1, 0, 0);
-    chart.ctx.scale(dpr, dpr);
-    return { width: cssWidth, height: cssHeight };
+    return {
+        width: Math.max(1, Math.round(rect.width || chart.canvas.clientWidth || 1)),
+        height: Math.max(1, Math.round(rect.height || chart.canvas.clientHeight || 1))
+    };
 }
 
 export function drawSparkline(chart) {
     if (!chart) return;
-    const { width, height } = ensureSparklineResolution(chart);
-    const ctx = chart.ctx;
-
-    const pad = 3;
-    const chartWidth = Math.max(1, width - (pad * 2));
-    const chartHeight = Math.max(1, height - (pad * 2));
-    const stepX = chartWidth / Math.max(1, chart.data.length - 1);
-
-    ctx.clearRect(0, 0, width, height);
-
-    ctx.beginPath();
-    for (let idx = 0; idx < chart.data.length; idx += 1) {
-        const x = pad + (idx * stepX);
-        const y = pad + ((100 - clampPercent(chart.data[idx])) / 100) * chartHeight;
-        if (idx === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-    }
-
-    ctx.lineTo(pad + chartWidth, pad + chartHeight);
-    ctx.lineTo(pad, pad + chartHeight);
-    ctx.closePath();
-    ctx.fillStyle = chart.fillStyle;
-    ctx.fill();
-
-    ctx.beginPath();
-    for (let idx = 0; idx < chart.data.length; idx += 1) {
-        const x = pad + (idx * stepX);
-        const y = pad + ((100 - clampPercent(chart.data[idx])) / 100) * chartHeight;
-        if (idx === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-    }
-
-    ctx.strokeStyle = chart.strokeStyle;
-    ctx.lineWidth = 2;
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    ctx.stroke();
+    ensureSparklineResolution(chart);
+    chart.chart.update('none');
 }
 
 export function pushSparklineValue(chart, value) {
     if (!chart) return;
     chart.data.shift();
     chart.data.push(clampPercent(value));
+    chart.chart.data.datasets[0].data = chart.data;
     drawSparkline(chart);
 }

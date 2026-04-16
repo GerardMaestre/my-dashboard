@@ -1,5 +1,6 @@
 import { ghostState, autopilotTasks, runningFiles, silentRuns, isFirstLoad, setIsFirstLoad, autostartList, favoritesList, updateFavorites, updateAutostart } from '../core/state.js';
 import { obtenerInfoArchivo, safeId } from '../core/utils.js';
+import { getGlobalTerminalMode, getScriptArgs } from '../core/settingsManager.js';
 import { logTerminal } from '../ui/terminalSystem.js';
 import { mostrarToast } from '../ui/toastSystem.js';
 import { isDesktop, listScriptsBridge, readScriptMetaBridge, runScriptBridge, isRunningBridge, stopScriptBridge } from '../renderer/hybridBridge.js';
@@ -174,8 +175,7 @@ export function toggleFavorite(fileName) {
 }
 
 export function toggleScriptMode(fileName) {
-	const globalModeSelect = document.getElementById('global-terminal-mode');
-	const defaultMode = globalModeSelect ? globalModeSelect.value : 'internal';
+	const defaultMode = getGlobalTerminalMode();
 	
 	// Obtenemos el estado ACTUAL real
 	const current = resolveRunMode(fileName, defaultMode);
@@ -325,8 +325,7 @@ export async function cargarScripts() {
 
 			const modeHint = document.createElement('div');
 			modeHint.className = 'script-mode-hint';
-			const globalModeSelect = document.getElementById('global-terminal-mode');
-			const defaultMode = globalModeSelect ? globalModeSelect.value : 'internal';
+			const defaultMode = getGlobalTerminalMode();
 			const preferredMode = meta.mode || resolveRunMode(file, defaultMode);
 			const modeColor = preferredMode === 'external' ? '#FF9F0A' : '#30D158';
 			modeHint.style.color = modeColor;
@@ -529,9 +528,8 @@ export async function matarProceso(fileName) {
 
 export async function ejecutar(fileName, isAuto = false, isSilent = false) {
     const argsInput = document.getElementById('script-args');
-	const args = argsInput ? argsInput.value.trim() : '';
-	const globalModeSelect = document.getElementById('global-terminal-mode');
-	const defaultMode = globalModeSelect ? globalModeSelect.value : 'internal';
+	const args = argsInput ? argsInput.value.trim() : getScriptArgs();
+	const defaultMode = getGlobalTerminalMode();
 	const modeToUse = resolveRunMode(fileName, defaultMode);
 	const isExternal = modeToUse === 'external';
 

@@ -1,3 +1,55 @@
+const SETTINGS_STORAGE_KEY = 'nexus_settings_v1';
+const NATIVE_NOTIFICATION_COOLDOWN_MS = 2000;
+
+let lastNativeNotificationAt = 0;
+let lastNativeNotificationSignature = '';
+
+function getNativeNotificationsEnabled() {
+	try {
+		const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+		if (!raw) return true;
+		const parsed = JSON.parse(raw);
+		if (parsed && typeof parsed.nativeNotifications === 'boolean') {
+			return parsed.nativeNotifications;
+		}
+	} catch (_error) {
+		// Ignore parsing errors and fallback to enabled mode.
+	}
+
+	return true;
+}
+
+function nativeNotificationTitleForType(tipo) {
+	if (tipo === 'success') return 'Horus Engine · Exito';
+	if (tipo === 'error') return 'Horus Engine · Error';
+	return 'Horus Engine · Sistema';
+}
+
+function showNativeNotification(mensaje, tipo) {
+	if (!window.api || typeof window.api.showNativeNotification !== 'function') return;
+	if (!getNativeNotificationsEnabled()) return;
+
+	const text = String(mensaje || '').trim();
+	if (!text) return;
+
+	const now = Date.now();
+	const signature = `${tipo}:${text}`;
+	if (signature === lastNativeNotificationSignature && now - lastNativeNotificationAt < NATIVE_NOTIFICATION_COOLDOWN_MS) {
+		return;
+	}
+
+	lastNativeNotificationAt = now;
+	lastNativeNotificationSignature = signature;
+
+	window.api.showNativeNotification({
+		title: nativeNotificationTitleForType(tipo),
+		body: text,
+		silent: tipo === 'system'
+	}).catch((_error) => {
+		// Silent failure: toast is already visible in-app.
+	});
+}
+
 export function mostrarToast(mensaje, tipo = 'system') {
 	const container = document.getElementById('toast-container');
 	if (!container) return;
@@ -36,4 +88,6 @@ export function mostrarToast(mensaje, tipo = 'system') {
 		toast.classList.add('fadeOut');
 		setTimeout(() => toast.remove(), 400);
 	}, 3500);
+
+	showNativeNotification(mensaje, tipo);
 }

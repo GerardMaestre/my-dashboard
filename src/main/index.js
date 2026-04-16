@@ -110,7 +110,11 @@ if (!gotTheLock) {
                 width: 1100, height: 750, frame: false, show: false,
                 webPreferences: {
                     preload: path.join(__dirname, '..', 'preload.js'),
-                    contextIsolation: true, sandbox: false
+                    nodeIntegration: false,
+                    contextIsolation: true,
+                    webSecurity: true,
+                    allowRunningInsecureContent: false,
+                    sandbox: false
                 }
             });
 

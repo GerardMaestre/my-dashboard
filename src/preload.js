@@ -102,7 +102,8 @@ const api = {
 	limpiarRastrosApp: async (items) => ipcRenderer.invoke('ghost-clean-leftovers', items),
 	getFileIcon: (filePath) => ipcRenderer.invoke('get-file-icon', filePath),
 	getFileIcons: (filePaths) => ipcRenderer.invoke('get-file-icons-batch', filePaths),
-    ensureEnvironment: () => ipcRenderer.invoke('ensure-environment')
+    ensureEnvironment: () => ipcRenderer.invoke('ensure-environment'),
+	showNativeNotification: (payload) => ipcRenderer.invoke('show-native-notification', payload)
 };
 
-contextBridge.exposeInMainWorld('api', api);
+contextBridge.exposeInMainWorld('api', Object.freeze(api));

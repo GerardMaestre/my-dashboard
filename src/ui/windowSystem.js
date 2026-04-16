@@ -1,3 +1,5 @@
+import { refreshSettingsControls } from '../core/settingsManager.js';
+
 export function windowControl(action) {
     if (window.api && window.api.windowControl) {
 	    window.api.windowControl(action);
@@ -6,6 +8,7 @@ export function windowControl(action) {
 
 export function openSettings() {
 	const modal = document.getElementById('settings-modal');
+	refreshSettingsControls();
 	if (modal) modal.classList.add('active');
 }
 

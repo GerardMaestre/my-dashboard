@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' http://127.0.0.1:3000 ws://127.0.0.1:3000 http://0.0.0.0:3000 ws://0.0.0.0:3000; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
     <title>Horus Engine</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="radar.css">
@@ -444,6 +445,20 @@
                     <option value="cyber">Cyberpunk Terminal</option>
                 </select>
             </div>
+
+            <div class="mac-form-group" style="margin-top:16px;">
+                <label>Host remoto (modo web):</label>
+                <input type="text" id="remote-host-input" class="mac-input" style="width: 100%;" placeholder="127.0.0.1:3000">
+            </div>
+
+            <div class="mac-form-group" style="margin-top:16px; display:flex; align-items:center; justify-content:space-between;">
+                <label style="margin:0;">Notificaciones nativas (SO)</label>
+                <label class="mac-toggle" title="Mostrar alertas fuera de la ventana de Horus">
+                    <input type="checkbox" id="native-notifications-enabled" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
             <div class="mac-modal-actions" style="margin-top: 30px;">
                 <button class="mac-btn-primary" onclick="closeSettings()">Guardar y Cerrar</button>
             </div>
