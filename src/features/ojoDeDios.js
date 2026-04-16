@@ -526,33 +526,43 @@ function renderEscaneoDisco(payload) {
 		treemap.style.display = 'block';
 		treemap.style.position = 'relative';
 
-		const topItems = items.slice(0, 30);
-		const maxSize = Math.max(1, ...topItems.map((item) => Number(item.sizeBytes) || 0));
-
-		const rows = topItems.map((item, index) => {
-			const sizeBytes = Number(item.sizeBytes) || 0;
-			const widthPercent = Math.max(1, Math.min(100, (sizeBytes / maxSize) * 100));
-			const toneClass = widthPercent > 70 ? 'is-hot' : (widthPercent > 30 ? 'is-warm' : 'is-cool');
-
-			return `
-				<article class="heatmap-item">
-					<div class="heatmap-item-top">
-						<span class="heatmap-rank">#${index + 1}</span>
-						<span class="heatmap-name">${safeText(item.name || item.fullPath)}</span>
-						<span class="heatmap-size">${formatBytes(sizeBytes)}</span>
-					</div>
-					<div class="heatmap-item-meta">
-						<span class="heatmap-path">${safeText(item.fullPath || '')}</span>
-						<span class="heatmap-percent">${widthPercent.toFixed(1)}%</span>
-					</div>
-					<div class="heatmap-bar-container">
-						<div class="heatmap-bar ${toneClass}" style="width:${widthPercent.toFixed(2)}%"></div>
-					</div>
-				</article>
-			`;
-		}).join('');
-
-		treemap.innerHTML = `<div class="radar-heatmap">${rows}</div>`;
+		// Inicialización correcta de Canvas
+		if (!treemapCanvas) {
+			treemap.innerHTML = ''; // Limpiar el innerHTML antes de inyectar el canvas
+			treemapCanvas = document.createElement('canvas');
+			treemapCanvas.style.display = 'block';
+			treemapCanvas.style.width = '100%';
+			treemapCanvas.style.height = '100%';
+			treemapCtx = treemapCanvas.getContext('2d', { alpha: false });
+			
+			treemap.appendChild(treemapCanvas);
+			
+			// Conectar eventos existentes
+			treemapCanvas.addEventListener('mousemove', handleCanvasMouseMove);
+			treemapCanvas.addEventListener('mouseleave', handleCanvasMouseLeave);
+			treemapCanvas.addEventListener('click', handleCanvasClick);
+			treemapCanvas.addEventListener('contextmenu', handleCanvasContextMenu);
+			
+			// Responsive: ResizeObserver con debounce de 150ms
+			let resizeTimer = null;
+			const resizeObs = new ResizeObserver(() => {
+				if (resizeTimer) clearTimeout(resizeTimer);
+				resizeTimer = setTimeout(() => {
+					if (treemapItemsRaw && treemapItemsRaw.length > 0) {
+						recalcularYDibujarTreemap(treemapItemsRaw);
+					}
+				}, 150);
+			});
+			resizeObs.observe(treemap);
+			
+			// Guardamos para lifecycle clearing (si existe logica de teardown, evitar fugar el observer)
+			ghostState.treemapResizeObs = resizeObs; 
+		}
+		
+		// Esperar al layout del DOM (10ms) antes de calcular dimensiones
+		setTimeout(() => {
+			recalcularYDibujarTreemap(items);
+		}, 10);
 	}
 
 	const fragment = document.createDocumentFragment();
@@ -773,60 +783,220 @@ function drawTreemapLabel(ctx, x, y, width, height, name, isDir) {
 	ctx.restore();
 }
 
+function calculateTreemapRects(items, totalWidth, totalHeight) {
+	if (!items || items.length === 0 || totalWidth <= 0 || totalHeight <= 0) return [];
+	
+	// Ordenar ítems usando copia
+	const sortedItems = items.map((item, index) => ({ item, index }))
+		.sort((a, b) => (Number(b.item.sizeBytes) || 0) - (Number(a.item.sizeBytes) || 0));
+	
+	// Limitar rectángulos por rendimiento, evitar microscópicos
+	const renderItems = sortedItems.slice(0, 400);
+	
+	let totalSize = 0;
+	for (const r of renderItems) totalSize += (Number(r.item.sizeBytes) || 0);
+	if (totalSize <= 0) return [];
+
+	// Mapear el tamaño en bytes a área proporcional real del canvas
+	const containerArea = totalWidth * totalHeight;
+	const data = renderItems.map(r => ({
+		...r,
+		area: ((Number(r.item.sizeBytes) || 0) / totalSize) * containerArea
+	})).filter(r => r.area > 0);
+
+	const rects = [];
+	const hues = [210, 190, 0, 30, 120, 270, 330, 240, 150];
+
+	// Estado del contenedor mutable durante el Squarify
+	let x = 0;
+	let y = 0;
+	let w = totalWidth;
+	let h = totalHeight;
+
+	// Calcula la peor proporción (aspect ratio) de una fila de rectángulos
+	function worst(row, length) {
+		if (row.length === 0) return Infinity;
+		let minArea = Infinity;
+		let maxArea = 0;
+		let sumArea = 0;
+		for (let i = 0; i < row.length; i++) {
+			const a = row[i].area;
+			if (a < minArea) minArea = a;
+			if (a > maxArea) maxArea = a;
+			sumArea += a;
+		}
+		const sqLength = length * length;
+		const sumSq = sumArea * sumArea;
+		return Math.max((sqLength * maxArea) / sumSq, sumSq / (sqLength * minArea));
+	}
+
+	// Posiciona una fila de componentes y acota el contenedor restante
+	function layoutRow(row, length) {
+		let rowArea = 0;
+		for (let i = 0; i < row.length; i++) rowArea += row[i].area;
+
+		let rx = x;
+		let ry = y;
+		let rw, rh;
+
+		if (w >= h) {
+			rw = rowArea / h;
+			rh = h;
+			for (let i = 0; i < row.length; i++) {
+				const node = row[i];
+				const nodeH = node.area / rw;
+				const hue = hues[node.index % hues.length];
+				rects.push({
+					x: rx, y: ry, w: rw, h: nodeH,
+					itemIndex: node.index,
+					isDir: node.item.isDir || false,
+					baseColor: `hsl(${hue}, 70%, 45%)`
+				});
+				ry += nodeH;
+			}
+			x += rw;
+			w -= rw;
+		} else {
+			rw = w;
+			rh = rowArea / w;
+			for (let i = 0; i < row.length; i++) {
+				const node = row[i];
+				const nodeW = node.area / rh;
+				const hue = hues[node.index % hues.length];
+				rects.push({
+					x: rx, y: ry, w: nodeW, h: rh,
+					itemIndex: node.index,
+					isDir: node.item.isDir || false,
+					baseColor: `hsl(${hue}, 70%, 45%)`
+				});
+				rx += nodeW;
+			}
+			y += rh;
+			h -= rh;
+		}
+	}
+
+	// Algoritmo recursivo original Squarify de Mark Bruls
+	function squarify(children) {
+		let row = [];
+		let length = Math.min(w, h);
+
+		for (let i = 0; i < children.length; i++) {
+			const node = children[i];
+			const nextRow = [...row, node];
+			
+			// Si agregar el nodo mejora (disminuye ratio) la mejor aproximación a cuadrado, conservalo
+			if (row.length === 0 || worst(nextRow, length) <= worst(row, length)) {
+				row = nextRow;
+			} else {
+				// De locontrario, acomoda la fila y empieza una nueva con el nodo sobrante en el plano restante
+				layoutRow(row, length);
+				row = [node];
+				length = Math.min(w, h);
+			}
+		}
+		if (row.length > 0) {
+			layoutRow(row, length);
+		}
+	}
+
+	squarify(data);
+	return rects;
+}
+
+function recalcularYDibujarTreemap(items) {
+	if (!treemapCanvas || !treemapCtx) return;
+	const parentContainer = treemapCanvas.closest('#ojo-disk-treemap');
+	if (!parentContainer) return;
+
+	const rect = parentContainer.getBoundingClientRect();
+	if (rect.width === 0 || rect.height === 0) return; // div hidden
+
+	const dpr = window.devicePixelRatio || 1;
+	treemapCanvas.width = rect.width * dpr;
+	treemapCanvas.height = rect.height * dpr;
+	treemapCanvas.style.width = `${rect.width}px`;
+	treemapCanvas.style.height = `${rect.height}px`;
+
+	treemapScale = dpr;
+	treemapCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+	treemapItemsRaw = items || [];
+	treemapRects = calculateTreemapRects(treemapItemsRaw, rect.width, rect.height);
+	
+	requestTreemapRedraw();
+}
+
 function drawTreemapContent() {
 	if (!treemapCtx || !treemapCanvas) return;
 	const ctx = treemapCtx;
-	const w = treemapCanvas.width / treemapScale;
-	const h = treemapCanvas.height / treemapScale;
+	const tw = treemapCanvas.width / treemapScale;
+	const th = treemapCanvas.height / treemapScale;
 
-	ctx.clearRect(0, 0, treemapCanvas.width, treemapCanvas.height);
-	ctx.fillStyle = '#050505';
-	ctx.fillRect(0, 0, w, h);
+	ctx.clearRect(0, 0, tw, th);
+	ctx.fillStyle = '#0f1115';
+	ctx.fillRect(0, 0, tw, th);
 
 	if (!treemapRects || treemapRects.length === 0) return;
 
-	// OPTIMIZACION CRITICA: El worker ya env├¡a los rects en orden de profundidad (Draw order)
-	// Eliminamos el sort de 10k-20k elementos por frame (60fps * 20k = 1.2M sorts/sec ahorrados)
-
-	// PASADA 1: Fondo y bordes
 	for (const r of treemapRects) {
 		if (r.w <= 0.5 || r.h <= 0.5) continue;
 
 		ctx.save();
-		try {
-			const grd = ctx.createLinearGradient(r.x, r.y, r.x + r.w, r.y + r.h);
-			grd.addColorStop(0, r.saturatedColor);
-			grd.addColorStop(1, r.darkenedColor);
-			ctx.fillStyle = grd;
+		
+		// Fill base
+		ctx.fillStyle = r.baseColor;
+		ctx.fillRect(r.x, r.y, r.w, r.h);
 
+		// Cushion 3D Effect - Radial Gradient estilo WizTree (Luz central, sombra externa propogada suave)
+		const cx = r.x + r.w / 2;
+		const cy = r.y + r.h / 2;
+		const radius = Math.max(r.w, r.h) * 0.7;
+		
+		const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+		grd.addColorStop(0, 'rgba(255,255,255,0.2)');
+		grd.addColorStop(1, 'rgba(0,0,0,0.4)');
+		
+		ctx.fillStyle = grd;
+		ctx.fillRect(r.x, r.y, r.w, r.h);
+
+		// Biselado 3D - Luz (Highlight) arriba/izquierda
+		ctx.beginPath();
+		ctx.moveTo(r.x, r.y + r.h);
+		ctx.lineTo(r.x, r.y);
+		ctx.lineTo(r.x + r.w, r.y);
+		ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+		ctx.lineWidth = 1;
+		ctx.stroke();
+
+		// Biselado 3D - Sombra oscura abajo/derecha
+		ctx.beginPath();
+		ctx.moveTo(r.x + r.w, r.y);
+		ctx.lineTo(r.x + r.w, r.y + r.h);
+		ctx.lineTo(r.x, r.y + r.h);
+		ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+		ctx.stroke();
+
+		// Hover Effect - Overlay blanco suave y borde resaltado
+		if (hoveredNode === r) {
+			ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
 			ctx.fillRect(r.x, r.y, r.w, r.h);
-
-			ctx.strokeStyle = 'rgba(0,0,0,0.8)';
-			ctx.lineWidth = 1;
-			ctx.strokeRect(r.x, r.y, r.w, r.h);
-
-			if (hoveredNode === r) {
-				ctx.fillStyle = 'rgba(255,255,255,0.06)';
-				ctx.fillRect(r.x + 1, r.y + 1, Math.max(0, r.w - 2), Math.max(0, r.h - 2));
-				ctx.strokeStyle = '#ffffff';
-				ctx.lineWidth = 2;
-				ctx.shadowColor = 'rgba(10,132,255,0.7)';
-				ctx.shadowBlur = 12;
-				ctx.strokeRect(r.x + 0.5, r.y + 0.5, Math.max(0, r.w - 1), Math.max(0, r.h - 1));
-			}
-		} catch (e) {
-			console.error('Error dibujando rect:', e, r);
-		} finally {
-			ctx.restore();
+			
+			ctx.strokeStyle = '#ffffff';
+			ctx.lineWidth = 2;
+			ctx.strokeRect(r.x + 1, r.y + 1, Math.max(0, r.w - 2), Math.max(0, r.h - 2));
 		}
+		
+		ctx.restore();
 	}
 
-	// PASADA 2: Etiquetas
+	// Text Layer independiente - Evita solapamiento de opacidades durante el render
 	for (const r of treemapRects) {
-		if (r.w < 50 || r.h < 20) continue; // Umbral m├ís alto para texto por FPS
-		const item = treemapItemsRaw[r.itemIndex] || null;
-		if (!item) continue;
-		drawTreemapLabel(ctx, r.x, r.y, r.w, r.h, item.name || '...', item.isDir || r.isDir);
+		if (r.w >= 35 && r.h >= 15) {
+			const item = treemapItemsRaw[r.itemIndex] || null;
+			if (!item) continue;
+			drawTreemapLabel(ctx, r.x, r.y, r.w, r.h, item.name || '...', item.isDir || r.isDir);
+		}
 	}
 }
 
