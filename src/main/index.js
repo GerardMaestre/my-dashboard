@@ -144,7 +144,6 @@ if (!gotTheLock) {
                                 './features/autopilotSystem.js',
                                 './features/ojoDeDios.js',
                                 './core/utils.js',
-                                './ui/RadarSystem.js',
                                 './renderer/telemetry.js',
                                 './renderer/spotlight.js',
                                 './renderer/ipcListeners.js',

@@ -430,6 +430,30 @@ function registerIpcHandlers(managers) {
         return await networkRadar.ipIntelLookup(safeIp);
     });
 
+    ipcMain.handle('shell-open-path', async (_event, targetPath) => {
+        const { shell } = require('electron');
+        return shell.openPath(targetPath);
+    });
+
+    ipcMain.handle('shell-show-item-in-folder', async (_event, targetPath) => {
+        const { shell } = require('electron');
+        shell.showItemInFolder(targetPath);
+        return true;
+    });
+
+    ipcMain.handle('shell-open-external', async (_event, url) => {
+        const { shell } = require('electron');
+        return shell.openExternal(url);
+    });
+
+    ipcMain.handle('shell-open-regedit', async (_event, key) => {
+        const { exec } = require('child_process');
+        exec(`reg jump "${key}"`, (error) => {
+            if(error) console.error("Error abriendo regedit:", error);
+        });
+        return true;
+    });
+
     ipcMain.handle('ensure-environment', async (event) => {
         const pythonExe = path.join(config.pythonEnvPath, 'python.exe');
         const wiztreeExe = path.join(config.toolsDir, 'WizTree64.exe');

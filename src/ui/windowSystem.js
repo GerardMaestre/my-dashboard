@@ -1,8 +1,8 @@
 import { refreshSettingsControls } from '../core/settingsManager.js';
 
 export function windowControl(action) {
-    if (window.api && window.api.windowControl) {
-	    window.api.windowControl(action);
+    if (window.api && window.api.ui.windowControl) {
+	    window.api.ui.windowControl(action);
     }
 }
 

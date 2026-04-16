@@ -103,7 +103,7 @@ export async function cargarMotoresFantasma() {
 	const statusEl = document.getElementById('ojo-status');
 	if (!statusEl) return;
 	try {
-		ghostState.engines = await window.api.getGhostEngineStatus();
+		ghostState.engines = await window.api.ghost.getStatus();
 		const modeEverything = ghostState.engines.everythingAvailable ? 'Everything' : 'Fallback nativo';
 		const modeWiz = ghostState.engines.wiztreeAvailable ? 'WizTree' : 'Fallback nativo';
 		const modeGeek = ghostState.engines.geekAvailable ? 'Geek' : 'Registro + PowerShell';
@@ -127,14 +127,14 @@ export function abrirOjoDeDios(screen = 'search') {
 
 			if(window.api) {
                 // Escuchamos el progreso de instalaci├│n por si acaso
-                window.api.onSetupProgress((data) => {
+                window.api.ui.onSetupProgress((data) => {
                     setOjoStatus(`[Setup] ${data.status} (${data.percent}%)`);
                 });
 
                 // Nueva l├│gica de escaneo por chunks para no colapsar el bridge
                 let totalFiles = 0;
                 const db = [];
-			    window.api.scanGlobalFiles((chunk) => {
+			    window.api.util.scanGlobalFiles((chunk) => {
                     db.push(...chunk);
                     totalFiles += chunk.length;
                     setOjoStatus(`Mapeando RAM: ${totalFiles.toLocaleString()} rutas...`);
@@ -145,7 +145,7 @@ export function abrirOjoDeDios(screen = 'search') {
                 // Nota: El backend avisar├í cuando termine
                 // Por ahora simulamos el final o esperamos que el ├║ltimo chunk llegue
                 // En una implementaci├│n real, el invoke de scanGlobalFiles resolver├¡a al final
-                window.api.ensureEnvironment().then(() => {
+                window.api.system.ensureEnvironment().then(() => {
                     setOjoState({ ojoDatabase: db, ojoIndexed: true, ojoIndexing: false });
                     setOjoStatus(`Indice local listo: ${totalFiles.toLocaleString()} rutas en RAM.`);
                     if (ghostState.activeScreen === 'search') {
@@ -197,13 +197,13 @@ export function renderResultadosBusqueda(items) {
 			if (!item.fullPath) return;
 			if (item.fullPath.startsWith('[APP]')) {
 				if (item.installLocation) {
-					window.api.openGlobalPath(item.installLocation);
+					window.api.shell.openGlobalPath(item.installLocation);
 				} else {
 					mostrarToast('App detectada sin ruta local disponible', 'system');
 				}
 				return;
 			}
-			if(window.api) window.api.showGlobalItemInFolder(item.fullPath);
+			if(window.api) window.api.shell.showGlobalItemInFolder(item.fullPath);
 		});
 		fragment.appendChild(row);
 	});
@@ -228,9 +228,9 @@ export async function ejecutarBusquedaFantasma(query) {
 		const useBackend = ghostState.engines.everythingAvailable || !ojoIndexed;
 		setOjoStatus(useBackend ? 'Buscando en indice RAM + motor rapido...' : 'Buscando en indice RAM...');
 
-		const backendPromise = useBackend ? window.api.buscarArchivo(q, 12000) : Promise.resolve([]);
+		const backendPromise = useBackend ? window.api.ghost.buscarArchivo(q, 12000) : Promise.resolve([]);
 		const appsPromise = shouldSearchApps
-			? (ghostState.searchAppsCache ? Promise.resolve(ghostState.searchAppsCache) : window.api.listarAppsInstaladas())
+			? (ghostState.searchAppsCache ? Promise.resolve(ghostState.searchAppsCache) : window.api.ghost.listarAppsInstaladas())
 			: Promise.resolve([]);
 		const [backend, apps] = await Promise.all([backendPromise, appsPromise]);
 		if (runSeq !== ghostState.searchSeq || ghostState.lastQuery !== q) return;
@@ -365,8 +365,8 @@ export async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false
 	try {
 		if(!window.api) return;
 		setOjoStatus(keepCurrentView ? `Actualizando ${targetRoot} en segundo plano...` : `Escaneando ${targetRoot}...`);
-		if (forceFresh && window.api.clearDiskScanCache) {
-			await window.api.clearDiskScanCache(targetRoot);
+		if (forceFresh && window.api.ghost.clearDiskScanCache) {
+			await window.api.ghost.clearDiskScanCache(targetRoot);
 		}
 		
 		// Conexi├│n con la nueva barra HTML
@@ -411,7 +411,7 @@ export async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false
 			loadingText.innerText = 'Iniciando escaneo de disco... 0%';
 		}
 
-		const payload = await window.api.escanearDisco(targetRoot, (progress) => {
+		const payload = await window.api.ghost.escanearDisco(targetRoot, (progress) => {
 			if (scanSeq !== ghostState.diskScanSeq) return;
 			const phase = String(progress && progress.phase ? progress.phase : 'scan');
 			const raw = Number(progress && progress.percent ? progress.percent : 0);
@@ -424,9 +424,9 @@ export async function ejecutarEscaneoFantasma(rootPath = null, pushStack = false
 			payloadForRender.itemsTruncated &&
 			payloadForRender.snapshotPath &&
 			window.api &&
-			typeof window.api.leerPaginaDisco === 'function'
+			typeof window.api.ghost.leerPaginaDisco === 'function'
 		) {
-			const page = await window.api.leerPaginaDisco(
+			const page = await window.api.ghost.leerPaginaDisco(
 				payloadForRender.snapshotPath,
 				0,
 				1200
@@ -958,9 +958,9 @@ function handleCanvasContextMenu(e) {
     if (!item || !item.fullPath) return;
 
     // Men├║ contextual nativo de Electron v├¡a Preload
-    if (window.api && window.api.showContextMenu) {
-        window.api.showContextMenu([
-            { label: 'Abrir en Explorador', click: () => window.api.showGlobalItemInFolder(item.fullPath) },
+    if (window.api && window.api.ui.showContextMenu) {
+        window.api.ui.showContextMenu([
+            { label: 'Abrir en Explorador', click: () => window.api.shell.showGlobalItemInFolder(item.fullPath) },
             { label: 'Copiar Ruta', click: () => navigator.clipboard.writeText(item.fullPath) },
             { type: 'separator' },
             { label: 'EliminarArchivo (Permanente)', click: () => {
@@ -1044,7 +1044,7 @@ export async function cargarAppsFantasma() {
 	try {
 		if (!window.api) return;
 		setOjoStatus('Leyendo registro de Windows (3 ramas)...');
-		const apps = await window.api.listarAppsInstaladas();
+		const apps = await window.api.ghost.listarAppsInstaladas();
 		ghostState.appsList = apps;
 		const filtered = filterAppsList(searchInput?.value || '');
 		renderAppsTable(filtered);
@@ -1133,28 +1133,28 @@ function showAppsContextMenu(event, app) {
 	menu.className = 'apps-context-menu';
 
 	const items = [
-		{ label: '­ƒùæ´©Å Desinstalar', action: () => startUninstallFlux(app, false) },
-		{ label: 'ÔÜá´©Å Desinstalaci├│n Forzada', action: () => startUninstallFlux(app, true), cls: 'danger' },
+		{ label: '🗑️ Desinstalar', action: () => startUninstallFlux(app, false) },
+		{ label: '⚠️ Desinstalación Forzada', action: () => startUninstallFlux(app, true), cls: 'danger' },
 		{ type: 'separator' },
-		{ label: '­ƒôü Abrir carpeta de instalaci├│n', action: () => {
-			if (app.installLocation && window.api) { window.api.openGlobalPath(app.installLocation); }
-			else { mostrarToast('No hay ruta de instalaci├│n disponible', 'system'); }
+		{ label: '📂 Abrir carpeta de instalación', action: () => {
+			if (app.installLocation && window.api) { window.api.shell.openGlobalPath(app.installLocation); }
+			else { mostrarToast('No hay ruta de instalación disponible', 'system'); }
 		}},
-		{ label: '­ƒöæ Abrir en el Registro (Regedit)', action: () => {
+		{ label: '🔑 Abrir en el Registro (Regedit)', action: () => {
 			if (app.registryPath && window.api) {
 				// Convert PSPath format to regedit-compatible path
 				let regPath = app.registryPath
 					.replace('Microsoft.PowerShell.Core\\Registry::', '')
 					.replace(/\//g, '\\');
-				window.api.openRegeditKey(regPath);
+				window.api.shell.openRegeditKey(regPath);
 			} else {
 				mostrarToast('Ruta del registro no disponible', 'system');
 			}
 		}},
 		{ type: 'separator' },
-		{ label: '­ƒöì Buscar en Google', action: () => {
+		{ label: '🔍 Buscar en Google', action: () => {
 			const q = encodeURIComponent(app.name + ' uninstall');
-			if (window.api && window.api.openExternalUrl) { window.api.openExternalUrl(`https://www.google.com/search?q=${q}`); }
+			if (window.api && window.api.shell.openExternalUrl) { window.api.shell.openExternalUrl(`https://www.google.com/search?q=${q}`); }
 			else { window.open(`https://www.google.com/search?q=${q}`, '_blank'); }
 		}}
 	];
@@ -1197,8 +1197,8 @@ function showAppsContextMenu(event, app) {
 async function startUninstallFlux(app, force) {
 	const row = document.getElementById(`app-row-${app.id}`);
 	const confirmMsg = force
-		? `ÔÜá´©Å Desinstalaci├│n FORZADA de "${app.name}"\n\nEsto matar├í procesos (si los hay), borrar├í la carpeta de instalaci├│n y limpiar├í el registro.\n\n┬┐Continuar?`
-		: `┬┐Ejecutar desinstalador oficial de "${app.name}"?`;
+		? `⚠️ Desinstalación FORZADA de "${app.name}"\n\nEsto matará procesos (si los hay), borrará la carpeta de instalación y limpiará el registro.\n\n¿Continuar?`
+		: `¿Ejecutar desinstalador oficial de "${app.name}"?`;
 	
 	if (!window.confirm(confirmMsg)) return;
 
@@ -1214,13 +1214,13 @@ async function startUninstallFlux(app, force) {
 		logTerminal(`[Ghost] Comando registro: ${app.uninstallString || app.quietUninstallString}`, 'command');
 
 		// 2. Ejecutar (el backend ahora hace polling si no es forzada)
-		const result = await window.api.desinstalarApp(app, force);
+		const result = await window.api.ghost.desinstalarApp(app, force);
 
 		// 3. Deep Scan (Se lanza cuando el polling del registro confirma la desaparicion)
 		mostrarToast('Buscando rastros en carpetas y registro...', 'system');
 		setOjoStatus('Escaneando sistema en busca de restos residuales...');
 
-		const rastros = await window.api.buscarRastrosApp(app);
+		const rastros = await window.api.ghost.buscarRastrosApp(app);
 
 		if (rastros && rastros.length > 0) {
 			showLeftoversModal(app, rastros, () => {
@@ -1333,7 +1333,7 @@ function showLeftoversModal(app, rastros, onFinished) {
 		cleanBtn.disabled = true;
 		cleanBtn.textContent = 'Eliminando...';
 		try {
-			const res = await window.api.limpiarRastrosApp(selected);
+			const res = await window.api.ghost.limpiarRastrosApp(selected);
 			mostrarToast(`Limpieza completada: ${res.deleted} rastros eliminados.`, 'success');
 			logTerminal(`[Ghost] Limpieza profunda: ${app.name} | Eliminados: ${res.deleted}`, 'system');
 		} catch (err) {

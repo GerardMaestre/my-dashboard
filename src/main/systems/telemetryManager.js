@@ -63,30 +63,19 @@ class TelemetryManager {
 
     readPingMs() {
         return new Promise((resolve) => {
-            exec(
-                'chcp 65001 > nul && ping 8.8.8.8 -n 1 -w 1000',
-                {
-                    encoding: 'utf8',
-                    windowsHide: true,
-                    timeout: 2200,
-                    maxBuffer: 128 * 1024
-                },
-                (error, stdout = '', stderr = '') => {
-                    const output = `${stdout}\n${stderr}`;
+            const { runScriptSafe } = require('../utils/processManager');
+            runScriptSafe('chcp 65001 > nul && ping 8.8.8.8 -n 1 -w 1000', [], { timeout: 2200 })
+                .then(output => {
                     const match = output.match(/(?:time|tiempo)\s*[=<]\s*(\d+)\s*ms/i);
                     if (match) {
                         resolve(Number.parseInt(match[1], 10));
-                        return;
-                    }
-
-                    if (error) {
+                    } else {
                         resolve(null);
-                        return;
                     }
-
+                })
+                .catch(error => {
                     resolve(null);
-                }
-            );
+                });
         });
     }
 

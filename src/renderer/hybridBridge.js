@@ -156,8 +156,8 @@ export async function initHybridBridge() {
 
 export async function listScriptsBridge() {
     if (isDesktop) {
-        if (!window.api || typeof window.api.listScripts !== 'function') return [];
-        return await window.api.listScripts();
+        if (!window.api || !window.api.system || typeof window.api.system.listScripts !== 'function') return [];
+        return await window.api.system.listScripts();
     }
 
     const data = await emitWithAck('list-scripts');
@@ -166,8 +166,8 @@ export async function listScriptsBridge() {
 
 export async function readScriptMetaBridge(fileName) {
     if (isDesktop) {
-        if (!window.api || typeof window.api.readScriptMeta !== 'function') return [];
-        return await window.api.readScriptMeta(fileName);
+        if (!window.api || !window.api.system || typeof window.api.system.readScriptMeta !== 'function') return [];
+        return await window.api.system.readScriptMeta(fileName);
     }
 
     const data = await emitWithAck('read-script-meta', { fileName });
@@ -176,11 +176,11 @@ export async function readScriptMetaBridge(fileName) {
 
 export async function runScriptBridge(payload) {
     if (isDesktop) {
-        if (!window.api || typeof window.api.runScript !== 'function') {
+        if (!window.api || !window.api.system || typeof window.api.system.runScript !== 'function') {
             throw new Error('Desktop IPC runScript bridge unavailable');
         }
 
-        return await window.api.runScript(payload);
+        return await window.api.system.runScript(payload);
     }
 
     const data = await emitWithAck('run-script', payload || {});
@@ -193,8 +193,8 @@ export async function runScriptBridge(payload) {
 
 export async function isRunningBridge(fileName) {
     if (isDesktop) {
-        if (!window.api || typeof window.api.isRunning !== 'function') return false;
-        return await window.api.isRunning(fileName);
+        if (!window.api || !window.api.system || typeof window.api.system.isRunning !== 'function') return false;
+        return await window.api.system.isRunning(fileName);
     }
 
     return !!(await emitWithAck('is-running', { fileName }));
@@ -202,8 +202,8 @@ export async function isRunningBridge(fileName) {
 
 export async function stopScriptBridge(fileName) {
     if (isDesktop) {
-        if (!window.api || typeof window.api.stopScript !== 'function') return { stopped: false };
-        return await window.api.stopScript(fileName);
+        if (!window.api || typeof window.api.system.stopScript !== 'function') return { stopped: false };
+        return await window.api.system.stopScript(fileName);
     }
 
     const data = await emitWithAck('stop-script', { fileName });
@@ -214,8 +214,8 @@ export function onProcessOutputBridge(callback) {
     if (typeof callback !== 'function') return () => {};
 
     if (isDesktop) {
-        if (!window.api || typeof window.api.onProcessOutput !== 'function') return () => {};
-        return window.api.onProcessOutput(callback);
+        if (!window.api || typeof window.api.process.onOutput !== 'function') return () => {};
+        return window.api.process.onOutput(callback);
     }
 
     processOutputSubscribers.add(callback);
@@ -227,8 +227,8 @@ export function onProcessExitBridge(callback) {
     if (typeof callback !== 'function') return () => {};
 
     if (isDesktop) {
-        if (!window.api || typeof window.api.onProcessExit !== 'function') return () => {};
-        return window.api.onProcessExit(callback);
+        if (!window.api || typeof window.api.process.onExit !== 'function') return () => {};
+        return window.api.process.onExit(callback);
     }
 
     processExitSubscribers.add(callback);
@@ -240,8 +240,8 @@ export function onTelemetryBridge(callback) {
     if (typeof callback !== 'function') return () => {};
 
     if (isDesktop) {
-        if (!window.api || typeof window.api.onTelemetry !== 'function') return () => {};
-        return window.api.onTelemetry(callback);
+        if (!window.api || typeof window.api.telemetry.onUpdate !== 'function') return () => {};
+        return window.api.telemetry.onUpdate(callback);
     }
 
     telemetrySubscribers.add(callback);

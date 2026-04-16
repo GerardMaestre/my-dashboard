@@ -158,7 +158,7 @@ function createMetaBadge(label, variant = 'default') {
 }
 
 export function openScript(fileName) {
-	if (isDesktop && window.api && window.api.editScript) window.api.editScript(fileName);
+	if (isDesktop && window.api && window.api.system.editScript) window.api.system.editScript(fileName);
 }
 
 export function toggleFavorite(fileName) {

@@ -5,11 +5,9 @@ import { cargarScripts, ejecutar, matarProceso, openScript, toggleFavorite, togg
 import { toggleAutopilot, cerrarAutopilot, iniciarAutopilot, initAutopilotLoop } from './features/autopilotSystem.js';
 import { abrirOjoDeDios, cerrarOjoDeDios, bindGhostEvents, cargarMotoresFantasma } from './features/ojoDeDios.js';
 import { initRuntimePaths } from './core/utils.js';
-import { initRadarSystem } from './ui/RadarSystem.js';
 import { initSettingsControls, changeGlobalTerminalMode } from './core/settingsManager.js';
 
 // New Modules
-import { createSparkline, drawSparkline, pushSparklineValue } from './renderer/telemetry.js';
 import { initSpotlight } from './renderer/spotlight.js';
 import { initIpcListeners } from './renderer/ipcListeners.js';
 import { initHybridBridge, isDesktop } from './renderer/hybridBridge.js';
@@ -41,13 +39,7 @@ window.changeGlobalTerminalMode = () => {
     cargarScripts().catch((error) => console.error('[HorusEngine] Error refreshing scripts after mode change:', error));
 };
 
-// --- INITIALIZATION ---
-
-const telemetryCharts = {
-    cpu: createSparkline('chart-cpu', '#0A84FF', 'rgba(10, 132, 255, 0.1)'),
-    mem: createSparkline('chart-mem', '#FF9F0A', 'rgba(255, 159, 10, 0.1)')
-};
-
+// Globals and bindings
 function startupTrace(message) {
     console.info(`[Startup] ${message}`);
 }
@@ -87,17 +79,10 @@ async function initApp() {
         startupTrace('tabs initialized');
         initAutopilotLoop();
         startupTrace('autopilot initialized');
-        initIpcListeners(telemetryCharts);
+        initIpcListeners();
         startupTrace('ipc listeners initialized');
         initSpotlight(ejecutar);
         startupTrace('spotlight initialized');
-
-        const radarSystem = initRadarSystem({
-            containerId: 'network-radar', statusId: 'network-radar-status', modalId: 'network-node-modal',
-            onNotify: (m, t) => mostrarToast(m, t), onLog: (m, t) => logTerminal(m, t)
-        });
-        window.__radarSystem = radarSystem;
-        startupTrace('radar initialized');
 
         await cargarScripts();
         startupTrace('scripts loaded');
@@ -110,9 +95,9 @@ async function initApp() {
             startupTrace('ghost engines loaded');
             bindGhostEvents();
             startupTrace('ghost events bound');
-            if (window.api.ensureEnvironment) {
+            if (window.api.system.ensureEnvironment) {
                 setTimeout(() => {
-                    window.api.ensureEnvironment().catch(e => console.error('Environment check failed', e));
+                    window.api.system.ensureEnvironment().catch(e => console.error('Environment check failed', e));
                 }, 250);
                 startupTrace('ensureEnvironment scheduled');
             }
@@ -128,27 +113,37 @@ async function initApp() {
     }
 }
 
-initApp();
+// 🛡️ Error Handling Global
+window.onerror = function(message, source, lineno, colno, error) {
+    console.error(`[Global Error] ${message} at ${source}:${lineno}`);
+    if (typeof window.mostrarToast === 'function') {
+        window.mostrarToast(`Error: ${message}`, 'error');
+    }
+    return false;
+};
 
-// Search input
-let searchTimeout;
-const searchInput = document.getElementById('search-input');
-if (searchInput) {
-    searchInput.addEventListener('input', () => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(aplicarFiltros, 300);
+window.onunhandledrejection = function(event) {
+    console.error('[Unhandled Promise Rejection]', event.reason);
+};
+
+// 🖥️ Inicialización segura
+document.addEventListener('DOMContentLoaded', () => {
+    initApp();
+
+    // Search input
+    let searchTimeout;
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(aplicarFiltros, 300);
+        });
+    }
+
+    // Global Keybinds
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'l') { e.preventDefault(); clearTerminal(); }
+        if (e.key === 'F3' || (e.ctrlKey && e.key === 'f')) { e.preventDefault(); document.getElementById('search-input')?.focus(); }
+        if (e.key === 'Escape') { cerrarOjoDeDios(); closeSettings(); if(document.getElementById('spotlight-overlay')?.style.display === 'flex') window.toggleSpotlight(); }
     });
-}
-
-// Sparkline Resize
-window.addEventListener('resize', () => {
-    if (telemetryCharts.cpu) drawSparkline(telemetryCharts.cpu);
-    if (telemetryCharts.mem) drawSparkline(telemetryCharts.mem);
-});
-
-// Global Keybinds
-document.addEventListener('keydown', (e) => {
-	if (e.ctrlKey && e.key === 'l') { e.preventDefault(); clearTerminal(); }
-	if (e.key === 'F3' || (e.ctrlKey && e.key === 'f')) { e.preventDefault(); document.getElementById('search-input')?.focus(); }
-    if (e.key === 'Escape') { cerrarOjoDeDios(); closeSettings(); if(document.getElementById('spotlight-overlay')?.style.display === 'flex') window.toggleSpotlight(); }
 });

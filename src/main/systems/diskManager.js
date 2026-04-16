@@ -32,7 +32,7 @@ class DiskManager {
         return this.MAX_ITEMS;
     }
 
-    parseWizTreeLine(line) {
+    parseWizTreeLine(line, sizeIdx = 0, attrIdx) {
         if (!line || line.length < 5 || line[0] !== '"') return null;
 
         let idx = 1;
@@ -58,9 +58,14 @@ class DiskManager {
             ? remaining.slice(1).split(',')
             : remaining.split(',');
 
-        const sizeBytes = Number(columns[0]) || 0;
-        const attributes = Number(columns[columns.length - 3]) || 0;
-        const isDirectory = (attributes & 16) === 16;
+        const resolvedAttrIdx = attrIdx !== undefined ? attrIdx : (columns.length - 3);
+
+        const sizeStr = columns[sizeIdx] ? columns[sizeIdx].replace(/"/g, '') : '0';
+        const attrStr = columns[resolvedAttrIdx] ? columns[resolvedAttrIdx].replace(/"/g, '') : '0';
+
+        const sizeBytes = Number(sizeStr) || 0;
+        const attributes = Number(attrStr) || 0;
+        const isDirectory = fullPath.endsWith('\\') || (attributes & 16) === 16;
 
         return {
             fullPath: fullPath.replace(/\\\\/g, '\\'),
@@ -88,18 +93,37 @@ class DiskManager {
         const stream = fs.createReadStream(csvPath, { encoding: 'utf8' });
         const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
 
-        let isHeader = true;
+        let isHeaderFound = false;
         let lineCount = 0;
         let lastProgressTs = Date.now();
+        let sizeIndex = 0;
+        let attrIndex = undefined;
 
         for await (const line of rl) {
-            if (isHeader) {
-                isHeader = false;
+            if (!isHeaderFound) {
+                const headers = line.split(',');
+                const sizeRegex = /size|tamaño|tamano|tama\u00f1o/i;
+                const attrRegex = /attributes|atributos/i;
+                let matched = false;
+                for (let i = 1; i < headers.length; i++) {
+                    const cleanHdr = headers[i].replace(/"/g, '').trim();
+                    if (sizeRegex.test(cleanHdr)) {
+                        sizeIndex = i - 1;
+                        matched = true;
+                    }
+                    if (attrRegex.test(cleanHdr)) {
+                        attrIndex = i - 1;
+                        matched = true;
+                    }
+                }
+                if (matched) {
+                    isHeaderFound = true;
+                }
                 continue;
             }
 
             lineCount += 1;
-            const parsed = this.parseWizTreeLine(line);
+            const parsed = this.parseWizTreeLine(line, sizeIndex, attrIndex);
             if (!parsed || !parsed.isDirectory) continue;
 
             if (!this.isImmediateChildFolder(parsed.fullPath, normalizedRoot)) continue;
@@ -116,10 +140,10 @@ class DiskManager {
                 });
             }
 
-            if (lineCount % 40000 === 0) {
+            if (lineCount % 10000 === 0) {
                 const now = Date.now();
-                if (now - lastProgressTs >= 300) {
-                    sender.send('disk-progress', { phase: 'parsing', percent: 55 + Math.min(35, Math.round(lineCount / 120000)) });
+                if (now - lastProgressTs >= 250) {
+                    sender.send('disk-progress', { phase: 'parsing', percent: 50 + Math.min(42, Math.round(lineCount / 100000)) });
                     lastProgressTs = now;
                 }
             }
@@ -134,7 +158,7 @@ class DiskManager {
                 normalizedRoot,
                 `/export=${csvPath}`,
                 '/exportencoding=UTF8',
-                '/admin=0'
+                '/admin=1'
             ];
 
             execFile(

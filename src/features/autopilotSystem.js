@@ -48,7 +48,7 @@ export function iniciarAutopilot() {
 
 	const timer = setInterval(() => {
 		autopilotTasks[fileName].nextRun = Date.now() + ms;
-		if (window.api && !window.api.isRunning(fileName)) {
+		if (window.api && !window.api.system.isRunning(fileName)) {
 			ejecutar(fileName, true);
 		}
 	}, ms);
@@ -74,7 +74,7 @@ export function updateTimers() {
 	const now = Date.now();
 	for (const [fileName, task] of Object.entries(autopilotTasks)) {
 		let remaining = Math.max(0, Math.ceil((task.nextRun - now) / 1000));
-		if (window.api && window.api.isRunning(fileName)) remaining = 0; 
+		if (window.api && window.api.system.isRunning(fileName)) remaining = 0; 
 
 		const counterEl = document.getElementById(getElementId(fileName, 'countdown'));
 		if (counterEl) {

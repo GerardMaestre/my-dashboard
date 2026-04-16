@@ -111,11 +111,11 @@ async function flushAppIconBatchQueue() {
 	let responseMap = {};
 
 	try {
-		if (window.api && typeof window.api.getFileIcons === 'function') {
-			responseMap = await window.api.getFileIcons(paths);
-		} else if (window.api && typeof window.api.getFileIcon === 'function') {
+		if (window.api && typeof window.api.ghost.getFileIcons === 'function') {
+			responseMap = await window.api.ghost.getFileIcons(paths);
+		} else if (window.api && typeof window.api.ghost.getFileIcon === 'function') {
 			const pairs = await Promise.all(paths.map(async (iconPath) => {
-				const dataUrl = await window.api.getFileIcon(iconPath);
+				const dataUrl = await window.api.ghost.getFileIcon(iconPath);
 				return [iconPath, dataUrl];
 			}));
 			responseMap = Object.fromEntries(pairs);
@@ -161,9 +161,9 @@ function requestNativeAppIcon(displayIconPath) {
 }
 
 export async function initRuntimePaths() {
-	if (window.api && window.api.getRuntimePaths) {
+	if (window.api && window.api.system.getRuntimePaths) {
 		try {
-			const paths = await window.api.getRuntimePaths();
+			const paths = await window.api.system.getRuntimePaths();
 			runtimeEnvCache = paths.env || {};
 		} catch (e) {
 			console.error('[HorusEngine] Error obteniendo runtime paths:', e);
@@ -216,7 +216,7 @@ export async function loadRealAppIcon(app, iconId) {
 		return;
 	}
 
-	if (window.api && window.api.getFileIcon) {
+	if (window.api && window.api.ghost.getFileIcon) {
 		try {
 			const base64 = await requestNativeAppIcon(displayIconPath);
 			if (base64) {

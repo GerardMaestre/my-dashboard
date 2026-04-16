@@ -7,7 +7,6 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' http://127.0.0.1:3000 ws://127.0.0.1:3000 http://0.0.0.0:3000 ws://0.0.0.0:3000; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
     <title>Horus Engine</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="radar.css">
 </head>
 
 <body>
@@ -135,33 +134,6 @@
             </header>
 
             <div class="content-scrollable">
-                <div class="mac-group global-settings-group stagger-fade-in telemetry-hud" style="animation-delay: 0.1s; display:flex; padding: 15px; align-items:center; justify-content:space-between; flex-wrap:wrap; gap: 20px;">
-                    <div style="flex:1; min-width:200px;">
-                        <h4 style="margin-bottom:8px; font-size:12px; color:var(--mac-text-muted);">CPU Load (%)</h4>
-                        <canvas id="chart-cpu" style="height:60px; max-height:60px;"></canvas>
-                    </div>
-                    <div style="flex:1; min-width:200px;">
-                        <h4 style="margin-bottom:8px; font-size:12px; color:var(--mac-text-muted);">RAM Usage (GB)</h4>
-                        <canvas id="chart-mem" style="height:60px; max-height:60px;"></canvas>
-                    </div>
-                    <div style="flex:1; min-width:200px;">
-                        <h4 style="margin-bottom:8px; font-size:12px; color:var(--mac-text-muted);">Red (<span style="color:var(--mac-green)">Bajada</span> / <span style="color:var(--mac-blue)">Subida</span>)</h4>
-                        <div style="display:flex; justify-content:space-around; align-items:center; height:60px; background:rgba(0,0,0,0.2); border-radius:8px;">
-                            <div style="text-align:center;"><div id="tele-rx" style="font-size:18px; font-weight:bold; color:var(--mac-green);">0 MB/s</div></div>
-                            <div style="text-align:center;"><div id="tele-tx" style="font-size:18px; font-weight:bold; color:var(--mac-blue);">0 MB/s</div></div>
-                        </div>
-                    </div>
-                </div>
-
-                <section class="network-radar-panel stagger-fade-in" style="animation-delay: 0.16s;">
-                    <header class="network-radar-header">
-                        <h3 class="network-radar-title">Heatmap de Disco (Top 30)</h3>
-                    </header>
-                    <div id="network-radar-status" class="network-radar-status">Heatmap en espera: ejecuta un escaneo de disco.</div>
-                    <div id="network-radar" class="network-radar-canvas radar-view" aria-label="Mapa de calor de carpetas mas pesadas">
-                    </div>
-                </section>
-
                 <ul id="script-list" class="mac-grouped-list">
                 </ul>
             </div> <!-- CLOSE content-scrollable -->
